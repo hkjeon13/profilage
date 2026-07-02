@@ -93,7 +93,7 @@ function renderStockChart(stock) {
     coordinates.at(-1).price >= coordinates[0].price ? "is-up" : "is-down";
 
   return `
-    <div class="stock-chart" aria-label="1개월 주가 차트" data-chart-points="${encodeURIComponent(JSON.stringify(interactionPoints))}" data-chart-width="${width}">
+    <div class="stock-chart" aria-label="1개월 주가 차트" data-chart-points="${encodeURIComponent(JSON.stringify(interactionPoints))}" data-chart-width="${width}" data-chart-last-index="${points.length - 1}">
       <div class="stock-chart-tooltip" role="status" aria-live="polite">
         <strong>${formatChartDate(points.at(-1).date)}</strong>
         <span>${formatNumber(points.at(-1).price)} KRW</span>
@@ -107,9 +107,9 @@ function renderStockChart(stock) {
         <rect class="stock-chart-hit-area" x="0" y="0" width="${width}" height="${height}" />
       </svg>
       <div class="stock-chart-meta">
-        <span>${formatChartDate(points[0].date)}</span>
+        <span class="stock-chart-meta-start">${formatChartDate(points[0].date)}</span>
         <span>${formatNumber(min)} - ${formatNumber(max)}</span>
-        <span>${formatChartDate(points.at(-1).date)}</span>
+        <span class="stock-chart-meta-end">${formatChartDate(points.at(-1).date)}</span>
       </div>
     </div>
   `;
@@ -138,6 +138,11 @@ function updateStockChartSelection(chart, point) {
   dot.setAttribute("cx", point.x);
   dot.setAttribute("cy", point.y);
   chart.classList.add("is-active");
+  chart.classList.toggle("is-start-selected", point.index === 0);
+  chart.classList.toggle(
+    "is-end-selected",
+    point.index === Number(chart.dataset.chartLastIndex),
+  );
 }
 
 function setupStockChartInteractions() {

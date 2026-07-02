@@ -122,3 +122,8 @@
   color: var(--muted);
   font-size: 12px;
 }
+
+.stock-chart.is-start-selected .stock-chart-meta-start,
+.stock-chart.is-end-selected .stock-chart-meta-end {
+  visibility: hidden;
+}
