@@ -52,7 +52,7 @@ function renderError(message) {
   `;
 }
 
-function renderCompanyDetail({ outline, listed, stock, affiliateCount, subsidiaryCount }) {
+function renderCompanyDetail({ outline, listed, stock }) {
   const summary = stock?.summary || {};
   const price = summary.price || summary.extracted_price;
   const change = summary.price_movement?.percentage || summary.price_movement?.value;
@@ -88,13 +88,6 @@ function renderCompanyDetail({ outline, listed, stock, affiliateCount, subsidiar
         <h3>주가</h3>
         <div class="price">${formatNumber(price)}</div>
         <div class="price-meta">${text(change, "변동 정보 없음")}</div>
-      </article>
-      <article class="info-block">
-        <h3>관계 정보</h3>
-        <dl class="kv">
-          <dt>계열사</dt><dd>${affiliateCount}</dd>
-          <dt>종속기업</dt><dd>${subsidiaryCount}</dd>
-        </dl>
       </article>
       <article class="info-block full">
         <h3>주소</h3>
@@ -137,8 +130,6 @@ async function loadProfile() {
       outline,
       listed,
       stock,
-      affiliateCount: text(info.affiliate?.body?.totalCount, "0"),
-      subsidiaryCount: text(info.cons_subs_comp?.body?.totalCount, "0"),
     });
   } catch (error) {
     renderError(error.message);
