@@ -106,7 +106,7 @@ function latestBusinessYear() {
 }
 
 function financialYearOptions(selectedYear) {
-  const latest = Number(latestBusinessYear());
+  const latest = new Date().getFullYear();
   const years = Array.from({ length: 10 }, (_, index) => String(latest - index));
   if (selectedYear && !years.includes(selectedYear)) {
     years.unshift(selectedYear);
