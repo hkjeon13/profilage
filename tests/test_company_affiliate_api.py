@@ -7,6 +7,59 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 
+def test_root_serves_company_search_frontend():
+    with TestClient(app) as client:
+        response = client.get("/")
+
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "Profilage" in response.text
+    assert "/api/company/get_corp_outline" in response.text
+
+
+def test_company_api_is_available_under_api_prefix(monkeypatch):
+    monkeypatch.setenv("OPEN_API_DECODING_KEY", "decoded-service-key")
+    monkeypatch.delenv("OPEN_API_ENCODING_KEY", raising=False)
+
+    captured_request = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured_request["params"] = dict(request.url.params)
+        return httpx.Response(
+            200,
+            json={
+                "response": {
+                    "header": {"resultCode": "00", "resultMsg": "NORMAL SERVICE."},
+                    "body": {
+                        "numOfRows": "1",
+                        "pageNo": "1",
+                        "totalCount": "1",
+                        "items": {
+                            "item": {
+                                "crno": "1301110006246",
+                                "corpNm": "삼성전자(주)",
+                            }
+                        },
+                    },
+                }
+            },
+        )
+
+    transport = httpx.MockTransport(handler)
+
+    with TestClient(app) as client:
+        app.state.http_transport = transport
+        response = client.get(
+            "/api/company/get_corp_outline",
+            params={"company_name": "삼성", "page": 1, "per_page": 1},
+        )
+        del app.state.http_transport
+
+    assert response.status_code == 200
+    assert captured_request["params"]["corpNm"] == "삼성"
+    assert response.json()["body"]["items"]["item"]["corpNm"] == "삼성전자(주)"
+
+
 def test_get_affiliate_maps_snake_case_query_to_open_api_parameters(monkeypatch):
     monkeypatch.setenv("OPEN_API_DECODING_KEY", "decoded-service-key")
     monkeypatch.delenv("OPEN_API_ENCODING_KEY", raising=False)

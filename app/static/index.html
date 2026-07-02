@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Profilage</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section
+        class="search-panel"
+        aria-labelledby="page-title"
+        data-outline-url="/api/company/get_corp_outline"
+      >
+        <div class="brand-row">
+          <span class="brand-mark" aria-hidden="true">P</span>
+          <span class="brand-name">Profilage</span>
+        </div>
+        <h1 id="page-title">기업 검색</h1>
+        <form class="search-form" id="search-form">
+          <label class="visually-hidden" for="company-query">기업명</label>
+          <input
+            id="company-query"
+            name="company-query"
+            type="search"
+            autocomplete="off"
+            placeholder="삼성"
+            minlength="1"
+          />
+          <button type="submit">검색</button>
+        </form>
+        <p class="status" id="search-status" role="status"></p>
+      </section>
+
+      <section class="content-grid" aria-live="polite">
+        <aside class="result-list" id="result-list" aria-label="검색 결과"></aside>
+        <section class="detail-panel" id="detail-panel" aria-label="기업 상세">
+          <div class="empty-state">
+            <span class="empty-kicker">Company</span>
+            <p>검색 결과를 선택하면 상세 정보가 표시됩니다.</p>
+          </div>
+        </section>
+      </section>
+    </main>
+    <script src="/app.js" defer></script>
+  </body>
+</html>
