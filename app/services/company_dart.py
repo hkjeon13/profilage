@@ -326,7 +326,7 @@ class DartCompanyService:
         if query.fs_division:
             params["fs_div"] = query.fs_division
 
-        return await fetch_with_group_store(
+        payload = await fetch_with_group_store(
             store=self._data_group_store,
             entity_type=COMPANY_ENTITY_TYPE,
             entity_key=_dart_entity_key(query.corp_code),
@@ -339,3 +339,13 @@ class DartCompanyService:
                 allow_no_data=True,
             ),
         )
+        if not query.fs_division:
+            return payload
+
+        payload = dict(payload)
+        payload["list"] = [
+            item
+            for item in payload.get("list", [])
+            if item.get("fs_div") in (None, query.fs_division)
+        ]
+        return payload
