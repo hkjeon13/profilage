@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import hashlib
 import json
+import random
 from typing import Any
 
 from fastapi import HTTPException
@@ -101,6 +102,11 @@ class OpenApiCompanyService:
         ).hexdigest()
         return f"profilage:api:{digest}"
 
+    async def _get_cached_json(self, cache_key: str) -> Any | None:
+        if random.random() < get_cache_settings().bypass_rate:
+            return None
+        return await self._cache.get_json(cache_key)
+
     async def _fetch(
         self,
         *,
@@ -122,7 +128,7 @@ class OpenApiCompanyService:
             if key != service_key_param_name
         }
         cache_key = self._cache_key(endpoint_url=endpoint_url, params=cache_params)
-        cached = await self._cache.get_json(cache_key)
+        cached = await self._get_cached_json(cache_key)
         if cached is not None:
             return cached
 
@@ -339,7 +345,7 @@ class CompanyStockPriceService(OpenApiCompanyService):
             endpoint_url=SEARCHAPI_SEARCH_URL,
             params=cache_params,
         )
-        cached = await self._cache.get_json(cache_key)
+        cached = await self._get_cached_json(cache_key)
         if cached is not None:
             return cached
 

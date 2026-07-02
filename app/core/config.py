@@ -28,6 +28,7 @@ class OpenApiSettings:
 class CacheSettings:
     valkey_url: str | None
     ttl_seconds: int
+    bypass_rate: float
 
 
 def get_open_api_settings() -> OpenApiSettings:
@@ -66,7 +67,9 @@ def get_cache_settings() -> CacheSettings:
     load_dotenv()
 
     ttl = os.getenv("CACHE_TTL_SECONDS", "3600")
+    bypass_rate = os.getenv("CACHE_BYPASS_RATE", "0.1")
     return CacheSettings(
         valkey_url=os.getenv("VALKEY_URL"),
         ttl_seconds=int(ttl),
+        bypass_rate=min(max(float(bypass_rate), 0.0), 1.0),
     )

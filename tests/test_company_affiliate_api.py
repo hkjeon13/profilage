@@ -450,6 +450,7 @@ def test_get_company_info_combines_company_sources_by_corporate_registration_num
 @pytest.mark.asyncio
 async def test_open_api_service_reuses_cached_response(monkeypatch):
     monkeypatch.setenv("OPEN_API_DECODING_KEY", "decoded-service-key")
+    monkeypatch.setenv("CACHE_BYPASS_RATE", "0")
     monkeypatch.delenv("OPEN_API_ENCODING_KEY", raising=False)
     request_count = 0
 
@@ -497,6 +498,7 @@ async def test_open_api_service_reuses_cached_response(monkeypatch):
 @pytest.mark.asyncio
 async def test_stock_price_service_reuses_cached_response(monkeypatch):
     monkeypatch.setenv("SEARCHAPI_API_KEY", "searchapi-key")
+    monkeypatch.setenv("CACHE_BYPASS_RATE", "0")
     request_count = 0
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -534,6 +536,53 @@ async def test_stock_price_service_reuses_cached_response(monkeypatch):
     assert second == first
     assert len(cache.set_calls) == 1
     assert cache.set_calls[0][0].startswith("profilage:api:")
+
+
+@pytest.mark.asyncio
+async def test_open_api_service_can_bypass_cached_response(monkeypatch):
+    monkeypatch.setenv("OPEN_API_DECODING_KEY", "decoded-service-key")
+    monkeypatch.setenv("CACHE_BYPASS_RATE", "1")
+    monkeypatch.delenv("OPEN_API_ENCODING_KEY", raising=False)
+    request_count = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        request_count += 1
+        return httpx.Response(
+            200,
+            json={
+                "response": {
+                    "body": {
+                        "items": {
+                            "item": {
+                                "crno": "1301110006246",
+                                "corpNm": f"삼성전자({request_count})",
+                            }
+                        },
+                    },
+                }
+            },
+        )
+
+    cache = FakeJsonCache()
+    service = CompanyCorpOutlineService(
+        transport=httpx.MockTransport(handler),
+        cache=cache,
+    )
+    query = CompanyCorpOutlineQuery(
+        company_name="삼성전자",
+        corporate_registration_number=None,
+        page=1,
+        per_page=10,
+    )
+
+    first = await service.fetch(query)
+    second = await service.fetch(query)
+
+    assert request_count == 2
+    assert first["body"]["items"]["item"]["corpNm"] == "삼성전자(1)"
+    assert second["body"]["items"]["item"]["corpNm"] == "삼성전자(2)"
+    assert len(cache.set_calls) == 2
 
 
 def test_get_stock_price_maps_query_to_searchapi_google_finance(monkeypatch):
