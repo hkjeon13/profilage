@@ -25,6 +25,47 @@ function formatNumber(value) {
   return Number.isFinite(numeric) ? numeric.toLocaleString("ko-KR") : value;
 }
 
+function formatFinancialAmount(value, currency = "KRW") {
+  if (value === undefined || value === null || value === "") return "-";
+  const amount = Number(String(value).replaceAll(",", ""));
+  if (!Number.isFinite(amount)) return value;
+  const normalizedCurrency = (currency || "KRW").toUpperCase();
+
+  if (normalizedCurrency !== "KRW") {
+    try {
+      return new Intl.NumberFormat("ko-KR", {
+        notation: "compact",
+        maximumFractionDigits: 1,
+        style: "currency",
+        currency: normalizedCurrency,
+        currencyDisplay: "narrowSymbol",
+      }).format(amount);
+    } catch {
+      return `${normalizedCurrency} ${new Intl.NumberFormat("ko-KR", {
+        notation: "compact",
+        maximumFractionDigits: 1,
+      }).format(amount)}`;
+    }
+  }
+
+  const sign = amount < 0 ? "-" : "";
+  const absolute = Math.abs(amount);
+  const jo = Math.floor(absolute / 1_000_000_000_000);
+  const eok = Math.floor((absolute % 1_000_000_000_000) / 100_000_000);
+  const man = Math.floor((absolute % 100_000_000) / 10_000);
+
+  if (jo > 0) {
+    return `${sign}${jo.toLocaleString("ko-KR")}조${eok > 0 ? ` ${eok.toLocaleString("ko-KR")}억원` : "원"}`;
+  }
+  if (eok > 0) {
+    return `${sign}${eok.toLocaleString("ko-KR")}억${man > 0 ? ` ${man.toLocaleString("ko-KR")}만원` : "원"}`;
+  }
+  if (man > 0) {
+    return `${sign}${man.toLocaleString("ko-KR")}만원`;
+  }
+  return `${sign}${absolute.toLocaleString("ko-KR")}원`;
+}
+
 function formatChartDate(value) {
   if (!value) return "";
   const parsed = new Date(value);
@@ -276,10 +317,14 @@ function renderError(message) {
 function renderDartDisclosures(disclosures) {
   const items = (disclosures?.list || []).slice(0, 5);
   if (!items.length) return "";
+  const crno = new URLSearchParams(window.location.search).get("crno");
 
   return `
     <article class="info-block full">
-      <h3>최근 공시</h3>
+      <div class="block-heading">
+        <h3>최근 공시</h3>
+        <a href="/profile?crno=${encodeURIComponent(crno)}&view=disclosures">더보기</a>
+      </div>
       <ul class="disclosure-list">
         ${items
           .map(
@@ -298,25 +343,127 @@ function renderDartDisclosures(disclosures) {
 
 function renderDartFinancialAccounts(accounts) {
   const preferred = new Set(["매출액", "영업이익", "당기순이익", "자산총계", "부채총계", "자본총계"]);
-  const items = (accounts?.list || [])
-    .filter((item) => preferred.has(item.account_nm))
-    .slice(0, 6);
+  const items = Array.from(
+    (accounts?.list || [])
+      .filter((item) => preferred.has(item.account_nm))
+      .reduce((itemsByName, item) => {
+        if (!itemsByName.has(item.account_nm)) {
+          itemsByName.set(item.account_nm, item);
+        }
+        return itemsByName;
+      }, new Map())
+      .values(),
+  ).slice(0, 6);
   if (!items.length) return "";
+  const crno = new URLSearchParams(window.location.search).get("crno");
 
   return `
     <article class="info-block">
-      <h3>재무 요약</h3>
+      <div class="block-heading">
+        <h3>재무 요약</h3>
+        <a href="/profile?crno=${encodeURIComponent(crno)}&view=financials">더보기</a>
+      </div>
       <dl class="kv">
         ${items
           .map(
             (item) => `
               <dt>${text(item.account_nm)}</dt>
-              <dd>${formatNumber(item.thstrm_amount)}</dd>
+              <dd>${formatFinancialAmount(item.thstrm_amount, item.currency)}</dd>
             `,
           )
           .join("")}
       </dl>
     </article>
+  `;
+}
+
+function renderSubpageHeader({ kicker, title, subtitle, crno }) {
+  profileTitle.textContent = title;
+  profileSubtitle.textContent = subtitle;
+  return `
+    <div class="detail-header subpage-header">
+      <a class="back-link" href="/profile?crno=${encodeURIComponent(crno)}">기업 프로필로 돌아가기</a>
+      <p>${kicker}</p>
+      <h2>${title}</h2>
+      <span>${subtitle}</span>
+    </div>
+  `;
+}
+
+function renderFinancialsPage({ info, outline, crno }) {
+  const accounts = info.dart_financial_accounts?.list || [];
+  const grouped = accounts.reduce((groups, item) => {
+    const key = item.sj_nm || "재무제표";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(item);
+    return groups;
+  }, new Map());
+
+  profileDetail.innerHTML = `
+    ${renderSubpageHeader({
+      kicker: "DART 재무정보",
+      title: `${text(outline.corpNm, "기업")} 재무제표`,
+      subtitle: text(info.dart_financial_accounts?.list?.[0]?.bsns_year, "최근 사업연도"),
+      crno,
+    })}
+    <div class="detail-body subpage-body">
+      ${Array.from(grouped.entries())
+        .map(
+          ([statementName, items]) => `
+            <article class="info-block full">
+              <h3>${statementName}</h3>
+              <dl class="kv financial-list">
+                ${items
+                  .map(
+                    (item) => `
+                      <dt>${text(item.account_nm)}</dt>
+                      <dd>
+                        <strong>${formatFinancialAmount(item.thstrm_amount, item.currency)}</strong>
+                        <span>${text(item.thstrm_nm)} · ${text(item.currency)}</span>
+                      </dd>
+                    `,
+                  )
+                  .join("")}
+              </dl>
+            </article>
+          `,
+        )
+        .join("") || `
+          <article class="info-block full">
+            <h3>재무정보</h3>
+            <p class="empty-copy">표시할 재무제표 항목이 없습니다.</p>
+          </article>
+        `}
+    </div>
+  `;
+}
+
+function renderDisclosuresPage({ disclosures, outline, crno }) {
+  const items = disclosures?.list || [];
+  profileDetail.innerHTML = `
+    ${renderSubpageHeader({
+      kicker: "DART 공시",
+      title: `${text(outline.corpNm, "기업")} 공시`,
+      subtitle: `${items.length.toLocaleString("ko-KR")}개 공시`,
+      crno,
+    })}
+    <div class="detail-body subpage-body">
+      <article class="info-block full">
+        <h3>공시 목록</h3>
+        <ul class="disclosure-list disclosure-list-large">
+          ${items
+            .map(
+              (item) => `
+                <li>
+                  <a href="${text(item.viewer_url, "#")}" target="_blank" rel="noreferrer">${text(item.report_nm)}</a>
+                  <span>${text(item.rcept_dt)} · ${text(item.flr_nm || item.corp_name)} · ${text(item.rcept_no)}</span>
+                </li>
+              `,
+            )
+            .join("") || `<li><span>표시할 공시가 없습니다.</span></li>`}
+        </ul>
+      </article>
+    </div>
   `;
 }
 
@@ -373,7 +520,9 @@ function renderCompanyDetail({ info, outline, listed, stock }) {
 }
 
 async function loadProfile() {
-  const crno = new URLSearchParams(window.location.search).get("crno");
+  const searchParams = new URLSearchParams(window.location.search);
+  const crno = searchParams.get("crno");
+  const view = searchParams.get("view");
   if (!crno) {
     renderError("법인등록번호가 필요합니다.");
     return;
@@ -390,6 +539,24 @@ async function loadProfile() {
     const outline = firstItem(info.corp_outline);
     const listed = firstItem(info.krx_listed_item);
     let stock = null;
+
+    if (view === "financials") {
+      renderFinancialsPage({ info, outline, crno });
+      return;
+    }
+
+    if (view === "disclosures") {
+      const corpCode = info.dart_corp_code?.match?.corp_code;
+      const disclosures = corpCode
+        ? await fetchJson("/api/company/get_dart_disclosures", {
+            corp_code: corpCode,
+            page: 1,
+            per_page: 30,
+          }).catch(() => info.dart_disclosures)
+        : info.dart_disclosures;
+      renderDisclosuresPage({ disclosures, outline, crno });
+      return;
+    }
 
     if (listed.srtnCd) {
       stock = await fetchJson(stockUrl, {

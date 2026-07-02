@@ -407,6 +407,25 @@ a:hover {
   letter-spacing: 0;
 }
 
+.block-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.block-heading h3 {
+  margin: 0;
+}
+
+.block-heading a {
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .kv {
   display: grid;
   grid-template-columns: 110px minmax(0, 1fr);
@@ -455,6 +474,55 @@ a:hover {
   margin-top: 3px;
   color: var(--muted);
   font-size: 13px;
+}
+
+.disclosure-list-large {
+  gap: 16px;
+}
+
+.subpage-header .back-link {
+  margin-bottom: 14px;
+}
+
+.subpage-header p {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.subpage-header h2 {
+  margin: 0 0 8px;
+}
+
+.subpage-header span {
+  color: var(--muted);
+}
+
+.subpage-body {
+  grid-template-columns: 1fr;
+}
+
+.financial-list {
+  grid-template-columns: minmax(120px, 0.65fr) minmax(0, 1fr);
+  gap: 12px 16px;
+}
+
+.financial-list dd strong {
+  display: block;
+  font-size: 16px;
+}
+
+.financial-list dd span {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.empty-copy {
+  margin: 0;
+  color: var(--muted);
 }
 
 .stock-chart {
