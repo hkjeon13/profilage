@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import UTC, datetime
 import hashlib
 import json
 import random
@@ -8,11 +9,19 @@ from fastapi import HTTPException
 import httpx
 
 from app.core.config import (
+    get_dart_api_key,
     get_cache_settings,
     get_open_api_settings,
     get_searchapi_api_key,
 )
 from app.services.cache import JsonCache, get_default_cache
+from app.services.company_dart import (
+    DartCompanyQuery,
+    DartCompanyService,
+    DartCorpCodeQuery,
+    DartDisclosureQuery,
+    DartFinancialAccountsQuery,
+)
 from app.services.company_store import (
     AFFILIATE_GROUP,
     COMPANY_ENTITY_TYPE,
@@ -43,6 +52,18 @@ OPEN_API_GET_KRX_LISTED_ITEM_URL = (
 )
 SEARCHAPI_SEARCH_URL = "https://www.searchapi.io/api/v1/search"
 DATA_GROUP_STORE_UNSET = object()
+
+
+def _first_openapi_item(payload: dict[str, Any]) -> dict[str, Any]:
+    item = payload.get("body", {}).get("items", {}).get("item")
+    if isinstance(item, list):
+        return item[0] if item else {}
+    return item if isinstance(item, dict) else {}
+
+
+def _latest_business_year() -> str:
+    today = datetime.now(UTC)
+    return str(today.year - 1)
 
 
 @dataclass(frozen=True)
@@ -377,6 +398,63 @@ class CompanyInfoService(OpenApiCompanyService):
             "krx_listed_item": krx_listed_item,
             "affiliate": affiliate,
             "cons_subs_comp": cons_subs_comp,
+            **await self._fetch_dart_profile(crno, corp_outline, krx_listed_item),
+        }
+
+    async def _fetch_dart_profile(
+        self,
+        crno: str,
+        corp_outline: dict[str, Any],
+        krx_listed_item: dict[str, Any],
+    ) -> dict[str, Any]:
+        if self._transport is not None or not get_dart_api_key(required=False):
+            return {}
+
+        outline_item = _first_openapi_item(corp_outline)
+        listed_item = _first_openapi_item(krx_listed_item)
+        stock_code = (listed_item.get("srtnCd") or "").replace("A", "", 1)
+        company_name = outline_item.get("corpNm") or listed_item.get("corpNm")
+        dart_service = DartCompanyService(data_group_store=self._data_group_store)
+        corp_code_payload = await dart_service.find_corp_code(
+            DartCorpCodeQuery(
+                corporate_registration_number=crno,
+                stock_code=stock_code or None,
+                company_name=company_name,
+            )
+        )
+        corp_code = corp_code_payload.get("match", {}).get("corp_code")
+        if not corp_code:
+            return {"dart_corp_code": corp_code_payload}
+
+        dart_company = await dart_service.get_company(
+            query=DartCompanyQuery(corp_code=corp_code)
+        )
+        dart_disclosures = await dart_service.get_disclosures(
+            DartDisclosureQuery(
+                corp_code=corp_code,
+                begin_date=None,
+                end_date=None,
+                disclosure_type=None,
+                disclosure_detail_type=None,
+                corporation_class=None,
+                page=1,
+                per_page=5,
+            )
+        )
+        latest_business_year = _latest_business_year()
+        dart_financial_accounts = await dart_service.get_financial_accounts(
+            DartFinancialAccountsQuery(
+                corp_code=corp_code,
+                business_year=latest_business_year,
+                report_code="11011",
+                fs_division="CFS",
+            )
+        )
+        return {
+            "dart_corp_code": corp_code_payload,
+            "dart_company": dart_company,
+            "dart_disclosures": dart_disclosures,
+            "dart_financial_accounts": dart_financial_accounts,
         }
 
 

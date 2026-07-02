@@ -1,5 +1,7 @@
 import os
 from datetime import UTC, datetime
+from io import BytesIO
+from zipfile import ZipFile
 
 import httpx
 import pytest
@@ -24,6 +26,24 @@ from app.services.company_store import (
     is_krx_market_open,
     stock_price_ttl,
 )
+
+
+def dart_corp_code_zip() -> bytes:
+    buffer = BytesIO()
+    xml = """
+    <result>
+      <list>
+        <corp_code>00126380</corp_code>
+        <corp_name>삼성전자</corp_name>
+        <corp_eng_name>SAMSUNG ELECTRONICS CO., LTD.</corp_eng_name>
+        <stock_code>005930</stock_code>
+        <modify_date>20260701</modify_date>
+      </list>
+    </result>
+    """.encode()
+    with ZipFile(buffer, "w") as archive:
+        archive.writestr("CORPCODE.xml", xml)
+    return buffer.getvalue()
 
 
 class FakeJsonCache:
@@ -830,3 +850,156 @@ def test_get_stock_price_requires_q_or_stock_code():
     assert response.json()["detail"] == (
         "q or stock_code is required"
     )
+
+
+def test_get_dart_corp_code_maps_stock_code_to_dart_corp_code(monkeypatch):
+    monkeypatch.setenv("DART_API_KEY", "dart-key")
+    captured_request = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured_request["params"] = dict(request.url.params)
+        return httpx.Response(200, content=dart_corp_code_zip())
+
+    with TestClient(app) as client:
+        app.state.http_transport = httpx.MockTransport(handler)
+        response = client.get(
+            "/company/get_dart_corp_code",
+            params={"stock_code": "A005930"},
+        )
+        del app.state.http_transport
+
+    assert response.status_code == 200
+    assert captured_request["params"] == {"crtfc_key": "dart-key"}
+    payload = response.json()
+    assert payload["match"]["corp_code"] == "00126380"
+    assert payload["match"]["stock_code"] == "005930"
+
+
+def test_get_dart_company_maps_query_to_dart_company_api(monkeypatch):
+    monkeypatch.setenv("DART_API_KEY", "dart-key")
+    captured_request = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured_request["url"] = str(request.url)
+        captured_request["params"] = dict(request.url.params)
+        return httpx.Response(
+            200,
+            json={
+                "status": "000",
+                "message": "정상",
+                "corp_code": "00126380",
+                "corp_name": "삼성전자",
+                "jurir_no": "1301110006246",
+            },
+        )
+
+    with TestClient(app) as client:
+        app.state.http_transport = httpx.MockTransport(handler)
+        response = client.get(
+            "/company/get_dart_company",
+            params={"corp_code": "00126380"},
+        )
+        del app.state.http_transport
+
+    assert response.status_code == 200
+    assert captured_request["url"].startswith(
+        "https://opendart.fss.or.kr/api/company.json"
+    )
+    assert captured_request["params"] == {
+        "crtfc_key": "dart-key",
+        "corp_code": "00126380",
+    }
+    assert response.json()["jurir_no"] == "1301110006246"
+
+
+def test_get_dart_disclosures_adds_viewer_url(monkeypatch):
+    monkeypatch.setenv("DART_API_KEY", "dart-key")
+    captured_request = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured_request["params"] = dict(request.url.params)
+        return httpx.Response(
+            200,
+            json={
+                "status": "000",
+                "message": "정상",
+                "page_no": 1,
+                "page_count": 10,
+                "total_count": 1,
+                "list": [
+                    {
+                        "corp_code": "00126380",
+                        "corp_name": "삼성전자",
+                        "report_nm": "사업보고서",
+                        "rcept_no": "20260331000001",
+                        "rcept_dt": "20260331",
+                    }
+                ],
+            },
+        )
+
+    with TestClient(app) as client:
+        app.state.http_transport = httpx.MockTransport(handler)
+        response = client.get(
+            "/company/get_dart_disclosures",
+            params={
+                "corp_code": "00126380",
+                "begin_date": "20260101",
+                "page": 1,
+                "per_page": 10,
+            },
+        )
+        del app.state.http_transport
+
+    assert response.status_code == 200
+    assert captured_request["params"]["corp_code"] == "00126380"
+    assert captured_request["params"]["bgn_de"] == "20260101"
+    assert captured_request["params"]["page_no"] == "1"
+    assert captured_request["params"]["page_count"] == "10"
+    assert response.json()["list"][0]["viewer_url"] == (
+        "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260331000001"
+    )
+
+
+def test_get_dart_financial_accounts_maps_query_to_dart_api(monkeypatch):
+    monkeypatch.setenv("DART_API_KEY", "dart-key")
+    captured_request = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured_request["params"] = dict(request.url.params)
+        return httpx.Response(
+            200,
+            json={
+                "status": "000",
+                "message": "정상",
+                "list": [
+                    {
+                        "account_nm": "매출액",
+                        "thstrm_amount": "300000000",
+                    }
+                ],
+            },
+        )
+
+    with TestClient(app) as client:
+        app.state.http_transport = httpx.MockTransport(handler)
+        response = client.get(
+            "/company/get_dart_financial_accounts",
+            params={
+                "corp_code": "00126380",
+                "business_year": "2025",
+                "report_code": "11011",
+                "fs_division": "CFS",
+            },
+        )
+        del app.state.http_transport
+
+    assert response.status_code == 200
+    assert captured_request["params"] == {
+        "crtfc_key": "dart-key",
+        "corp_code": "00126380",
+        "bsns_year": "2025",
+        "reprt_code": "11011",
+        "fs_div": "CFS",
+    }
+    assert response.json()["list"][0]["account_nm"] == "매출액"

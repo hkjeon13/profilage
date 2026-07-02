@@ -179,6 +179,10 @@ GET /company/get_company_info
 | `krx_listed_item` | `/company/get_krx_listed_item` | KRX 상장종목정보 |
 | `affiliate` | `/company/get_affiliate` | 계열회사 |
 | `cons_subs_comp` | `/company/get_cons_subs_comp` | 연결대상 종속기업 |
+| `dart_corp_code` | `/company/get_dart_corp_code` | DART 고유번호 매핑. DART 키가 설정된 운영 환경에서 보강 |
+| `dart_company` | `/company/get_dart_company` | DART 기업개황. DART 키가 설정된 운영 환경에서 보강 |
+| `dart_disclosures` | `/company/get_dart_disclosures` | 최근 DART 공시 목록. DART 키가 설정된 운영 환경에서 보강 |
+| `dart_financial_accounts` | `/company/get_dart_financial_accounts` | 최근 사업보고서 주요계정 재무정보. DART 키가 설정된 운영 환경에서 보강 |
 
 Required query: `corporate_registration_number`.
 
@@ -220,6 +224,79 @@ Measured example:
   }
 }
 ```
+
+## 7. DART 기업/공시/재무정보
+
+금융감독원 OpenDART API를 통해 기업 고유번호, 기업개황, 공시 목록, 단일회사 주요계정 재무정보를 조회합니다.
+
+### DART 고유번호 매핑
+
+```http
+GET /company/get_dart_corp_code
+```
+
+| Query | Description |
+| --- | --- |
+| `corporate_registration_number` | 법인등록번호. 종목코드 또는 회사명 후보가 여러 개일 때 기업개황의 `jurir_no`와 비교 |
+| `stock_code` | 종목코드. `A005930` 또는 `005930` 모두 허용 |
+| `company_name` | 회사명 |
+
+`corporate_registration_number`, `stock_code`, `company_name` 중 하나는 필수입니다.
+
+### DART 기업개황
+
+```http
+GET /company/get_dart_company?corp_code=00126380
+```
+
+`corp_code` 기준으로 회사명, 영문명, 법인등록번호, 사업자등록번호, 대표자, 업종, 주소 등을 조회합니다.
+
+### DART 공시검색
+
+```http
+GET /company/get_dart_disclosures?corp_code=00126380&page=1&per_page=10
+```
+
+| Query | Description |
+| --- | --- |
+| `corp_code` | DART 고유번호 |
+| `begin_date` | 시작일자 `YYYYMMDD` |
+| `end_date` | 종료일자 `YYYYMMDD` |
+| `disclosure_type` | 공시유형 |
+| `disclosure_detail_type` | 공시상세유형 |
+| `corporation_class` | 법인구분 |
+| `page` | 페이지 번호 |
+| `per_page` | 페이지 크기 |
+
+각 공시 항목에는 DART 원문 조회용 `viewer_url`을 추가해 반환합니다.
+
+### DART 주요계정 재무정보
+
+```http
+GET /company/get_dart_financial_accounts?corp_code=00126380&business_year=2025&report_code=11011&fs_division=CFS
+```
+
+| Query | Description |
+| --- | --- |
+| `corp_code` | DART 고유번호 |
+| `business_year` | 사업연도 `YYYY` |
+| `report_code` | 보고서 코드. `11011` 사업보고서, `11012` 반기보고서, `11013` 1분기보고서, `11014` 3분기보고서 |
+| `fs_division` | `CFS` 연결재무제표, `OFS` 재무제표 |
+
+## 8. 저장/갱신 정책
+
+검색성 응답은 Valkey 캐시를 사용하고, 기업 상세 속성 그룹은 Postgres `company_data_groups`에 저장합니다.
+
+| Group | TTL |
+| --- | --- |
+| `corp_outline` | 7일 |
+| `krx_listed_item` | 1일 |
+| `affiliate` | 7일 |
+| `cons_subs_comp` | 7일 |
+| `dart_company` | 7일 |
+| `dart_disclosures` | 1시간 |
+| `dart_financial_accounts` | 1일 |
+| `stock_price` | KRX 장중 5분, 장외 1시간 |
 
 ## Error Responses
 

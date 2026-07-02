@@ -273,7 +273,54 @@ function renderError(message) {
   setupStockChartInteractions();
 }
 
-function renderCompanyDetail({ outline, listed, stock }) {
+function renderDartDisclosures(disclosures) {
+  const items = (disclosures?.list || []).slice(0, 5);
+  if (!items.length) return "";
+
+  return `
+    <article class="info-block full">
+      <h3>최근 공시</h3>
+      <ul class="disclosure-list">
+        ${items
+          .map(
+            (item) => `
+              <li>
+                <a href="${text(item.viewer_url, "#")}" target="_blank" rel="noreferrer">${text(item.report_nm)}</a>
+                <span>${text(item.rcept_dt)} · ${text(item.flr_nm || item.corp_name)}</span>
+              </li>
+            `,
+          )
+          .join("")}
+      </ul>
+    </article>
+  `;
+}
+
+function renderDartFinancialAccounts(accounts) {
+  const preferred = new Set(["매출액", "영업이익", "당기순이익", "자산총계", "부채총계", "자본총계"]);
+  const items = (accounts?.list || [])
+    .filter((item) => preferred.has(item.account_nm))
+    .slice(0, 6);
+  if (!items.length) return "";
+
+  return `
+    <article class="info-block">
+      <h3>재무 요약</h3>
+      <dl class="kv">
+        ${items
+          .map(
+            (item) => `
+              <dt>${text(item.account_nm)}</dt>
+              <dd>${formatNumber(item.thstrm_amount)}</dd>
+            `,
+          )
+          .join("")}
+      </dl>
+    </article>
+  `;
+}
+
+function renderCompanyDetail({ info, outline, listed, stock }) {
   const summary = stock?.summary || {};
   const price = summary.price || summary.extracted_price;
   const change = summary.price_movement?.percentage || summary.price_movement?.value;
@@ -311,6 +358,8 @@ function renderCompanyDetail({ outline, listed, stock }) {
         <div class="price-meta">${text(change, "변동 정보 없음")}</div>
         ${renderStockChart(stock)}
       </article>
+      ${renderDartFinancialAccounts(info.dart_financial_accounts)}
+      ${renderDartDisclosures(info.dart_disclosures)}
       <article class="info-block full">
         <h3>주소</h3>
         <dl class="kv">
@@ -353,6 +402,7 @@ async function loadProfile() {
     }
 
     renderCompanyDetail({
+      info,
       outline,
       listed,
       stock,

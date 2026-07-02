@@ -435,6 +435,28 @@ a:hover {
   font-weight: 700;
 }
 
+.disclosure-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.disclosure-list a {
+  display: block;
+  color: var(--accent);
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.disclosure-list span {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .stock-chart {
   margin-top: 18px;
 }

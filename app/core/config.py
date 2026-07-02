@@ -68,6 +68,18 @@ def get_searchapi_api_key() -> str:
     raise RuntimeError("SEARCHAPI_API_KEY must be configured")
 
 
+def get_dart_api_key(*, required: bool = True) -> str | None:
+    load_dotenv()
+
+    api_key = os.getenv("DART_API_KEY")
+    if api_key:
+        return api_key
+    if not required:
+        return None
+
+    raise RuntimeError("DART_API_KEY must be configured")
+
+
 def get_cache_settings() -> CacheSettings:
     load_dotenv()
 

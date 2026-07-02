@@ -16,6 +16,13 @@ from app.services.company_affiliate import (
     CompanyStockPriceQuery,
     CompanyStockPriceService,
 )
+from app.services.company_dart import (
+    DartCompanyQuery,
+    DartCompanyService,
+    DartCorpCodeQuery,
+    DartDisclosureQuery,
+    DartFinancialAccountsQuery,
+)
 
 router = APIRouter(prefix="/company", tags=["company"])
 
@@ -229,5 +236,113 @@ async def get_stock_price(
             language=language,
             window=window,
             corporate_registration_number=corporate_registration_number,
+        )
+    )
+
+
+@router.get("/get_dart_corp_code")
+async def get_dart_corp_code(
+    request: Request,
+    corporate_registration_number: Annotated[
+        str | None, Query(description="법인등록번호")
+    ] = None,
+    stock_code: Annotated[
+        str | None, Query(description="종목 코드")
+    ] = None,
+    company_name: Annotated[
+        str | None, Query(description="회사명")
+    ] = None,
+):
+    if not any([corporate_registration_number, stock_code, company_name]):
+        raise HTTPException(
+            status_code=400,
+            detail="one of corporate_registration_number, stock_code, or company_name is required",
+        )
+
+    service = DartCompanyService(
+        transport=getattr(request.app.state, "http_transport", None)
+    )
+    return await service.find_corp_code(
+        DartCorpCodeQuery(
+            corporate_registration_number=corporate_registration_number,
+            stock_code=stock_code,
+            company_name=company_name,
+        )
+    )
+
+
+@router.get("/get_dart_company")
+async def get_dart_company(
+    request: Request,
+    corp_code: Annotated[str, Query(description="DART 고유번호")],
+):
+    service = DartCompanyService(
+        transport=getattr(request.app.state, "http_transport", None)
+    )
+    return await service.get_company(DartCompanyQuery(corp_code=corp_code))
+
+
+@router.get("/get_dart_disclosures")
+async def get_dart_disclosures(
+    request: Request,
+    corp_code: Annotated[
+        str | None, Query(description="DART 고유번호")
+    ] = None,
+    begin_date: Annotated[
+        str | None, Query(description="시작일자(YYYYMMDD)")
+    ] = None,
+    end_date: Annotated[
+        str | None, Query(description="종료일자(YYYYMMDD)")
+    ] = None,
+    disclosure_type: Annotated[
+        str | None, Query(description="공시유형")
+    ] = None,
+    disclosure_detail_type: Annotated[
+        str | None, Query(description="공시상세유형")
+    ] = None,
+    corporation_class: Annotated[
+        str | None, Query(description="법인구분")
+    ] = None,
+    page: Annotated[int, Query(ge=1)] = 1,
+    per_page: Annotated[int, Query(ge=1, le=100)] = 10,
+):
+    service = DartCompanyService(
+        transport=getattr(request.app.state, "http_transport", None)
+    )
+    return await service.get_disclosures(
+        DartDisclosureQuery(
+            corp_code=corp_code,
+            begin_date=begin_date,
+            end_date=end_date,
+            disclosure_type=disclosure_type,
+            disclosure_detail_type=disclosure_detail_type,
+            corporation_class=corporation_class,
+            page=page,
+            per_page=per_page,
+        )
+    )
+
+
+@router.get("/get_dart_financial_accounts")
+async def get_dart_financial_accounts(
+    request: Request,
+    corp_code: Annotated[str, Query(description="DART 고유번호")],
+    business_year: Annotated[str, Query(description="사업연도(YYYY)")],
+    report_code: Annotated[
+        str, Query(description="보고서 코드: 11011 사업보고서, 11012 반기, 11013 1분기, 11014 3분기")
+    ] = "11011",
+    fs_division: Annotated[
+        str | None, Query(description="CFS 연결재무제표, OFS 재무제표")
+    ] = "CFS",
+):
+    service = DartCompanyService(
+        transport=getattr(request.app.state, "http_transport", None)
+    )
+    return await service.get_financial_accounts(
+        DartFinancialAccountsQuery(
+            corp_code=corp_code,
+            business_year=business_year,
+            report_code=report_code,
+            fs_division=fs_division,
         )
     )
