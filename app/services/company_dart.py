@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 import hashlib
 from io import BytesIO
 import json
@@ -266,6 +266,10 @@ class DartCompanyService:
         )
 
     async def get_disclosures(self, query: DartDisclosureQuery) -> dict[str, Any]:
+        begin_date = query.begin_date
+        if not begin_date and not query.end_date:
+            begin_date = (datetime.now(UTC) - timedelta(days=365)).strftime("%Y%m%d")
+
         params: dict[str, Any] = {
             "page_no": str(query.page),
             "page_count": str(query.per_page),
@@ -274,8 +278,8 @@ class DartCompanyService:
         }
         if query.corp_code:
             params["corp_code"] = query.corp_code
-        if query.begin_date:
-            params["bgn_de"] = query.begin_date
+        if begin_date:
+            params["bgn_de"] = begin_date
         if query.end_date:
             params["end_de"] = query.end_date
         if query.disclosure_type:
@@ -285,12 +289,10 @@ class DartCompanyService:
         if query.corporation_class:
             params["corp_cls"] = query.corporation_class
 
-        entity_key = _dart_entity_key(query.corp_code or "all")
-        if not query.corp_code:
-            digest = hashlib.sha256(
-                json.dumps(sorted(params.items()), ensure_ascii=False).encode()
-            ).hexdigest()
-            entity_key = f"dart:list:{digest}"
+        digest = hashlib.sha256(
+            json.dumps(sorted(params.items()), ensure_ascii=False).encode()
+        ).hexdigest()
+        entity_key = f"{_dart_entity_key(query.corp_code or 'all')}:list:{digest}"
 
         payload = await fetch_with_group_store(
             store=self._data_group_store,
