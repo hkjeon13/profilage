@@ -2,13 +2,14 @@ const form = document.querySelector("#search-form");
 const queryInput = document.querySelector("#company-query");
 const statusEl = document.querySelector("#search-status");
 const resultList = document.querySelector("#result-list");
-const detailPanel = document.querySelector("#detail-panel");
 const luckySearchButton = document.querySelector("#lucky-search");
 
 const outlineUrl = "/api/company/get_corp_outline";
 const listedUrl = "/api/company/get_krx_listed_item";
-const infoUrl = "/api/company/get_company_info";
-const stockUrl = "/api/company/get_stock_price";
+
+function profileUrl(corporateRegistrationNumber) {
+  return `/profile?crno=${encodeURIComponent(corporateRegistrationNumber)}`;
+}
 
 function normalizeItems(payload) {
   const item = payload?.body?.items?.item;
@@ -20,52 +21,28 @@ function text(value, fallback = "-") {
   return value === undefined || value === null || value === "" ? fallback : value;
 }
 
-function formatNumber(value) {
-  if (value === undefined || value === null || value === "") return "-";
-  const numeric = Number(String(value).replaceAll(",", ""));
-  return Number.isFinite(numeric) ? numeric.toLocaleString("ko-KR") : value;
-}
-
 function setStatus(message) {
   statusEl.textContent = message;
-}
-
-function renderEmpty(message) {
-  detailPanel.innerHTML = `
-    <div class="empty-state">
-      <span class="empty-kicker">Company</span>
-      <p>${message}</p>
-    </div>
-  `;
 }
 
 function renderResults(items) {
   resultList.innerHTML = "";
   const fragment = document.createDocumentFragment();
 
-  items.forEach((company, index) => {
-    const button = document.createElement("button");
-    button.className = "result-card";
-    button.type = "button";
-    button.dataset.crno = company.crno;
-    button.innerHTML = `
+  items.forEach((company) => {
+    const link = document.createElement("a");
+    link.className = "result-card";
+    link.href = profileUrl(company.crno);
+    link.dataset.crno = company.crno;
+    link.innerHTML = `
       <strong>${text(company.corpNm)}</strong>
       <span>법인등록번호 ${text(company.crno)}</span>
       <span>${company.isListed ? `상장 ${text(company.mrktCtg)} · ${text(company.srtnCd)}` : `${text(company.enpRprFnm, "대표자 정보 없음")} · ${text(company.bzno, "사업자등록번호 없음")}`}</span>
     `;
-    button.addEventListener("click", () => selectCompany(company, button));
-    fragment.appendChild(button);
-
-    if (index === 0) {
-      window.requestAnimationFrame(() => button.click());
-    }
+    fragment.appendChild(link);
   });
 
   resultList.appendChild(fragment);
-}
-
-function firstItem(payload) {
-  return normalizeItems(payload)[0] || {};
 }
 
 function listedNameCandidates(query) {
@@ -147,7 +124,6 @@ async function fetchJson(url, params) {
 async function searchCompanies(query) {
   document.body.classList.remove("is-idle");
   setStatus("검색 중...");
-  renderEmpty("검색 결과를 불러오는 중입니다.");
   resultList.innerHTML = "";
 
   try {
@@ -173,7 +149,6 @@ async function searchCompanies(query) {
 
     if (items.length === 0) {
       setStatus("검색 결과가 없습니다.");
-      renderEmpty("다른 기업명으로 검색해보세요.");
       return;
     }
 
@@ -181,118 +156,7 @@ async function searchCompanies(query) {
     renderResults(items);
   } catch (error) {
     setStatus(error.message);
-    renderEmpty("기업 정보를 가져오지 못했습니다.");
   }
-}
-
-async function selectCompany(company, selectedButton) {
-  document
-    .querySelectorAll(".result-card")
-    .forEach((button) => button.classList.remove("is-active"));
-  selectedButton.classList.add("is-active");
-
-  renderCompanySkeleton(company);
-
-  try {
-    const info = await fetchJson(infoUrl, {
-      corporate_registration_number: company.crno,
-      page: 1,
-      per_page: 10,
-    });
-    const outline = firstItem(info.corp_outline);
-    const listed = firstItem(info.krx_listed_item);
-    let stock = null;
-
-    if (listed.srtnCd) {
-      stock = await fetchJson(stockUrl, {
-        stock_code: listed.srtnCd.replace(/^A/, ""),
-        exchange: "KRX",
-        language: "ko",
-        window: "1M",
-      }).catch(() => null);
-    }
-
-    renderCompanyDetail({
-      outline: { ...company, ...outline },
-      listed,
-      stock,
-      affiliateCount: text(info.affiliate?.body?.totalCount, "0"),
-      subsidiaryCount: text(info.cons_subs_comp?.body?.totalCount, "0"),
-    });
-  } catch (error) {
-    renderCompanyDetail({
-      outline: company,
-      listed: {},
-      stock: null,
-      affiliateCount: "-",
-      subsidiaryCount: "-",
-      error: error.message,
-    });
-  }
-}
-
-function renderCompanySkeleton(company) {
-  detailPanel.innerHTML = `
-    <div class="detail-header">
-      <h2>${text(company.corpNm)}</h2>
-      <p>상세 정보를 불러오는 중입니다.</p>
-    </div>
-    <div class="empty-state">
-      <span class="empty-kicker">Loading</span>
-    </div>
-  `;
-}
-
-function renderCompanyDetail({ outline, listed, stock, affiliateCount, subsidiaryCount, error }) {
-  const summary = stock?.summary || {};
-  const price = summary.price || summary.extracted_price;
-  const change = summary.price_movement?.percentage || summary.price_movement?.value;
-
-  detailPanel.innerHTML = `
-    <div class="detail-header">
-      <h2>${text(outline.corpNm)}</h2>
-      <p>${text(outline.corpEnsnNm, "영문명 정보 없음")}</p>
-    </div>
-    <div class="detail-body">
-      <article class="info-block">
-        <h3>기업 개요</h3>
-        <dl class="kv">
-          <dt>법인등록번호</dt><dd>${text(outline.crno)}</dd>
-          <dt>대표자</dt><dd>${text(outline.enpRprFnm)}</dd>
-          <dt>사업자번호</dt><dd>${text(outline.bzno)}</dd>
-          <dt>설립일</dt><dd>${text(outline.enpEstbDt)}</dd>
-        </dl>
-      </article>
-      <article class="info-block">
-        <h3>상장 정보</h3>
-        <dl class="kv">
-          <dt>종목명</dt><dd>${text(listed.itmsNm)}</dd>
-          <dt>단축코드</dt><dd>${text(listed.srtnCd)}</dd>
-          <dt>시장</dt><dd>${text(listed.mrktCtg)}</dd>
-          <dt>ISIN</dt><dd>${text(listed.isinCd)}</dd>
-        </dl>
-      </article>
-      <article class="info-block">
-        <h3>주가</h3>
-        <div class="price">${formatNumber(price)}</div>
-        <div class="price-meta">${text(change, "변동 정보 없음")}</div>
-      </article>
-      <article class="info-block">
-        <h3>관계 정보</h3>
-        <dl class="kv">
-          <dt>계열사</dt><dd>${affiliateCount}</dd>
-          <dt>종속기업</dt><dd>${subsidiaryCount}</dd>
-        </dl>
-      </article>
-      <article class="info-block full">
-        <h3>주소</h3>
-        <dl class="kv">
-          <dt>도로명</dt><dd>${text(outline.enpBsadr)}</dd>
-          <dt>상태</dt><dd>${error ? text(error) : "정상 조회"}</dd>
-        </dl>
-      </article>
-    </div>
-  `;
 }
 
 form.addEventListener("submit", (event) => {

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>기업 프로필 | Profilage</title>
+    <link rel="stylesheet" href="/styles.css?v=profile-page-1" />
+  </head>
+  <body class="profile-page">
+    <header class="top-nav" aria-label="상단 메뉴">
+      <nav class="top-nav-left">
+        <a href="/">Profilage</a>
+        <a href="/docs">API</a>
+      </nav>
+      <nav class="top-nav-right">
+        <a href="/">새 검색</a>
+        <a href="/docs">문서</a>
+      </nav>
+    </header>
+
+    <main class="profile-shell">
+      <section
+        class="profile-hero"
+        aria-labelledby="profile-title"
+        data-info-url="/api/company/get_company_info"
+        data-stock-url="/api/company/get_stock_price"
+      >
+        <a class="back-link" href="/">검색으로 돌아가기</a>
+        <p class="profile-kicker">기업 프로필</p>
+        <h1 id="profile-title">기업 정보를 불러오는 중입니다</h1>
+        <p id="profile-subtitle">법인등록번호를 기준으로 공공데이터, KRX, 주가 정보를 연결합니다.</p>
+      </section>
+
+      <section class="profile-layout">
+        <section class="detail-panel" id="profile-detail" aria-label="기업 상세">
+          <div class="empty-state">
+            <span class="empty-kicker">Loading</span>
+            <p>기업 프로필을 불러오는 중입니다.</p>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="/profile.js?v=profile-page-1" defer></script>
+  </body>
+</html>

@@ -23,6 +23,7 @@
         class="search-panel"
         aria-labelledby="page-title"
         data-outline-url="/api/company/get_corp_outline"
+        data-profile-url="/profile?crno="
       >
         <h1 id="page-title" class="wordmark" aria-label="Profilage">
           <span class="wordmark-blue">P</span><span class="wordmark-red">r</span><span class="wordmark-yellow">o</span><span class="wordmark-blue">f</span><span class="wordmark-green">i</span><span class="wordmark-red">l</span><span class="wordmark-blue">a</span><span class="wordmark-green">g</span><span class="wordmark-red">e</span>
@@ -48,12 +49,6 @@
 
       <section class="content-grid" aria-live="polite">
         <aside class="result-list" id="result-list" aria-label="검색 결과"></aside>
-        <section class="detail-panel" id="detail-panel" aria-label="기업 상세">
-          <div class="empty-state">
-            <span class="empty-kicker">Company</span>
-            <p>검색 결과를 선택하면 상세 정보가 표시됩니다.</p>
-          </div>
-        </section>
       </section>
     </main>
 

@@ -18,6 +18,18 @@ def test_root_serves_company_search_frontend():
     assert 'class="wordmark"' in response.text
     assert 'class="search-actions"' in response.text
     assert "/api/company/get_corp_outline" in response.text
+    assert "/profile?crno=" in response.text
+
+
+def test_profile_page_serves_company_profile_frontend():
+    with TestClient(app) as client:
+        response = client.get("/profile")
+
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "기업 프로필" in response.text
+    assert "/api/company/get_company_info" in response.text
+    assert "/api/company/get_stock_price" in response.text
 
 
 def test_company_api_is_available_under_api_prefix(monkeypatch):
