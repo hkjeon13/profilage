@@ -4,6 +4,16 @@ const profileDetail = document.querySelector("#profile-detail");
 
 const infoUrl = "/api/company/get_company_info";
 const stockUrl = "/api/company/get_stock_price";
+const financialReportOptions = [
+  ["11011", "사업보고서"],
+  ["11012", "반기보고서"],
+  ["11013", "1분기보고서"],
+  ["11014", "3분기보고서"],
+];
+const financialStatementOptions = [
+  ["CFS", "연결재무제표"],
+  ["OFS", "별도재무제표"],
+];
 
 function normalizeItems(payload) {
   const item = payload?.body?.items?.item;
@@ -89,6 +99,31 @@ function formatTooltipDate(value) {
     });
   }
   return String(value).split(",")[0];
+}
+
+function latestBusinessYear() {
+  return String(new Date().getFullYear() - 1);
+}
+
+function financialYearOptions(selectedYear) {
+  const latest = Number(latestBusinessYear());
+  const years = Array.from({ length: 10 }, (_, index) => String(latest - index));
+  if (selectedYear && !years.includes(selectedYear)) {
+    years.unshift(selectedYear);
+  }
+  return years;
+}
+
+function getSelectedFinancialQuery(searchParams) {
+  return {
+    businessYear: searchParams.get("business_year") || latestBusinessYear(),
+    reportCode: searchParams.get("report_code") || "11011",
+    fsDivision: searchParams.get("fs_division") || "CFS",
+  };
+}
+
+function optionLabel(options, value) {
+  return options.find(([optionValue]) => optionValue === value)?.[1] || value;
 }
 
 function renderStockChart(stock) {
@@ -390,8 +425,53 @@ function renderSubpageHeader({ kicker, title, subtitle, crno }) {
   `;
 }
 
-function renderFinancialsPage({ info, outline, crno }) {
-  const accounts = info.dart_financial_accounts?.list || [];
+function renderFinancialControls({ crno, selected }) {
+  return `
+    <form class="subpage-controls" action="/profile" method="get">
+      <input type="hidden" name="crno" value="${text(crno, "")}" />
+      <input type="hidden" name="view" value="financials" />
+      <label>
+        <span>사업연도</span>
+        <select name="business_year" onchange="this.form.submit()">
+          ${financialYearOptions(selected.businessYear)
+            .map(
+              (year) => `
+                <option value="${year}" ${year === selected.businessYear ? "selected" : ""}>${year}</option>
+              `,
+            )
+            .join("")}
+        </select>
+      </label>
+      <label>
+        <span>보고서</span>
+        <select name="report_code" onchange="this.form.submit()">
+          ${financialReportOptions
+            .map(
+              ([value, label]) => `
+                <option value="${value}" ${value === selected.reportCode ? "selected" : ""}>${label}</option>
+              `,
+            )
+            .join("")}
+        </select>
+      </label>
+      <label>
+        <span>기준</span>
+        <select name="fs_division" onchange="this.form.submit()">
+          ${financialStatementOptions
+            .map(
+              ([value, label]) => `
+                <option value="${value}" ${value === selected.fsDivision ? "selected" : ""}>${label}</option>
+              `,
+            )
+            .join("")}
+        </select>
+      </label>
+    </form>
+  `;
+}
+
+function renderFinancialsPage({ accountsPayload, outline, crno, selected }) {
+  const accounts = accountsPayload?.list || [];
   const grouped = accounts.reduce((groups, item) => {
     const key = item.sj_nm || "재무제표";
     if (!groups.has(key)) groups.set(key, []);
@@ -403,10 +483,13 @@ function renderFinancialsPage({ info, outline, crno }) {
     ${renderSubpageHeader({
       kicker: "DART 재무정보",
       title: `${text(outline.corpNm, "기업")} 재무제표`,
-      subtitle: text(info.dart_financial_accounts?.list?.[0]?.bsns_year, "최근 사업연도"),
+      subtitle: `${selected.businessYear} · ${optionLabel(financialReportOptions, selected.reportCode)} · ${optionLabel(financialStatementOptions, selected.fsDivision)}`,
       crno,
     })}
     <div class="detail-body subpage-body">
+      <article class="info-block full controls-block">
+        ${renderFinancialControls({ crno, selected })}
+      </article>
       ${Array.from(grouped.entries())
         .map(
           ([statementName, items]) => `
@@ -541,7 +624,17 @@ async function loadProfile() {
     let stock = null;
 
     if (view === "financials") {
-      renderFinancialsPage({ info, outline, crno });
+      const selected = getSelectedFinancialQuery(searchParams);
+      const corpCode = info.dart_corp_code?.match?.corp_code;
+      const accountsPayload = corpCode
+        ? await fetchJson("/api/company/get_dart_financial_accounts", {
+            corp_code: corpCode,
+            business_year: selected.businessYear,
+            report_code: selected.reportCode,
+            fs_division: selected.fsDivision,
+          }).catch(() => info.dart_financial_accounts)
+        : info.dart_financial_accounts;
+      renderFinancialsPage({ accountsPayload, outline, crno, selected });
       return;
     }
 
