@@ -8,7 +8,7 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-profilage}:${POSTGRES_PASSWORD:-profilage}@postgres:5432/${POSTGRES_DB:-profilage}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-profilage}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-profilage}
       VALKEY_URL: redis://valkey:6379/0
       PYTHONUNBUFFERED: "1"
     ports:
@@ -26,7 +26,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-profilage}
       POSTGRES_USER: ${POSTGRES_USER:-profilage}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-profilage}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
