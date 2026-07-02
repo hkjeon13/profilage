@@ -37,11 +37,25 @@ function formatChartDate(value) {
   return String(value).split(",")[0];
 }
 
+function formatTooltipDate(value) {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toLocaleDateString("ko-KR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  }
+  return String(value).split(",")[0];
+}
+
 function renderStockChart(stock) {
   const points = (stock?.graph || [])
     .map((point) => ({
       price: Number(point.price),
       date: point.date,
+      volume: Number(point.volume),
     }))
     .filter((point) => Number.isFinite(point.price));
 
@@ -63,6 +77,14 @@ function renderStockChart(stock) {
     const y = paddingY + ((max - point.price) / range) * chartHeight;
     return { x, y, price: point.price, date: point.date };
   });
+  const interactionPoints = coordinates.map((point, index) => ({
+    index,
+    x: Number(point.x.toFixed(2)),
+    y: Number(point.y.toFixed(2)),
+    price: point.price,
+    date: point.date,
+    volume: points[index].volume,
+  }));
   const linePath = coordinates
     .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
     .join(" ");
@@ -71,12 +93,18 @@ function renderStockChart(stock) {
     coordinates.at(-1).price >= coordinates[0].price ? "is-up" : "is-down";
 
   return `
-    <div class="stock-chart" aria-label="1개월 주가 차트">
-      <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="1개월 주가 추이">
+    <div class="stock-chart" aria-label="1개월 주가 차트" data-chart-points="${encodeURIComponent(JSON.stringify(interactionPoints))}" data-chart-width="${width}">
+      <div class="stock-chart-tooltip" role="status" aria-live="polite">
+        <strong>${formatChartDate(points.at(-1).date)}</strong>
+        <span>${formatNumber(points.at(-1).price)} KRW</span>
+      </div>
+      <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="1개월 주가 추이" tabindex="0">
         <path class="stock-chart-grid" d="M ${paddingX} ${height / 2} H ${width - paddingX}" />
         <path class="stock-chart-area ${trendClass}" d="${areaPath}" />
         <path class="stock-chart-line ${trendClass}" d="${linePath}" />
+        <line class="stock-chart-guide" x1="${coordinates.at(-1).x.toFixed(2)}" y1="${paddingY}" x2="${coordinates.at(-1).x.toFixed(2)}" y2="${height - paddingY}" />
         <circle class="stock-chart-dot ${trendClass}" cx="${coordinates.at(-1).x.toFixed(2)}" cy="${coordinates.at(-1).y.toFixed(2)}" r="4" />
+        <rect class="stock-chart-hit-area" x="0" y="0" width="${width}" height="${height}" />
       </svg>
       <div class="stock-chart-meta">
         <span>${formatChartDate(points[0].date)}</span>
@@ -85,6 +113,95 @@ function renderStockChart(stock) {
       </div>
     </div>
   `;
+}
+
+function updateStockChartSelection(chart, point) {
+  const tooltip = chart.querySelector(".stock-chart-tooltip");
+  const guide = chart.querySelector(".stock-chart-guide");
+  const dot = chart.querySelector(".stock-chart-dot");
+  if (!tooltip || !guide || !dot) return;
+
+  const chartWidth = Number(chart.dataset.chartWidth || 640);
+  const tooltipPosition = Math.min(Math.max((point.x / chartWidth) * 100, 15), 85);
+  const volumeText = Number.isFinite(point.volume)
+    ? `<small>거래량 ${formatNumber(point.volume)}</small>`
+    : "";
+
+  tooltip.style.left = `${tooltipPosition}%`;
+  tooltip.innerHTML = `
+    <strong>${formatTooltipDate(point.date)}</strong>
+    <span>${formatNumber(point.price)} KRW</span>
+    ${volumeText}
+  `;
+  guide.setAttribute("x1", point.x);
+  guide.setAttribute("x2", point.x);
+  dot.setAttribute("cx", point.x);
+  dot.setAttribute("cy", point.y);
+  chart.classList.add("is-active");
+}
+
+function setupStockChartInteractions() {
+  document.querySelectorAll(".stock-chart").forEach((chart) => {
+    const svg = chart.querySelector("svg");
+    if (!svg || !chart.dataset.chartPoints) return;
+
+    const points = JSON.parse(decodeURIComponent(chart.dataset.chartPoints));
+    if (!points.length) return;
+
+    const selectNearestPoint = (clientX) => {
+      if (!Number.isFinite(clientX)) return;
+      const rect = svg.getBoundingClientRect();
+      const chartWidth = Number(chart.dataset.chartWidth || 640);
+      const x = ((clientX - rect.left) / rect.width) * chartWidth;
+      const nearest = points.reduce((current, point) =>
+        Math.abs(point.x - x) < Math.abs(current.x - x) ? point : current,
+      );
+      updateStockChartSelection(chart, nearest);
+    };
+    const selectFromTouch = (event) => {
+      selectNearestPoint(event.touches?.[0]?.clientX);
+    };
+
+    updateStockChartSelection(chart, points.at(-1));
+
+    chart.addEventListener("pointermove", (event) => {
+      selectNearestPoint(event.clientX);
+    });
+    chart.addEventListener("pointerdown", (event) => {
+      try {
+        chart.setPointerCapture?.(event.pointerId);
+      } catch {
+        // Synthetic and some mobile browser pointer events cannot be captured.
+      }
+      selectNearestPoint(event.clientX);
+    });
+    chart.addEventListener("mousemove", (event) => {
+      selectNearestPoint(event.clientX);
+    });
+    chart.addEventListener("mousedown", (event) => {
+      selectNearestPoint(event.clientX);
+    });
+    chart.addEventListener("click", (event) => {
+      selectNearestPoint(event.clientX);
+    });
+    chart.addEventListener("touchstart", selectFromTouch, { passive: true });
+    chart.addEventListener("touchmove", selectFromTouch, { passive: true });
+    svg.addEventListener("focus", () => {
+      updateStockChartSelection(chart, points.at(-1));
+    });
+    svg.addEventListener("keydown", (event) => {
+      if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+      event.preventDefault();
+      const activeX = Number(chart.querySelector(".stock-chart-dot")?.getAttribute("cx"));
+      const currentIndex = points.findIndex((point) => point.x === activeX);
+      const fallbackIndex = points.length - 1;
+      const nextIndex =
+        event.key === "ArrowLeft"
+          ? Math.max((currentIndex < 0 ? fallbackIndex : currentIndex) - 1, 0)
+          : Math.min((currentIndex < 0 ? fallbackIndex : currentIndex) + 1, points.length - 1);
+      updateStockChartSelection(chart, points[nextIndex]);
+    });
+  });
 }
 
 async function fetchJson(url, params) {
@@ -112,6 +229,7 @@ function renderError(message) {
       <p>${message}</p>
     </div>
   `;
+  setupStockChartInteractions();
 }
 
 function renderCompanyDetail({ outline, listed, stock }) {
@@ -161,6 +279,7 @@ function renderCompanyDetail({ outline, listed, stock }) {
       </article>
     </div>
   `;
+  setupStockChartInteractions();
 }
 
 async function loadProfile() {
