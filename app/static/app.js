@@ -25,6 +25,25 @@ function setStatus(message) {
   statusEl.textContent = message;
 }
 
+function renderSearchSkeleton(count = 5) {
+  resultList.innerHTML = "";
+  const fragment = document.createDocumentFragment();
+
+  Array.from({ length: count }).forEach(() => {
+    const card = document.createElement("div");
+    card.className = "result-card skeleton-card";
+    card.setAttribute("aria-hidden", "true");
+    card.innerHTML = `
+      <span class="skeleton-line skeleton-title"></span>
+      <span class="skeleton-line"></span>
+      <span class="skeleton-line skeleton-short"></span>
+    `;
+    fragment.appendChild(card);
+  });
+
+  resultList.appendChild(fragment);
+}
+
 function renderResults(items) {
   resultList.innerHTML = "";
   const fragment = document.createDocumentFragment();
@@ -128,7 +147,7 @@ async function fetchJson(url, params) {
 async function searchCompanies(query) {
   document.body.classList.remove("is-idle");
   setStatus("검색 중...");
-  resultList.innerHTML = "";
+  renderSearchSkeleton();
 
   try {
     const listedRequests = listedNameCandidates(query).map((itemName) =>

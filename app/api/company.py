@@ -208,6 +208,9 @@ async def get_stock_price(
     window: Annotated[
         str | None, Query(description="Chart window, e.g. 1D, 5D, 1M, 6M, YTD, 1Y, 5Y, MAX")
     ] = None,
+    corporate_registration_number: Annotated[
+        str | None, Query(description="법인등록번호")
+    ] = None,
 ):
     if not q and not stock_code:
         raise HTTPException(
@@ -225,5 +228,6 @@ async def get_stock_price(
             exchange=exchange,
             language=language,
             window=window,
+            corporate_registration_number=corporate_registration_number,
         )
     )

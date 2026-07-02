@@ -1,4 +1,5 @@
 import os
+from datetime import UTC, datetime
 
 import httpx
 import pytest
@@ -8,8 +9,20 @@ from app.main import app
 from app.services.company_affiliate import (
     CompanyCorpOutlineQuery,
     CompanyCorpOutlineService,
+    CompanyInfoQuery,
+    CompanyInfoService,
     CompanyStockPriceQuery,
     CompanyStockPriceService,
+)
+from app.services.company_store import (
+    AFFILIATE_GROUP,
+    COMPANY_ENTITY_TYPE,
+    CONS_SUBS_COMP_GROUP,
+    CORP_OUTLINE_GROUP,
+    KRX_LISTED_ITEM_GROUP,
+    DataGroupRecord,
+    is_krx_market_open,
+    stock_price_ttl,
 )
 
 
@@ -24,6 +37,68 @@ class FakeJsonCache:
     async def set_json(self, key, value, ttl):
         self.set_calls.append((key, value, ttl))
         self.values[key] = value
+
+
+class FakeDataGroupStore:
+    def __init__(self) -> None:
+        self.records = {}
+        self.upserts = []
+
+    async def initialize(self):
+        return None
+
+    async def get_record(
+        self,
+        *,
+        entity_type,
+        entity_key,
+        group_name,
+        allow_stale=False,
+    ):
+        record = self.records.get((entity_type, entity_key, group_name))
+        if record is None:
+            return None
+        if record.stale and not allow_stale:
+            return None
+        return record
+
+    async def upsert_record(
+        self,
+        *,
+        entity_type,
+        entity_key,
+        group_name,
+        source,
+        payload,
+        ttl,
+    ):
+        self.upserts.append(
+            {
+                "entity_type": entity_type,
+                "entity_key": entity_key,
+                "group_name": group_name,
+                "source": source,
+                "payload": payload,
+                "ttl": ttl,
+            }
+        )
+        record = DataGroupRecord(
+            payload=payload,
+            fetched_at=datetime.now(UTC),
+            expires_at=datetime.now(UTC) + ttl,
+            source=source,
+        )
+        self.records[(entity_type, entity_key, group_name)] = record
+        return record
+
+
+def fresh_record(payload):
+    return DataGroupRecord(
+        payload=payload,
+        fetched_at=datetime(2026, 7, 1, tzinfo=UTC),
+        expires_at=datetime(2026, 7, 8, tzinfo=UTC),
+        source="test",
+    )
 
 
 def test_root_serves_company_search_frontend():
@@ -448,6 +523,109 @@ def test_get_company_info_combines_company_sources_by_corporate_registration_num
 
 
 @pytest.mark.asyncio
+async def test_company_info_service_reuses_fresh_postgres_groups(monkeypatch):
+    monkeypatch.setenv("OPEN_API_DECODING_KEY", "decoded-service-key")
+    request_count = 0
+    store = FakeDataGroupStore()
+    crno = "1301110006246"
+    store.records = {
+        (COMPANY_ENTITY_TYPE, crno, CORP_OUTLINE_GROUP): fresh_record(
+            {"body": {"items": {"item": {"crno": crno, "corpNm": "저장회사"}}}}
+        ),
+        (COMPANY_ENTITY_TYPE, crno, KRX_LISTED_ITEM_GROUP): fresh_record(
+            {"body": {"items": {"item": {"crno": crno, "srtnCd": "005930"}}}}
+        ),
+        (COMPANY_ENTITY_TYPE, crno, AFFILIATE_GROUP): fresh_record(
+            {"body": {"items": {"item": {"crno": crno, "afilCmpyNm": "계열회사"}}}}
+        ),
+        (COMPANY_ENTITY_TYPE, crno, CONS_SUBS_COMP_GROUP): fresh_record(
+            {"body": {"items": {"item": {"sbrdEnpNm": "종속회사"}}}}
+        ),
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        request_count += 1
+        return httpx.Response(500, json={})
+
+    service = CompanyInfoService(
+        transport=httpx.MockTransport(handler),
+        cache=FakeJsonCache(),
+        data_group_store=store,
+    )
+    payload = await service.fetch(
+        CompanyInfoQuery(
+            corporate_registration_number=crno,
+            page=1,
+            per_page=10,
+        )
+    )
+
+    assert request_count == 0
+    assert payload["corp_outline"]["body"]["items"]["item"]["corpNm"] == "저장회사"
+    assert payload["krx_listed_item"]["body"]["items"]["item"]["srtnCd"] == "005930"
+    assert store.upserts == []
+
+
+@pytest.mark.asyncio
+async def test_company_info_service_upserts_missing_groups(monkeypatch):
+    monkeypatch.setenv("OPEN_API_DECODING_KEY", "decoded-service-key")
+    monkeypatch.delenv("OPEN_API_ENCODING_KEY", raising=False)
+    crno = "1301110006246"
+    store = FakeDataGroupStore()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/getCorpOutline_V2"):
+            body = {"items": {"item": {"crno": crno, "corpNm": "삼성전자(주)"}}}
+        elif request.url.path.endswith("/getItemInfo"):
+            body = {"items": {"item": {"srtnCd": "005930", "crno": crno}}}
+        elif request.url.path.endswith("/getAffiliate_V2"):
+            body = {"items": {"item": {"afilCmpyNm": "삼성전자(주)", "crno": crno}}}
+        elif request.url.path.endswith("/getConsSubsComp_V2"):
+            body = {"items": {"item": {"sbrdEnpNm": "Samsung Electronics America Inc."}}}
+        else:
+            body = {}
+        body.update({"numOfRows": 10, "pageNo": 1, "totalCount": 1})
+        return httpx.Response(200, json={"response": {"body": body}})
+
+    service = CompanyInfoService(
+        transport=httpx.MockTransport(handler),
+        cache=FakeJsonCache(),
+        data_group_store=store,
+    )
+    await service.fetch(
+        CompanyInfoQuery(
+            corporate_registration_number=crno,
+            page=1,
+            per_page=10,
+        )
+    )
+
+    upserts = {call["group_name"]: call for call in store.upserts}
+    assert set(upserts) == {
+        CORP_OUTLINE_GROUP,
+        KRX_LISTED_ITEM_GROUP,
+        AFFILIATE_GROUP,
+        CONS_SUBS_COMP_GROUP,
+    }
+    assert upserts[CORP_OUTLINE_GROUP]["ttl"].days == 7
+    assert upserts[KRX_LISTED_ITEM_GROUP]["ttl"].days == 1
+    assert upserts[AFFILIATE_GROUP]["ttl"].days == 7
+    assert upserts[CONS_SUBS_COMP_GROUP]["ttl"].days == 7
+
+
+def test_krx_stock_price_refresh_policy_uses_korea_market_hours():
+    market_open = datetime(2026, 7, 2, 1, 0, tzinfo=UTC)
+    market_closed = datetime(2026, 7, 2, 8, 0, tzinfo=UTC)
+
+    assert is_krx_market_open(market_open) is True
+    assert stock_price_ttl("KRX", market_open).total_seconds() == 300
+    assert is_krx_market_open(market_closed) is False
+    assert stock_price_ttl("KRX", market_closed).total_seconds() == 3600
+    assert stock_price_ttl("NASDAQ", market_open).total_seconds() == 3600
+
+
+@pytest.mark.asyncio
 async def test_open_api_service_reuses_cached_response(monkeypatch):
     monkeypatch.setenv("OPEN_API_DECODING_KEY", "decoded-service-key")
     monkeypatch.setenv("CACHE_BYPASS_RATE", "0")
@@ -478,6 +656,7 @@ async def test_open_api_service_reuses_cached_response(monkeypatch):
     service = CompanyCorpOutlineService(
         transport=httpx.MockTransport(handler),
         cache=cache,
+        data_group_store=None,
     )
     query = CompanyCorpOutlineQuery(
         company_name="삼성전자",
@@ -520,6 +699,7 @@ async def test_stock_price_service_reuses_cached_response(monkeypatch):
     service = CompanyStockPriceService(
         transport=httpx.MockTransport(handler),
         cache=cache,
+        data_group_store=None,
     )
     query = CompanyStockPriceQuery(
         q=None,
@@ -568,6 +748,7 @@ async def test_open_api_service_can_bypass_cached_response(monkeypatch):
     service = CompanyCorpOutlineService(
         transport=httpx.MockTransport(handler),
         cache=cache,
+        data_group_store=None,
     )
     query = CompanyCorpOutlineQuery(
         company_name="삼성전자",

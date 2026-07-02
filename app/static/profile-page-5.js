@@ -220,6 +220,42 @@ async function fetchJson(url, params) {
   return response.json();
 }
 
+function renderProfileSkeleton() {
+  profileTitle.innerHTML = `<span class="skeleton-line skeleton-hero-title"></span>`;
+  profileSubtitle.innerHTML = `<span class="skeleton-line skeleton-hero-subtitle"></span>`;
+  profileDetail.innerHTML = `
+    <div class="detail-header skeleton-detail-header" aria-hidden="true">
+      <span class="skeleton-line skeleton-title"></span>
+      <span class="skeleton-line skeleton-short"></span>
+    </div>
+    <div class="detail-body" aria-hidden="true">
+      ${Array.from({ length: 2 })
+        .map(
+          () => `
+            <article class="info-block skeleton-block">
+              <span class="skeleton-line skeleton-section-title"></span>
+              <span class="skeleton-line"></span>
+              <span class="skeleton-line"></span>
+              <span class="skeleton-line skeleton-short"></span>
+            </article>
+          `,
+        )
+        .join("")}
+      <article class="info-block skeleton-block">
+        <span class="skeleton-line skeleton-section-title"></span>
+        <span class="skeleton-line skeleton-price"></span>
+        <span class="skeleton-line skeleton-short"></span>
+        <span class="skeleton-chart"></span>
+      </article>
+      <article class="info-block full skeleton-block">
+        <span class="skeleton-line skeleton-section-title"></span>
+        <span class="skeleton-line"></span>
+        <span class="skeleton-line skeleton-wide"></span>
+      </article>
+    </div>
+  `;
+}
+
 function renderError(message) {
   profileTitle.textContent = "기업 프로필을 열 수 없습니다";
   profileSubtitle.textContent = message;
@@ -289,6 +325,8 @@ async function loadProfile() {
     return;
   }
 
+  renderProfileSkeleton();
+
   try {
     const info = await fetchJson(infoUrl, {
       corporate_registration_number: crno,
@@ -305,6 +343,7 @@ async function loadProfile() {
         exchange: "KRX",
         language: "ko",
         window: "1M",
+        corporate_registration_number: crno,
       }).catch(() => null);
     }
 

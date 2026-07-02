@@ -13,6 +13,21 @@ from app.core.config import (
     get_searchapi_api_key,
 )
 from app.services.cache import JsonCache, get_default_cache
+from app.services.company_store import (
+    AFFILIATE_GROUP,
+    COMPANY_ENTITY_TYPE,
+    CONS_SUBS_COMP_GROUP,
+    CORP_OUTLINE_GROUP,
+    KRX_LISTED_ITEM_GROUP,
+    STOCK_ENTITY_TYPE,
+    STOCK_PRICE_GROUP,
+    DataGroupStore,
+    company_group_ttl,
+    fetch_with_group_store,
+    get_default_data_group_store,
+    stock_entity_key,
+    stock_price_ttl,
+)
 
 
 OPEN_API_BASE_URL = (
@@ -27,6 +42,7 @@ OPEN_API_GET_KRX_LISTED_ITEM_URL = (
     "GetKrxListedInfoService/getItemInfo"
 )
 SEARCHAPI_SEARCH_URL = "https://www.searchapi.io/api/v1/search"
+DATA_GROUP_STORE_UNSET = object()
 
 
 @dataclass(frozen=True)
@@ -80,6 +96,7 @@ class CompanyStockPriceQuery:
     exchange: str | None
     language: str | None
     window: str | None
+    corporate_registration_number: str | None = None
 
 
 class OpenApiCompanyService:
@@ -88,9 +105,15 @@ class OpenApiCompanyService:
         *,
         transport: httpx.BaseTransport | httpx.AsyncBaseTransport | None = None,
         cache: JsonCache | None = None,
+        data_group_store: DataGroupStore | None | object = DATA_GROUP_STORE_UNSET,
     ) -> None:
         self._transport = transport
         self._cache = cache if cache is not None else get_default_cache()
+        self._data_group_store = (
+            get_default_data_group_store()
+            if data_group_store is DATA_GROUP_STORE_UNSET
+            else data_group_store
+        )
 
     def _cache_key(self, *, endpoint_url: str, params: dict[str, Any]) -> str:
         normalized = {
@@ -259,60 +282,97 @@ class CompanyInfoService(OpenApiCompanyService):
         corp_outline_service = CompanyCorpOutlineService(
             transport=self._transport,
             cache=self._cache,
+            data_group_store=self._data_group_store,
         )
         krx_listed_item_service = CompanyKrxListedItemService(
             transport=self._transport,
             cache=self._cache,
+            data_group_store=self._data_group_store,
         )
         affiliate_service = CompanyAffiliateService(
             transport=self._transport,
             cache=self._cache,
+            data_group_store=self._data_group_store,
         )
         cons_subs_comp_service = CompanyConsSubsCompService(
             transport=self._transport,
             cache=self._cache,
+            data_group_store=self._data_group_store,
         )
 
-        corp_outline = await corp_outline_service.fetch(
-            CompanyCorpOutlineQuery(
-                company_name=None,
-                corporate_registration_number=query.corporate_registration_number,
-                page=query.page,
-                per_page=query.per_page,
-            )
+        crno = query.corporate_registration_number
+        corp_outline = await fetch_with_group_store(
+            store=self._data_group_store,
+            entity_type=COMPANY_ENTITY_TYPE,
+            entity_key=crno,
+            group_name=CORP_OUTLINE_GROUP,
+            source="openapi:getCorpOutline_V2",
+            ttl=company_group_ttl(CORP_OUTLINE_GROUP),
+            fetcher=lambda: corp_outline_service.fetch(
+                CompanyCorpOutlineQuery(
+                    company_name=None,
+                    corporate_registration_number=crno,
+                    page=query.page,
+                    per_page=query.per_page,
+                )
+            ),
         )
-        krx_listed_item = await krx_listed_item_service.fetch(
-            CompanyKrxListedItemQuery(
-                corporate_registration_number=query.corporate_registration_number,
-                company_name=None,
-                item_name=None,
-                isin_code=None,
-                base_date=None,
-                page=query.page,
-                per_page=query.per_page,
-            )
+        krx_listed_item = await fetch_with_group_store(
+            store=self._data_group_store,
+            entity_type=COMPANY_ENTITY_TYPE,
+            entity_key=crno,
+            group_name=KRX_LISTED_ITEM_GROUP,
+            source="openapi:getItemInfo",
+            ttl=company_group_ttl(KRX_LISTED_ITEM_GROUP),
+            fetcher=lambda: krx_listed_item_service.fetch(
+                CompanyKrxListedItemQuery(
+                    corporate_registration_number=crno,
+                    company_name=None,
+                    item_name=None,
+                    isin_code=None,
+                    base_date=None,
+                    page=query.page,
+                    per_page=query.per_page,
+                )
+            ),
         )
-        affiliate = await affiliate_service.fetch(
-            CompanyAffiliateQuery(
-                company_name=None,
-                corporate_registration_number=query.corporate_registration_number,
-                base_date=None,
-                page=query.page,
-                per_page=query.per_page,
-            )
+        affiliate = await fetch_with_group_store(
+            store=self._data_group_store,
+            entity_type=COMPANY_ENTITY_TYPE,
+            entity_key=crno,
+            group_name=AFFILIATE_GROUP,
+            source="openapi:getAffiliate_V2",
+            ttl=company_group_ttl(AFFILIATE_GROUP),
+            fetcher=lambda: affiliate_service.fetch(
+                CompanyAffiliateQuery(
+                    company_name=None,
+                    corporate_registration_number=crno,
+                    base_date=None,
+                    page=query.page,
+                    per_page=query.per_page,
+                )
+            ),
         )
-        cons_subs_comp = await cons_subs_comp_service.fetch(
-            CompanyConsSubsCompQuery(
-                subsidiary_name=None,
-                corporate_registration_number=query.corporate_registration_number,
-                base_date=None,
-                page=query.page,
-                per_page=query.per_page,
-            )
+        cons_subs_comp = await fetch_with_group_store(
+            store=self._data_group_store,
+            entity_type=COMPANY_ENTITY_TYPE,
+            entity_key=crno,
+            group_name=CONS_SUBS_COMP_GROUP,
+            source="openapi:getConsSubsComp_V2",
+            ttl=company_group_ttl(CONS_SUBS_COMP_GROUP),
+            fetcher=lambda: cons_subs_comp_service.fetch(
+                CompanyConsSubsCompQuery(
+                    subsidiary_name=None,
+                    corporate_registration_number=crno,
+                    base_date=None,
+                    page=query.page,
+                    per_page=query.per_page,
+                )
+            ),
         )
 
         return {
-            "corporate_registration_number": query.corporate_registration_number,
+            "corporate_registration_number": crno,
             "corp_outline": corp_outline,
             "krx_listed_item": krx_listed_item,
             "affiliate": affiliate,
@@ -340,6 +400,53 @@ class CompanyStockPriceService(OpenApiCompanyService):
         if query.window:
             params["window"] = query.window
 
+        async def fetch_searchapi() -> dict[str, Any]:
+            try:
+                async with httpx.AsyncClient(
+                    transport=self._transport,
+                    timeout=30.0,
+                ) as client:
+                    response = await client.get(SEARCHAPI_SEARCH_URL, params=params)
+                    response.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                raise HTTPException(
+                    status_code=502,
+                    detail=(
+                        "SearchAPI request failed with status "
+                        f"{exc.response.status_code}"
+                    ),
+                ) from exc
+            except httpx.HTTPError as exc:
+                raise HTTPException(
+                    status_code=502,
+                    detail="SearchAPI request failed",
+                ) from exc
+
+            try:
+                return response.json()
+            except ValueError as exc:
+                raise HTTPException(
+                    status_code=502,
+                    detail="SearchAPI returned a non-JSON response",
+                ) from exc
+
+        if self._data_group_store is not None:
+            return await fetch_with_group_store(
+                store=self._data_group_store,
+                entity_type=STOCK_ENTITY_TYPE,
+                entity_key=stock_entity_key(
+                    q=q,
+                    stock_code=query.stock_code,
+                    exchange=query.exchange,
+                    language=query.language,
+                    window=query.window,
+                ),
+                group_name=STOCK_PRICE_GROUP,
+                source="searchapi:google_finance",
+                ttl=stock_price_ttl(query.exchange),
+                fetcher=fetch_searchapi,
+            )
+
         cache_params = {key: value for key, value in params.items() if key != "api_key"}
         cache_key = self._cache_key(
             endpoint_url=SEARCHAPI_SEARCH_URL,
@@ -349,35 +456,7 @@ class CompanyStockPriceService(OpenApiCompanyService):
         if cached is not None:
             return cached
 
-        try:
-            async with httpx.AsyncClient(
-                transport=self._transport,
-                timeout=30.0,
-            ) as client:
-                response = await client.get(SEARCHAPI_SEARCH_URL, params=params)
-                response.raise_for_status()
-        except httpx.HTTPStatusError as exc:
-            raise HTTPException(
-                status_code=502,
-                detail=(
-                    "SearchAPI request failed with status "
-                    f"{exc.response.status_code}"
-                ),
-            ) from exc
-        except httpx.HTTPError as exc:
-            raise HTTPException(
-                status_code=502,
-                detail="SearchAPI request failed",
-            ) from exc
-
-        try:
-            payload = response.json()
-        except ValueError as exc:
-            raise HTTPException(
-                status_code=502,
-                detail="SearchAPI returned a non-JSON response",
-            ) from exc
-
+        payload = await fetch_searchapi()
         await self._cache.set_json(
             cache_key,
             payload,

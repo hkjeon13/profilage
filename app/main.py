@@ -1,10 +1,22 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.company import router as company_router
+from app.services.company_store import get_default_data_group_store
 
-app = FastAPI(title="Profilage API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    store = get_default_data_group_store()
+    if store is not None:
+        await store.initialize()
+    yield
+
+
+app = FastAPI(title="Profilage API", lifespan=lifespan)
 app.include_router(company_router)
 app.include_router(company_router, prefix="/api")
 

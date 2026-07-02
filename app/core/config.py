@@ -31,6 +31,11 @@ class CacheSettings:
     bypass_rate: float
 
 
+@dataclass(frozen=True)
+class DatabaseSettings:
+    database_url: str | None
+
+
 def get_open_api_settings() -> OpenApiSettings:
     load_dotenv()
 
@@ -73,3 +78,9 @@ def get_cache_settings() -> CacheSettings:
         ttl_seconds=int(ttl),
         bypass_rate=min(max(float(bypass_rate), 0.0), 1.0),
     )
+
+
+def get_database_settings() -> DatabaseSettings:
+    load_dotenv()
+
+    return DatabaseSettings(database_url=os.getenv("DATABASE_URL"))

@@ -234,6 +234,94 @@ a:hover {
   line-height: 1.5;
 }
 
+.skeleton-card {
+  cursor: default;
+  pointer-events: none;
+}
+
+.skeleton-line,
+.skeleton-chart {
+  display: block;
+  overflow: hidden;
+  position: relative;
+  border-radius: 6px;
+  background: #eef1f5;
+}
+
+.skeleton-line::after,
+.skeleton-chart::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.82) 48%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  content: "";
+  transform: translateX(-100%);
+  animation: skeleton-shimmer 1.25s infinite;
+}
+
+.skeleton-line {
+  width: 72%;
+  height: 13px;
+  margin: 8px 0;
+}
+
+.skeleton-title {
+  width: 42%;
+  height: 19px;
+  margin-bottom: 14px;
+}
+
+.skeleton-short {
+  width: 34%;
+}
+
+.skeleton-wide {
+  width: 88%;
+}
+
+.skeleton-section-title {
+  width: 30%;
+  height: 14px;
+  margin-bottom: 16px;
+}
+
+.skeleton-price {
+  width: 36%;
+  height: 38px;
+  margin-top: 12px;
+}
+
+.skeleton-chart {
+  width: 100%;
+  height: 142px;
+  margin-top: 18px;
+}
+
+.skeleton-detail-header .skeleton-title {
+  width: min(360px, 72%);
+  height: 30px;
+}
+
+.skeleton-hero-title {
+  width: min(440px, 80vw);
+  height: clamp(36px, 5vw, 58px);
+}
+
+.skeleton-hero-subtitle {
+  width: min(360px, 72vw);
+  height: 16px;
+}
+
+@keyframes skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 .detail-panel {
   border: 1px solid var(--line);
   border-radius: 8px;
