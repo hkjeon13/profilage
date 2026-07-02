@@ -24,6 +24,12 @@ class OpenApiSettings:
     service_key_is_encoded: bool
 
 
+@dataclass(frozen=True)
+class CacheSettings:
+    valkey_url: str | None
+    ttl_seconds: int
+
+
 def get_open_api_settings() -> OpenApiSettings:
     load_dotenv()
 
@@ -54,3 +60,13 @@ def get_searchapi_api_key() -> str:
         return api_key
 
     raise RuntimeError("SEARCHAPI_API_KEY must be configured")
+
+
+def get_cache_settings() -> CacheSettings:
+    load_dotenv()
+
+    ttl = os.getenv("CACHE_TTL_SECONDS", "3600")
+    return CacheSettings(
+        valkey_url=os.getenv("VALKEY_URL"),
+        ttl_seconds=int(ttl),
+    )

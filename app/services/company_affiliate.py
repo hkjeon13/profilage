@@ -1,10 +1,17 @@
 from dataclasses import dataclass
+import hashlib
+import json
 from typing import Any
 
 from fastapi import HTTPException
 import httpx
 
-from app.core.config import get_open_api_settings, get_searchapi_api_key
+from app.core.config import (
+    get_cache_settings,
+    get_open_api_settings,
+    get_searchapi_api_key,
+)
+from app.services.cache import JsonCache, get_default_cache
 
 
 OPEN_API_BASE_URL = (
@@ -79,8 +86,20 @@ class OpenApiCompanyService:
         self,
         *,
         transport: httpx.BaseTransport | httpx.AsyncBaseTransport | None = None,
+        cache: JsonCache | None = None,
     ) -> None:
         self._transport = transport
+        self._cache = cache if cache is not None else get_default_cache()
+
+    def _cache_key(self, *, endpoint_url: str, params: dict[str, Any]) -> str:
+        normalized = {
+            "endpoint_url": endpoint_url,
+            "params": sorted((key, str(value)) for key, value in params.items()),
+        }
+        digest = hashlib.sha256(
+            json.dumps(normalized, ensure_ascii=False).encode()
+        ).hexdigest()
+        return f"profilage:api:{digest}"
 
     async def _fetch(
         self,
@@ -96,6 +115,16 @@ class OpenApiCompanyService:
             url = f"{url}?{service_key_param_name}={settings.service_key}"
         else:
             params[service_key_param_name] = settings.service_key
+
+        cache_params = {
+            key: value
+            for key, value in params.items()
+            if key != service_key_param_name
+        }
+        cache_key = self._cache_key(endpoint_url=endpoint_url, params=cache_params)
+        cached = await self._cache.get_json(cache_key)
+        if cached is not None:
+            return cached
 
         try:
             async with httpx.AsyncClient(
@@ -123,7 +152,13 @@ class OpenApiCompanyService:
                 detail="OpenAPI returned a non-JSON response",
             ) from exc
 
-        return payload.get("response", payload)
+        result = payload.get("response", payload)
+        await self._cache.set_json(
+            cache_key,
+            result,
+            get_cache_settings().ttl_seconds,
+        )
+        return result
 
 
 class CompanyAffiliateService(OpenApiCompanyService):
@@ -215,13 +250,21 @@ class CompanyKrxListedItemService(OpenApiCompanyService):
 
 class CompanyInfoService(OpenApiCompanyService):
     async def fetch(self, query: CompanyInfoQuery) -> dict[str, Any]:
-        corp_outline_service = CompanyCorpOutlineService(transport=self._transport)
-        krx_listed_item_service = CompanyKrxListedItemService(
-            transport=self._transport
+        corp_outline_service = CompanyCorpOutlineService(
+            transport=self._transport,
+            cache=self._cache,
         )
-        affiliate_service = CompanyAffiliateService(transport=self._transport)
+        krx_listed_item_service = CompanyKrxListedItemService(
+            transport=self._transport,
+            cache=self._cache,
+        )
+        affiliate_service = CompanyAffiliateService(
+            transport=self._transport,
+            cache=self._cache,
+        )
         cons_subs_comp_service = CompanyConsSubsCompService(
-            transport=self._transport
+            transport=self._transport,
+            cache=self._cache,
         )
 
         corp_outline = await corp_outline_service.fetch(
@@ -291,6 +334,15 @@ class CompanyStockPriceService(OpenApiCompanyService):
         if query.window:
             params["window"] = query.window
 
+        cache_params = {key: value for key, value in params.items() if key != "api_key"}
+        cache_key = self._cache_key(
+            endpoint_url=SEARCHAPI_SEARCH_URL,
+            params=cache_params,
+        )
+        cached = await self._cache.get_json(cache_key)
+        if cached is not None:
+            return cached
+
         try:
             async with httpx.AsyncClient(
                 transport=self._transport,
@@ -313,9 +365,16 @@ class CompanyStockPriceService(OpenApiCompanyService):
             ) from exc
 
         try:
-            return response.json()
+            payload = response.json()
         except ValueError as exc:
             raise HTTPException(
                 status_code=502,
                 detail="SearchAPI returned a non-JSON response",
             ) from exc
+
+        await self._cache.set_json(
+            cache_key,
+            payload,
+            get_cache_settings().ttl_seconds,
+        )
+        return payload

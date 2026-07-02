@@ -5,6 +5,25 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.services.company_affiliate import (
+    CompanyCorpOutlineQuery,
+    CompanyCorpOutlineService,
+    CompanyStockPriceQuery,
+    CompanyStockPriceService,
+)
+
+
+class FakeJsonCache:
+    def __init__(self) -> None:
+        self.values = {}
+        self.set_calls = []
+
+    async def get_json(self, key):
+        return self.values.get(key)
+
+    async def set_json(self, key, value, ttl):
+        self.set_calls.append((key, value, ttl))
+        self.values[key] = value
 
 
 def test_root_serves_company_search_frontend():
@@ -426,6 +445,95 @@ def test_get_company_info_combines_company_sources_by_corporate_registration_num
     assert payload["corporate_registration_number"] == "1301110006246"
     assert payload["corp_outline"]["body"]["items"]["item"]["corpNm"] == "삼성전자(주)"
     assert payload["krx_listed_item"]["body"]["items"]["item"]["srtnCd"] == "005930"
+
+
+@pytest.mark.asyncio
+async def test_open_api_service_reuses_cached_response(monkeypatch):
+    monkeypatch.setenv("OPEN_API_DECODING_KEY", "decoded-service-key")
+    monkeypatch.delenv("OPEN_API_ENCODING_KEY", raising=False)
+    request_count = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        request_count += 1
+        return httpx.Response(
+            200,
+            json={
+                "response": {
+                    "header": {"resultCode": "00", "resultMsg": "NORMAL SERVICE."},
+                    "body": {
+                        "items": {
+                            "item": {
+                                "crno": "1301110006246",
+                                "corpNm": "삼성전자(주)",
+                            }
+                        },
+                    },
+                }
+            },
+        )
+
+    cache = FakeJsonCache()
+    service = CompanyCorpOutlineService(
+        transport=httpx.MockTransport(handler),
+        cache=cache,
+    )
+    query = CompanyCorpOutlineQuery(
+        company_name="삼성전자",
+        corporate_registration_number=None,
+        page=1,
+        per_page=10,
+    )
+
+    first = await service.fetch(query)
+    second = await service.fetch(query)
+
+    assert request_count == 1
+    assert second == first
+    assert len(cache.set_calls) == 1
+    assert cache.set_calls[0][0].startswith("profilage:api:")
+
+
+@pytest.mark.asyncio
+async def test_stock_price_service_reuses_cached_response(monkeypatch):
+    monkeypatch.setenv("SEARCHAPI_API_KEY", "searchapi-key")
+    request_count = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        request_count += 1
+        return httpx.Response(
+            200,
+            json={
+                "summary": {
+                    "title": "Samsung Electronics Co Ltd",
+                    "stock": "005930",
+                    "exchange": "KRX",
+                    "price": 1234.0,
+                }
+            },
+        )
+
+    cache = FakeJsonCache()
+    service = CompanyStockPriceService(
+        transport=httpx.MockTransport(handler),
+        cache=cache,
+    )
+    query = CompanyStockPriceQuery(
+        q=None,
+        stock_code="005930",
+        exchange="KRX",
+        language="ko",
+        window="1M",
+    )
+
+    first = await service.fetch(query)
+    second = await service.fetch(query)
+
+    assert request_count == 1
+    assert second == first
+    assert len(cache.set_calls) == 1
+    assert cache.set_calls[0][0].startswith("profilage:api:")
 
 
 def test_get_stock_price_maps_query_to_searchapi_google_finance(monkeypatch):
