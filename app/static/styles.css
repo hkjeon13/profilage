@@ -79,6 +79,34 @@ a:hover {
   padding-top: 76px;
 }
 
+.google-like-home:not(.is-idle) .search-panel {
+  min-height: auto;
+  align-items: flex-start;
+  justify-content: flex-start;
+  margin: 0;
+  padding-top: 16px;
+}
+
+.google-like-home:not(.is-idle) .wordmark,
+.google-like-home:not(.is-idle) .search-actions,
+.google-like-home:not(.is-idle) .page-footer {
+  display: none;
+}
+
+.google-like-home:not(.is-idle) .shell {
+  width: min(980px, calc(100% - 48px));
+  padding-bottom: 42px;
+}
+
+.google-like-home:not(.is-idle) .search-form {
+  width: min(680px, 100%);
+}
+
+.google-like-home:not(.is-idle) .status {
+  margin-top: 12px;
+  font-size: 14px;
+}
+
 .wordmark {
   margin: 0 0 28px;
   font-family: Arial, Helvetica, sans-serif;
@@ -181,11 +209,15 @@ a:hover {
 
 .content-grid {
   display: grid;
-  grid-template-columns: minmax(0, 720px);
-  gap: 22px;
+  grid-template-columns: minmax(0, 760px);
+  gap: 0;
   align-items: start;
-  justify-content: center;
+  justify-content: start;
   margin-bottom: 42px;
+}
+
+.google-like-home:not(.is-idle) .content-grid {
+  margin-top: 12px;
 }
 
 .is-idle .content-grid {
@@ -199,17 +231,18 @@ a:hover {
 
 .result-list {
   display: grid;
-  gap: 10px;
+  gap: 0;
 }
 
 .result-card {
   display: block;
   width: 100%;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--panel);
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
   color: var(--text);
-  padding: 16px;
+  padding: 18px 0;
   text-align: left;
   cursor: pointer;
   text-decoration: none;
@@ -217,21 +250,24 @@ a:hover {
 
 .result-card:hover,
 .result-card.is-active {
-  border-color: var(--accent);
-  box-shadow: 0 10px 32px rgba(23, 105, 170, 0.14);
+  box-shadow: none;
+  text-decoration: none;
 }
 
 .result-card strong {
   display: block;
-  margin-bottom: 8px;
-  font-size: 17px;
+  margin-bottom: 7px;
+  color: var(--accent);
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 1.35;
 }
 
 .result-card span {
   display: block;
   color: var(--muted);
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 1.55;
 }
 
 .skeleton-card {
@@ -571,9 +607,17 @@ a:hover {
     padding: 0 0 28px;
   }
 
+  .google-like-home:not(.is-idle) .shell {
+    width: min(100% - 32px, 680px);
+  }
+
   .search-panel {
     min-height: 52vh;
     padding-top: 38px;
+  }
+
+  .google-like-home:not(.is-idle) .search-panel {
+    padding-top: 8px;
   }
 
   .wordmark {
@@ -592,6 +636,14 @@ a:hover {
   .result-list,
   .detail-panel {
     min-height: auto;
+  }
+
+  .result-card {
+    padding: 16px 0;
+  }
+
+  .result-card strong {
+    font-size: 18px;
   }
 
   .page-footer nav {
