@@ -4,20 +4,29 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Profilage</title>
-    <link rel="stylesheet" href="/styles.css?v=4fce7ef" />
+    <link rel="stylesheet" href="/styles.css?v=google-home-1" />
   </head>
-  <body class="is-idle">
+  <body class="is-idle google-like-home">
+    <header class="top-nav" aria-label="상단 메뉴">
+      <nav class="top-nav-left">
+        <a href="/">Profilage 정보</a>
+        <a href="/docs">API</a>
+      </nav>
+      <nav class="top-nav-right">
+        <a href="/docs">문서</a>
+        <a href="/openapi.json">OpenAPI</a>
+      </nav>
+    </header>
+
     <main class="shell">
       <section
         class="search-panel"
         aria-labelledby="page-title"
         data-outline-url="/api/company/get_corp_outline"
       >
-        <div class="brand-row">
-          <span class="brand-mark" aria-hidden="true">P</span>
-          <span class="brand-name">Profilage</span>
-        </div>
-        <h1 id="page-title">기업 검색</h1>
+        <h1 id="page-title" class="wordmark" aria-label="Profilage">
+          <span class="wordmark-blue">P</span><span class="wordmark-red">r</span><span class="wordmark-yellow">o</span><span class="wordmark-blue">f</span><span class="wordmark-green">i</span><span class="wordmark-red">l</span><span class="wordmark-blue">a</span><span class="wordmark-green">g</span><span class="wordmark-red">e</span>
+        </h1>
         <form class="search-form" id="search-form">
           <label class="visually-hidden" for="company-query">기업명</label>
           <input
@@ -25,11 +34,15 @@
             name="company-query"
             type="search"
             autocomplete="off"
-            placeholder="삼성"
+            placeholder="기업명 또는 법인등록번호 검색"
             minlength="1"
           />
-          <button type="submit">검색</button>
+          <button class="search-submit" type="submit">검색</button>
         </form>
+        <div class="search-actions" aria-label="검색 동작">
+          <button type="submit" form="search-form">Profilage 검색</button>
+          <button type="button" id="lucky-search">대표 기업 보기</button>
+        </div>
         <p class="status" id="search-status" role="status"></p>
       </section>
 
@@ -43,6 +56,15 @@
         </section>
       </section>
     </main>
-    <script src="/app.js?v=4fce7ef" defer></script>
+
+    <footer class="page-footer">
+      <div>대한민국</div>
+      <nav aria-label="하단 메뉴">
+        <a href="/docs">API 문서</a>
+        <a href="/company/get_corp_outline?company_name=삼성전자">예시 조회</a>
+        <a href="/docs">개발자</a>
+      </nav>
+    </footer>
+    <script src="/app.js?v=google-home-1" defer></script>
   </body>
 </html>

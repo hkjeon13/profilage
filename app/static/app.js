@@ -3,6 +3,7 @@ const queryInput = document.querySelector("#company-query");
 const statusEl = document.querySelector("#search-status");
 const resultList = document.querySelector("#result-list");
 const detailPanel = document.querySelector("#detail-panel");
+const luckySearchButton = document.querySelector("#lucky-search");
 
 const outlineUrl = "/api/company/get_corp_outline";
 const listedUrl = "/api/company/get_krx_listed_item";
@@ -302,4 +303,9 @@ form.addEventListener("submit", (event) => {
     return;
   }
   searchCompanies(query);
+});
+
+luckySearchButton.addEventListener("click", () => {
+  queryInput.value = "삼성전자";
+  searchCompanies("삼성전자");
 });
