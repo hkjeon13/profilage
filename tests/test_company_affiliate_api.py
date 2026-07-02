@@ -14,6 +14,7 @@ def test_root_serves_company_search_frontend():
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
     assert "Profilage" in response.text
+    assert '<body class="is-idle">' in response.text
     assert "/api/company/get_corp_outline" in response.text
 
 

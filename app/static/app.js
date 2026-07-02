@@ -144,6 +144,7 @@ async function fetchJson(url, params) {
 }
 
 async function searchCompanies(query) {
+  document.body.classList.remove("is-idle");
   setStatus("검색 중...");
   renderEmpty("검색 결과를 불러오는 중입니다.");
   resultList.innerHTML = "";

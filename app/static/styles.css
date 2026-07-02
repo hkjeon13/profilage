@@ -121,6 +121,10 @@ h1 {
   align-items: start;
 }
 
+.is-idle .content-grid {
+  display: none;
+}
+
 .result-list,
 .detail-panel {
   min-height: 360px;
