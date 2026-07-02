@@ -30,14 +30,16 @@ function renderResults(items) {
   const fragment = document.createDocumentFragment();
 
   items.forEach((company) => {
+    const displayName = company.listedCorpName || company.corpNm || company.itmsNm;
+    const market = company.mrktCtg || company.corpRegMrktDcdNm;
     const link = document.createElement("a");
     link.className = "result-card";
     link.href = profileUrl(company.crno);
     link.dataset.crno = company.crno;
     link.innerHTML = `
-      <strong>${text(company.corpNm)}</strong>
+      <strong>${text(displayName)}</strong>
       <span>법인등록번호 ${text(company.crno)}</span>
-      <span>${company.isListed ? `상장 ${text(company.mrktCtg)} · ${text(company.srtnCd)}` : `${text(company.enpRprFnm, "대표자 정보 없음")} · ${text(company.bzno, "사업자등록번호 없음")}`}</span>
+      <span>${company.isListed ? `상장 ${text(market)} · ${text(company.srtnCd)}` : `${text(company.enpRprFnm, "대표자 정보 없음")} · ${text(company.bzno, "사업자등록번호 없음")}`}</span>
     `;
     fragment.appendChild(link);
   });
@@ -77,6 +79,7 @@ function mergeCompanyResults(outlineItems, listedItems) {
     companies.set(key, {
       ...item,
       corpNm: item.corpNm || item.itmsNm,
+      listedCorpName: item.corpNm || item.itmsNm,
       listedItemName: item.itmsNm,
       isListed: true,
       searchRank: index,
@@ -91,7 +94,8 @@ function mergeCompanyResults(outlineItems, listedItems) {
     companies.set(key, {
       ...item,
       ...existing,
-      corpNm: item.corpNm || existing.corpNm || existing.itmsNm,
+      corpNm: existing.corpNm || item.corpNm || existing.itmsNm,
+      listedCorpName: existing.listedCorpName,
       mrktCtg: existing.mrktCtg || item.corpRegMrktDcdNm,
       isListed,
       searchRank: existing.searchRank ?? 100,
@@ -142,9 +146,31 @@ async function searchCompanies(query) {
       }),
       ...listedRequests,
     ]);
+    const outlineItems = normalizeItems(outlinePayload);
+    const listedItems = listedPayloads.flatMap((payload) => normalizeItems(payload));
+    const listedCrnos = new Set(listedItems.map((item) => item.crno).filter(Boolean));
+    const initialItems = mergeCompanyResults(outlineItems, listedItems).slice(0, 20);
+    const listedByCrnoPayloads = await Promise.all(
+      initialItems
+        .map((item) => item.crno)
+        .filter(
+          (crno, index, crnos) =>
+            crno && !listedCrnos.has(crno) && crnos.indexOf(crno) === index,
+        )
+        .map((crno) =>
+          fetchJson(listedUrl, {
+            corporate_registration_number: crno,
+            page: 1,
+            per_page: 1,
+          }).catch(() => null),
+        ),
+    );
     const items = mergeCompanyResults(
-      normalizeItems(outlinePayload),
-      listedPayloads.flatMap((payload) => normalizeItems(payload)),
+      outlineItems,
+      [
+        ...listedItems,
+        ...listedByCrnoPayloads.flatMap((payload) => normalizeItems(payload)),
+      ],
     ).slice(0, 20);
 
     if (items.length === 0) {
