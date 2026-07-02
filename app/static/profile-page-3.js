@@ -25,6 +25,68 @@ function formatNumber(value) {
   return Number.isFinite(numeric) ? numeric.toLocaleString("ko-KR") : value;
 }
 
+function formatChartDate(value) {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toLocaleDateString("ko-KR", {
+      month: "numeric",
+      day: "numeric",
+    });
+  }
+  return String(value).split(",")[0];
+}
+
+function renderStockChart(stock) {
+  const points = (stock?.graph || [])
+    .map((point) => ({
+      price: Number(point.price),
+      date: point.date,
+    }))
+    .filter((point) => Number.isFinite(point.price));
+
+  if (points.length < 2) return "";
+
+  const width = 640;
+  const height = 180;
+  const paddingX = 14;
+  const paddingY = 18;
+  const prices = points.map((point) => point.price);
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  const range = max - min || 1;
+  const chartWidth = width - paddingX * 2;
+  const chartHeight = height - paddingY * 2;
+  const coordinates = points.map((point, index) => {
+    const x =
+      paddingX + (index / Math.max(points.length - 1, 1)) * chartWidth;
+    const y = paddingY + ((max - point.price) / range) * chartHeight;
+    return { x, y, price: point.price, date: point.date };
+  });
+  const linePath = coordinates
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
+    .join(" ");
+  const areaPath = `${linePath} L ${coordinates.at(-1).x.toFixed(2)} ${height - paddingY} L ${coordinates[0].x.toFixed(2)} ${height - paddingY} Z`;
+  const trendClass =
+    coordinates.at(-1).price >= coordinates[0].price ? "is-up" : "is-down";
+
+  return `
+    <div class="stock-chart" aria-label="1개월 주가 차트">
+      <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="1개월 주가 추이">
+        <path class="stock-chart-grid" d="M ${paddingX} ${height / 2} H ${width - paddingX}" />
+        <path class="stock-chart-area ${trendClass}" d="${areaPath}" />
+        <path class="stock-chart-line ${trendClass}" d="${linePath}" />
+        <circle class="stock-chart-dot ${trendClass}" cx="${coordinates.at(-1).x.toFixed(2)}" cy="${coordinates.at(-1).y.toFixed(2)}" r="4" />
+      </svg>
+      <div class="stock-chart-meta">
+        <span>${formatChartDate(points[0].date)}</span>
+        <span>${formatNumber(min)} - ${formatNumber(max)}</span>
+        <span>${formatChartDate(points.at(-1).date)}</span>
+      </div>
+    </div>
+  `;
+}
+
 async function fetchJson(url, params) {
   const endpoint = new URL(url, window.location.origin);
   Object.entries(params).forEach(([key, value]) => {
@@ -88,6 +150,7 @@ function renderCompanyDetail({ outline, listed, stock }) {
         <h3>주가</h3>
         <div class="price">${formatNumber(price)}</div>
         <div class="price-meta">${text(change, "변동 정보 없음")}</div>
+        ${renderStockChart(stock)}
       </article>
       <article class="info-block full">
         <h3>주소</h3>
