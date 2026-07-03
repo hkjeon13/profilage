@@ -1,12 +1,13 @@
 .stock-chart {
   position: relative;
-  margin-top: 18px;
+  margin-top: 24px;
+  padding-right: 42px;
 }
 
 .stock-chart svg {
   display: block;
   width: 100%;
-  height: 142px;
+  height: 236px;
   cursor: crosshair;
   touch-action: pan-y;
 }
@@ -19,54 +20,40 @@
 
 .stock-chart-grid {
   fill: none;
-  stroke: #e8eaed;
+  stroke: #e2e7f0;
+  stroke-dasharray: 2 5;
   stroke-width: 1;
 }
 
 .stock-chart-area {
-  opacity: 0.14;
-}
-
-.stock-chart-area.is-up {
-  fill: var(--positive);
-}
-
-.stock-chart-area.is-down {
-  fill: #c5221f;
+  fill: #eef4fb;
+  opacity: 0.88;
 }
 
 .stock-chart-line {
   fill: none;
-  stroke-width: 3;
+  stroke-width: 2.6;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
-.stock-chart-line.is-up {
-  stroke: var(--positive);
+.stock-chart-line-primary {
+  stroke: #1d5faa;
 }
 
-.stock-chart-line.is-down {
-  stroke: #c5221f;
+.stock-chart-line-muted {
+  stroke: #b7b7bb;
 }
 
 .stock-chart-guide {
-  stroke: rgba(95, 99, 104, 0.38);
-  stroke-dasharray: 4 4;
+  stroke: rgba(104, 111, 124, 0.3);
   stroke-width: 1;
 }
 
-.stock-chart-dot.is-up {
-  fill: var(--positive);
-}
-
-.stock-chart-dot.is-down {
-  fill: #c5221f;
-}
-
 .stock-chart-dot {
-  stroke: var(--panel);
-  stroke-width: 2;
+  fill: #1d5faa;
+  stroke: #ffffff;
+  stroke-width: 2.5;
 }
 
 .stock-chart-hit-area {
@@ -76,18 +63,19 @@
 
 .stock-chart-tooltip {
   position: absolute;
-  top: 0;
+  top: 48%;
   left: 85%;
   z-index: 1;
-  min-width: 116px;
-  border: 1px solid var(--line);
+  min-width: 124px;
+  border: 0;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 8px 24px rgba(32, 33, 36, 0.16);
-  color: var(--text);
-  padding: 8px 10px;
+  background: rgba(45, 45, 52, 0.96);
+  box-shadow: 0 12px 30px rgba(31, 36, 48, 0.22);
+  color: #ffffff;
+  padding: 10px 12px;
   pointer-events: none;
-  transform: translate(-50%, -8px);
+  text-align: right;
+  transform: translate(-50%, -50%);
 }
 
 .stock-chart-tooltip strong,
@@ -98,32 +86,67 @@
 }
 
 .stock-chart-tooltip strong {
-  color: var(--muted);
-  font-size: 12px;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 900;
 }
 
 .stock-chart-tooltip span {
-  margin-top: 2px;
-  font-size: 14px;
-  font-weight: 800;
+  margin-top: 4px;
+  color: #eef1f8;
+  font-size: 13px;
+  font-weight: 750;
 }
 
 .stock-chart-tooltip small {
-  margin-top: 2px;
-  color: var(--muted);
-  font-size: 11px;
+  margin-top: 3px;
+  color: #d7dbe4;
+  font-size: 12px;
 }
 
 .stock-chart-meta {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: 16px;
   margin-top: 8px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 13px;
 }
 
-.stock-chart.is-start-selected .stock-chart-meta-start,
-.stock-chart.is-end-selected .stock-chart-meta-end {
-  visibility: hidden;
+.stock-chart-axis-labels {
+  display: grid;
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 236px;
+  grid-template-rows: repeat(3, 1fr);
+  align-items: center;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: right;
+}
+
+.stock-range-tabs {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin: 18px 0 0;
+}
+
+.stock-range-tabs button {
+  min-width: 40px;
+  min-height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #344054;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.stock-range-tabs button.is-active {
+  background: #f0f1f4;
+  color: #101828;
 }

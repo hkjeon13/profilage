@@ -153,7 +153,7 @@ def test_profile_page_serves_company_profile_frontend():
     assert "기업 프로필" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-3" in response.text
+    assert "/profile-page-5.js?v=company-profile-4" in response.text
 
 
 def test_profile_frontend_exposes_card_layout_assets():
@@ -186,6 +186,28 @@ def test_stock_chart_svg_uses_full_card_width():
 
     assert script_response.status_code == 200
     assert 'preserveAspectRatio="none"' in script_response.text
+
+
+def test_stock_chart_matches_reference_style_structure():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+
+    assert script_response.status_code == 200
+    assert "stock-range-tabs" in script_response.text
+    assert "stock-chart-axis-labels" in script_response.text
+    assert "stock-chart-line-primary" in script_response.text
+    assert "stock-chart-line-muted" in script_response.text
+
+
+def test_stock_chart_keeps_endpoint_axis_labels_visible():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+        chart_style_response = client.get("/profile-chart-2.css")
+
+    assert script_response.status_code == 200
+    assert chart_style_response.status_code == 200
+    assert "stock-chart-meta-end" in script_response.text
+    assert "visibility: hidden" not in chart_style_response.text
 
 
 def test_company_api_is_available_under_api_prefix(monkeypatch):

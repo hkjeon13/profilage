@@ -127,6 +127,25 @@ function formatTooltipDate(value) {
   return String(value).split(",")[0];
 }
 
+function formatChartAxisNumber(value) {
+  if (!Number.isFinite(value)) return "-";
+  return new Intl.NumberFormat("ko-KR", {
+    maximumFractionDigits: value >= 1000 ? 0 : 2,
+  }).format(value);
+}
+
+function formatChartTime(value) {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (!Number.isNaN(parsed.getTime()) && /T|\d{2}:\d{2}/.test(String(value))) {
+    return parsed.toLocaleTimeString("ko-KR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+  return formatChartDate(value);
+}
+
 function latestBusinessYear() {
   return String(new Date().getFullYear() - 1);
 }
@@ -180,12 +199,13 @@ function renderStockChart(stock) {
   if (points.length < 2) return "";
 
   const width = 640;
-  const height = 180;
-  const paddingX = 14;
+  const height = 220;
+  const paddingX = 8;
   const paddingY = 18;
   const prices = points.map((point) => point.price);
   const min = Math.min(...prices);
   const max = Math.max(...prices);
+  const mid = min + (max - min) / 2;
   const range = max - min || 1;
   const chartWidth = width - paddingX * 2;
   const chartHeight = height - paddingY * 2;
@@ -206,28 +226,51 @@ function renderStockChart(stock) {
   const linePath = coordinates
     .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
     .join(" ");
-  const areaPath = `${linePath} L ${coordinates.at(-1).x.toFixed(2)} ${height - paddingY} L ${coordinates[0].x.toFixed(2)} ${height - paddingY} Z`;
-  const trendClass =
-    coordinates.at(-1).price >= coordinates[0].price ? "is-up" : "is-down";
+  const splitIndex = Math.max(1, Math.floor((coordinates.length - 1) * 0.68));
+  const primaryCoordinates = coordinates.slice(0, splitIndex + 1);
+  const mutedCoordinates = coordinates.slice(splitIndex);
+  const primaryPath = primaryCoordinates
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
+    .join(" ");
+  const mutedPath = mutedCoordinates
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
+    .join(" ");
+  const areaBase = height - paddingY;
+  const areaPath = `${linePath} L ${coordinates.at(-1).x.toFixed(2)} ${areaBase} L ${coordinates[0].x.toFixed(2)} ${areaBase} Z`;
+  const axisLabels = [max, mid, min].map(formatChartAxisNumber);
+  const xLabels = [
+    formatChartTime(points[0].date),
+    formatChartTime(points[Math.floor((points.length - 1) / 2)].date),
+    formatChartTime(points.at(-1).date),
+  ];
 
   return `
+    <div class="stock-range-tabs" role="tablist" aria-label="주가 기간">
+      ${["1D", "1M", "3M", "1Y", "5Y", "All"]
+        .map((rangeLabel, index) => `<button type="button" class="${index === 0 ? "is-active" : ""}" ${index === 0 ? 'aria-selected="true"' : 'aria-selected="false"'}>${rangeLabel}</button>`)
+        .join("")}
+    </div>
     <div class="stock-chart" aria-label="1개월 주가 차트" data-chart-points="${encodeURIComponent(JSON.stringify(interactionPoints))}" data-chart-width="${width}" data-chart-last-index="${points.length - 1}">
       <div class="stock-chart-tooltip" role="status" aria-live="polite">
         <strong>${formatChartDate(points.at(-1).date)}</strong>
         <span>${formatNumber(points.at(-1).price)} KRW</span>
       </div>
       <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="1개월 주가 추이" tabindex="0">
-        <path class="stock-chart-grid" d="M ${paddingX} ${height / 2} H ${width - paddingX}" />
-        <path class="stock-chart-area ${trendClass}" d="${areaPath}" />
-        <path class="stock-chart-line ${trendClass}" d="${linePath}" />
+        <path class="stock-chart-grid" d="M ${paddingX} ${paddingY} H ${width - paddingX} M ${paddingX} ${height / 2} H ${width - paddingX} M ${paddingX} ${height - paddingY} H ${width - paddingX}" />
+        <path class="stock-chart-area" d="${areaPath}" />
+        <path class="stock-chart-line stock-chart-line-primary" d="${primaryPath}" />
+        <path class="stock-chart-line stock-chart-line-muted" d="${mutedPath}" />
         <line class="stock-chart-guide" x1="${coordinates.at(-1).x.toFixed(2)}" y1="${paddingY}" x2="${coordinates.at(-1).x.toFixed(2)}" y2="${height - paddingY}" />
-        <circle class="stock-chart-dot ${trendClass}" cx="${coordinates.at(-1).x.toFixed(2)}" cy="${coordinates.at(-1).y.toFixed(2)}" r="4" />
+        <circle class="stock-chart-dot" cx="${coordinates.at(-1).x.toFixed(2)}" cy="${coordinates.at(-1).y.toFixed(2)}" r="4" />
         <rect class="stock-chart-hit-area" x="0" y="0" width="${width}" height="${height}" />
       </svg>
-      <div class="stock-chart-meta">
-        <span class="stock-chart-meta-start">${formatChartDate(points[0].date)}</span>
-        <span>${formatNumber(min)} - ${formatNumber(max)}</span>
-        <span class="stock-chart-meta-end">${formatChartDate(points.at(-1).date)}</span>
+      <div class="stock-chart-axis-labels" aria-hidden="true">
+        ${axisLabels.map((label) => `<span>${label}</span>`).join("")}
+      </div>
+      <div class="stock-chart-meta" aria-hidden="true">
+        <span class="stock-chart-meta-start">${xLabels[0]}</span>
+        <span>${xLabels[1]}</span>
+        <span class="stock-chart-meta-end">${xLabels[2]}</span>
       </div>
     </div>
   `;
