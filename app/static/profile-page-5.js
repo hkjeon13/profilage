@@ -30,6 +30,19 @@ function text(value, fallback = "-") {
   return value === undefined || value === null || value === "" ? fallback : value;
 }
 
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function attr(value, fallback = "") {
+  return escapeHtml(text(value, fallback));
+}
+
 function initials(value) {
   const source = text(value, "P").replace(/\(.*?\)/g, "").trim();
   const koreanInitials = Array.from(source).filter((char) => /[가-힣A-Za-z0-9]/.test(char));
@@ -437,6 +450,106 @@ function renderError(message) {
   setupStockChartInteractions();
 }
 
+function disclosureMeta(item, includeReceiptNo = false) {
+  return [item.rcept_dt, item.flr_nm || item.corp_name, includeReceiptNo ? item.rcept_no : ""]
+    .filter(Boolean)
+    .map((value) => text(value))
+    .join(" · ");
+}
+
+function renderDisclosureViewerTrigger(item) {
+  const viewerUrl = text(item.viewer_url, "");
+  const title = text(item.report_nm);
+  const meta = disclosureMeta(item);
+  if (!viewerUrl || viewerUrl === "#") {
+    return `<span class="disclosure-title">${escapeHtml(title)}</span>`;
+  }
+  return `
+    <button
+      type="button"
+      class="disclosure-viewer-trigger"
+      data-disclosure-viewer="${attr(viewerUrl)}"
+      data-disclosure-title="${attr(title)}"
+      data-disclosure-meta="${attr(meta)}"
+    >
+      ${escapeHtml(title)}
+    </button>
+  `;
+}
+
+function ensureDisclosureViewerModal() {
+  const existing = document.querySelector(".disclosure-viewer-modal");
+  if (existing) return existing;
+
+  document.body.insertAdjacentHTML(
+    "beforeend",
+    `
+      <div class="disclosure-viewer-modal" hidden>
+        <div class="disclosure-viewer-backdrop" data-disclosure-viewer-close></div>
+        <section class="disclosure-viewer-dialog" role="dialog" aria-modal="true" aria-labelledby="disclosure-viewer-title">
+          <header class="disclosure-viewer-header">
+            <div>
+              <p id="disclosure-viewer-meta"></p>
+              <h2 id="disclosure-viewer-title">공시</h2>
+            </div>
+            <div class="disclosure-viewer-actions">
+              <a class="disclosure-viewer-external" href="#" target="_blank" rel="noreferrer">DART에서 열기</a>
+              <button type="button" class="disclosure-viewer-close" data-disclosure-viewer-close>닫기</button>
+            </div>
+          </header>
+          <iframe class="disclosure-viewer-frame" title="DART 공시 뷰어" loading="lazy" referrerpolicy="no-referrer"></iframe>
+        </section>
+      </div>
+    `,
+  );
+
+  const modal = document.querySelector(".disclosure-viewer-modal");
+  modal.querySelectorAll("[data-disclosure-viewer-close]").forEach((control) => {
+    control.addEventListener("click", closeDisclosureViewer);
+  });
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !modal.hidden) closeDisclosureViewer();
+  });
+  return modal;
+}
+
+function closeDisclosureViewer() {
+  const modal = document.querySelector(".disclosure-viewer-modal");
+  if (!modal) return;
+  const frame = modal.querySelector(".disclosure-viewer-frame");
+  modal.hidden = true;
+  document.body.classList.remove("has-disclosure-viewer-open");
+  if (frame) frame.removeAttribute("src");
+}
+
+function openDisclosureViewer(control) {
+  const url = control.dataset.disclosureViewer;
+  if (!url) return;
+  const modal = ensureDisclosureViewerModal();
+  const frame = modal.querySelector(".disclosure-viewer-frame");
+  const title = modal.querySelector("#disclosure-viewer-title");
+  const meta = modal.querySelector("#disclosure-viewer-meta");
+  const external = modal.querySelector(".disclosure-viewer-external");
+  const close = modal.querySelector(".disclosure-viewer-close");
+
+  title.textContent = control.dataset.disclosureTitle || "공시";
+  meta.textContent = control.dataset.disclosureMeta || "DART 공시";
+  external.href = url;
+  frame.src = url;
+  modal.hidden = false;
+  document.body.classList.add("has-disclosure-viewer-open");
+  close?.focus();
+}
+
+function setupDisclosureViewer() {
+  ensureDisclosureViewerModal();
+  document.querySelectorAll("[data-disclosure-viewer]").forEach((control) => {
+    if (control.dataset.disclosureViewerBound === "true") return;
+    control.dataset.disclosureViewerBound = "true";
+    control.addEventListener("click", () => openDisclosureViewer(control));
+  });
+}
+
 function renderDartDisclosures(disclosures) {
   const items = (disclosures?.list || []).slice(0, 5);
   if (!items.length) return "";
@@ -453,8 +566,8 @@ function renderDartDisclosures(disclosures) {
           .map(
             (item) => `
               <li>
-                <a href="${text(item.viewer_url, "#")}" target="_blank" rel="noreferrer">${text(item.report_nm)}</a>
-                <span>${text(item.rcept_dt)} · ${text(item.flr_nm || item.corp_name)}</span>
+                ${renderDisclosureViewerTrigger(item)}
+                <span>${escapeHtml(disclosureMeta(item))}</span>
               </li>
             `,
           )
@@ -683,8 +796,8 @@ function renderDisclosuresPage({ disclosures, outline, crno }) {
             .map(
               (item) => `
                 <li>
-                  <a href="${text(item.viewer_url, "#")}" target="_blank" rel="noreferrer">${text(item.report_nm)}</a>
-                  <span>${text(item.rcept_dt)} · ${text(item.flr_nm || item.corp_name)} · ${text(item.rcept_no)}</span>
+                  ${renderDisclosureViewerTrigger(item)}
+                  <span>${escapeHtml(disclosureMeta(item, true))}</span>
                 </li>
               `,
             )
@@ -693,6 +806,7 @@ function renderDisclosuresPage({ disclosures, outline, crno }) {
       </article>
     </div>
   `;
+  setupDisclosureViewer();
 }
 
 function renderCompanyDetail({ info, outline, listed, stock }) {
@@ -785,6 +899,7 @@ function renderCompanyDetail({ info, outline, listed, stock }) {
   `;
   setupStockChartInteractions();
   setupFinancialSummaryTabs();
+  setupDisclosureViewer();
 }
 
 async function loadProfile() {

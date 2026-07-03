@@ -462,11 +462,27 @@ a:hover {
   list-style: none;
 }
 
-.disclosure-list a {
+.disclosure-list a,
+.disclosure-viewer-trigger,
+.disclosure-title {
   display: block;
   color: var(--accent);
   font-weight: 750;
   line-height: 1.45;
+}
+
+.disclosure-viewer-trigger {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-align: left;
+}
+
+.disclosure-viewer-trigger:hover {
+  text-decoration: underline;
 }
 
 .disclosure-list span {
@@ -516,6 +532,105 @@ a:hover {
 .subpage-controls label {
   display: grid;
   gap: 6px;
+}
+
+.disclosure-viewer-modal[hidden] {
+  display: none;
+}
+
+.has-disclosure-viewer-open {
+  overflow: hidden;
+}
+
+.disclosure-viewer-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.disclosure-viewer-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.52);
+  backdrop-filter: blur(4px);
+}
+
+.disclosure-viewer-dialog {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  overflow: hidden;
+  width: min(1120px, 100%);
+  height: min(820px, calc(100vh - 48px));
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.28);
+}
+
+.disclosure-viewer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.disclosure-viewer-header p {
+  margin: 0 0 5px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.disclosure-viewer-header h2 {
+  margin: 0;
+  color: #101828;
+  font-size: 18px;
+  line-height: 1.35;
+}
+
+.disclosure-viewer-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.disclosure-viewer-external,
+.disclosure-viewer-close {
+  min-height: 36px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.disclosure-viewer-external {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  background: #eef4ff;
+  color: var(--accent);
+}
+
+.disclosure-viewer-close {
+  border: 0;
+  background: #101828;
+  color: #ffffff;
+  cursor: pointer;
+  padding: 0 14px;
+}
+
+.disclosure-viewer-frame {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  background: #ffffff;
 }
 
 .subpage-controls span {
@@ -1152,6 +1267,30 @@ a:hover {
   .subpage-controls,
   .financial-list {
     grid-template-columns: 1fr;
+  }
+
+  .disclosure-viewer-modal {
+    padding: 10px;
+  }
+
+  .disclosure-viewer-dialog {
+    height: calc(100vh - 20px);
+    border-radius: 8px;
+  }
+
+  .disclosure-viewer-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .disclosure-viewer-actions {
+    width: 100%;
+  }
+
+  .disclosure-viewer-external,
+  .disclosure-viewer-close {
+    justify-content: center;
+    flex: 1;
   }
 
   .result-list,

@@ -153,7 +153,7 @@ def test_profile_page_serves_company_profile_frontend():
     assert "기업 프로필" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-4" in response.text
+    assert "/profile-page-5.js?v=company-profile-5" in response.text
 
 
 def test_profile_frontend_exposes_card_layout_assets():
@@ -178,6 +178,22 @@ def test_profile_frontend_does_not_duplicate_recent_disclosures():
     assert script_response.status_code == 200
     assert "renderDartDisclosures(info.dart_disclosures)" in script_response.text
     assert "latest-disclosure" not in script_response.text
+
+
+def test_profile_disclosures_open_inside_page_viewer():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+        style_response = client.get("/styles.css")
+
+    assert script_response.status_code == 200
+    assert style_response.status_code == 200
+    assert "data-disclosure-viewer" in script_response.text
+    assert "disclosure-viewer-modal" in script_response.text
+    assert "disclosure-viewer-frame" in script_response.text
+    assert "setupDisclosureViewer()" in script_response.text
+    assert 'target="_blank" rel="noreferrer">${text(item.report_nm)}</a>' not in script_response.text
+    assert ".disclosure-viewer-modal" in style_response.text
+    assert ".disclosure-viewer-frame" in style_response.text
 
 
 def test_stock_chart_svg_uses_full_card_width():
