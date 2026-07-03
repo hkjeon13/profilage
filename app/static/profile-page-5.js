@@ -864,7 +864,7 @@ function renderCompanyDetail({ info, outline, listed, stock }) {
               <span class="price-label">${text(listed.itmsNm || outline.corpNm, "종목")}</span>
               <div class="price">${formatNumber(price)}</div>
             </div>
-            <div class="price-meta">${text(change, "변동 정보 없음")}</div>
+            ${change ? `<div class="price-meta">${text(change)}</div>` : ""}
           </div>
           ${renderStockChart(stock)}
         </article>

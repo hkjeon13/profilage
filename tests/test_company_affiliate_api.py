@@ -153,7 +153,7 @@ def test_profile_page_serves_company_profile_frontend():
     assert "기업 프로필" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-7" in response.text
+    assert "/profile-page-5.js?v=company-profile-8" in response.text
 
 
 def test_profile_frontend_exposes_card_layout_assets():
@@ -266,6 +266,16 @@ def test_stock_chart_uses_date_axis_for_monthly_data():
     assert "formatChartDate(points[Math.floor((points.length - 1) / 2)].date)" in script_response.text
     assert "formatChartDate(points.at(-1).date)" in script_response.text
     assert "formatChartTime(points[0].date)" not in script_response.text
+
+
+def test_stock_card_omits_empty_change_badge():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+
+    assert script_response.status_code == 200
+    assert "변동 정보 없음" not in script_response.text
+    assert "change ? " in script_response.text
+    assert 'class="price-meta"' in script_response.text
 
 
 def test_stock_chart_keeps_endpoint_axis_labels_visible():
