@@ -523,7 +523,7 @@ function setupDisclosureViewer() {
 }
 
 function renderDartDisclosures(disclosures) {
-  const items = (disclosures?.list || []).slice(0, 5);
+  const items = (disclosures?.list || []).slice(0, 10);
   if (!items.length) return "";
   const crno = new URLSearchParams(window.location.search).get("crno");
 
@@ -575,10 +575,9 @@ function renderFinancialSummaryPanel({ report, key, isActive }) {
     : "재무정보";
 
   return `
-    <div class="financial-summary-panel ${isActive ? "is-active" : ""}" data-financial-panel="${key}" ${isActive ? "" : "hidden"}>
+    <div class="financial-summary-panel ${isActive ? "is-active" : ""}" data-financial-panel="${key}" data-financial-detail-url="${financialDetailUrl(crno, selected)}" ${isActive ? "" : "hidden"}>
       <div class="financial-summary-panel-head">
         <p class="financial-summary-meta">${subtitle}</p>
-        <a class="text-link" href="${financialDetailUrl(crno, selected)}">더보기</a>
       </div>
       <dl class="financial-metrics">
         ${items
@@ -607,12 +606,14 @@ function renderDartFinancialAccounts(info) {
   const hasAnnual = Boolean(annualReport?.accounts?.list?.length);
   if (!hasQuarter && !hasAnnual) return "";
   const activeKey = hasQuarter ? "quarter" : "annual";
-  const crno = new URLSearchParams(window.location.search).get("crno");
+  const activeReport = activeKey === "quarter" ? quarterReport : annualReport;
+  const activeDetailUrl = financialDetailUrl(new URLSearchParams(window.location.search).get("crno"), activeReport?.selected);
 
   return `
     <article class="info-block financial-summary">
       <div class="block-heading financial-summary-heading">
         <h3>재무 요약</h3>
+        <a class="text-link financial-more-link" href="${activeDetailUrl}">더보기</a>
         <div class="summary-tabs" role="tablist" aria-label="재무제표 기간">
           <button type="button" class="${activeKey === "quarter" ? "is-active" : ""}" data-financial-tab="quarter" ${hasQuarter ? "" : "disabled"}>
             분기
@@ -653,6 +654,12 @@ function setupFinancialSummaryTabs() {
           const isActive = panel.dataset.financialPanel === key;
           panel.classList.toggle("is-active", isActive);
           panel.hidden = !isActive;
+          if (isActive) {
+            const moreLink = summary.querySelector(".financial-more-link");
+            if (moreLink && panel.dataset.financialDetailUrl) {
+              moreLink.href = panel.dataset.financialDetailUrl;
+            }
+          }
         });
       });
     });

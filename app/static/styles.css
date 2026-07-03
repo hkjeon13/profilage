@@ -103,7 +103,7 @@ a:hover {
 }
 
 .google-like-home:not(.is-idle) .status {
-  margin-top: 24px;
+  margin-top: 36px;
   font-size: 14px;
 }
 
@@ -704,8 +704,14 @@ a:hover {
 }
 
 .financial-summary-heading {
-  align-items: start;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
   margin-bottom: 0;
+}
+
+.financial-summary-heading .summary-tabs {
+  grid-column: 1 / -1;
 }
 
 .financial-summary-panel {
@@ -731,7 +737,7 @@ a:hover {
   font-weight: 700;
 }
 
-.financial-summary-panel-head .text-link {
+.financial-more-link {
   flex: 0 0 auto;
   color: var(--accent);
   font-size: 13px;
@@ -785,7 +791,6 @@ a:hover {
   grid-template-columns: 1fr;
 }
 
-.company-insight-row .financial-summary-heading,
 .company-insight-row .financial-summary-panel-head {
   align-items: flex-start;
   flex-direction: column;

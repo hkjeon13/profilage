@@ -141,7 +141,7 @@ def test_search_results_status_has_breathing_room():
         response = client.get("/styles.css")
 
     assert response.status_code == 200
-    assert ".google-like-home:not(.is-idle) .status {\n  margin-top: 24px;" in response.text
+    assert ".google-like-home:not(.is-idle) .status {\n  margin-top: 36px;" in response.text
 
 
 def test_profile_page_serves_company_profile_frontend():
@@ -153,7 +153,7 @@ def test_profile_page_serves_company_profile_frontend():
     assert "기업 프로필" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-10" in response.text
+    assert "/profile-page-5.js?v=company-profile-11" in response.text
 
 
 def test_profile_frontend_exposes_card_layout_assets():
@@ -248,6 +248,16 @@ def test_financial_summary_uses_metric_card_grid():
     assert ".financial-summary-panel[hidden]" in style_response.text
 
 
+def test_financial_summary_more_link_is_in_card_heading():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+
+    assert script_response.status_code == 200
+    assert '<a class="text-link financial-more-link"' in script_response.text
+    assert script_response.text.index('<a class="text-link financial-more-link"') < script_response.text.index('<div class="summary-tabs"')
+    assert '<a class="text-link" href="${financialDetailUrl(crno, selected)}">더보기</a>' not in script_response.text
+
+
 def test_financial_summary_and_disclosures_share_horizontal_row():
     with TestClient(app) as client:
         script_response = client.get("/profile-page-5.js")
@@ -259,6 +269,15 @@ def test_financial_summary_and_disclosures_share_horizontal_row():
     assert "renderCompanyInsightRow(info)" in script_response.text
     assert ".company-insight-row" in style_response.text
     assert "grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);" in style_response.text
+
+
+def test_profile_recent_disclosures_shows_ten_items():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+
+    assert script_response.status_code == 200
+    assert "slice(0, 10)" in script_response.text
+    assert "slice(0, 5)" not in script_response.text
 
 
 def test_stock_chart_svg_uses_full_card_width():
