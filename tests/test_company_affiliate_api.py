@@ -213,6 +213,8 @@ def test_profile_overview_groups_company_information_without_relationship_card()
     assert "companySummaryText" in script_response.text
     assert "firstCompanyValue(info.corp_outline" in script_response.text
     assert "DART 공시와 KRX 종목 정보를 한 화면에서 확인할 수 있습니다" not in script_response.text
+    assert ".company-facts dd {\n  min-width: 0;\n  margin: 0;\n  color: #111827;\n  font-weight: 500;" in style_response.text
+    assert "font-weight: 780;" not in style_response.text
 
 
 def test_profile_hero_uses_single_arrow_back_action_without_api_cta():
@@ -235,6 +237,9 @@ def test_profile_hero_uses_single_arrow_back_action_without_api_cta():
     assert "padding: 92px 26px 42px;" in style_response.text
     assert ".company-logo-box {\n  display: grid;\n  width: 70px;" in style_response.text
     assert ".company-logo-box {\n  display: grid;\n  position: absolute;" not in style_response.text
+    assert "overflow-wrap: anywhere;" in style_response.text
+    assert "@media (max-width: 560px)" in style_response.text
+    assert ".profile-page .info-block {\n    padding: 18px;" in style_response.text
 
 
 def test_profile_frontend_does_not_duplicate_recent_disclosures():

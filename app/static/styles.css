@@ -1064,6 +1064,7 @@ a:hover {
 
 .profile-title-block {
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .profile-kicker {
@@ -1080,6 +1081,7 @@ a:hover {
   font-size: clamp(25px, 3.2vw, 38px);
   line-height: 1.12;
   letter-spacing: 0;
+  overflow-wrap: anywhere;
 }
 
 .profile-hero p {
@@ -1087,6 +1089,7 @@ a:hover {
   max-width: 640px;
   color: #667085;
   line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 
 .profile-layout {
@@ -1171,7 +1174,7 @@ a:hover {
   min-width: 0;
   margin: 0;
   color: #111827;
-  font-weight: 780;
+  font-weight: 500;
   word-break: break-word;
 }
 
@@ -1398,5 +1401,50 @@ a:hover {
     flex-wrap: wrap;
     gap: 14px;
     padding: 14px 24px;
+  }
+}
+
+@media (max-width: 560px) {
+  .company-canvas {
+    width: 100%;
+    min-height: 100vh;
+    margin: 0;
+    border-radius: 0;
+  }
+
+  .profile-shell {
+    width: min(100% - 20px, 520px);
+    padding-bottom: 32px;
+  }
+
+  .profile-page .info-block {
+    padding: 18px;
+  }
+
+  .profile-hero {
+    padding: 70px 18px 24px;
+  }
+
+  .profile-identity-row {
+    gap: 12px;
+  }
+
+  .company-logo-box {
+    width: 52px;
+    height: 52px;
+    flex-basis: 52px;
+    font-size: 17px;
+  }
+
+  .profile-hero h1 {
+    font-size: 28px;
+  }
+
+  .profile-hero p {
+    font-size: 14px;
+  }
+
+  .stock-chart svg {
+    height: 118px;
   }
 }
