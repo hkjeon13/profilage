@@ -27,6 +27,16 @@ function firstItem(payload) {
   return normalizeItems(payload)[0] || {};
 }
 
+function firstCompanyValue(payload, keys) {
+  for (const item of normalizeItems(payload)) {
+    for (const key of keys) {
+      const value = item?.[key];
+      if (value !== undefined && value !== null && value !== "") return value;
+    }
+  }
+  return "";
+}
+
 function text(value, fallback = "-") {
   return value === undefined || value === null || value === "" ? fallback : value;
 }
@@ -117,6 +127,20 @@ function formatFinancialAmount(value, currency = "KRW") {
     return `${sign}${man.toLocaleString("ko-KR")}만원`;
   }
   return `${sign}${absolute.toLocaleString("ko-KR")}원`;
+}
+
+function companySummaryText({ info, outline, listed, market }) {
+  const corpName = text(outline.corpNm, "이 기업");
+  const industry = firstCompanyValue(info.corp_outline, ["enpMainBizNm", "sicNm"]);
+  const listedName = text(listed.itmsNm || outline.enpPbanCmpyNm, "상장 종목");
+  const ticker = listed.srtnCd ? `(${text(listed.srtnCd)})` : "";
+  const representative = outline.enpRprFnm ? ` 대표자는 ${text(outline.enpRprFnm)}입니다.` : "";
+
+  if (industry) {
+    return `${corpName}은 ${text(industry)}을 중심으로 하는 ${market} 상장 기업입니다. ${listedName}${ticker} 종목으로 거래됩니다.${representative}`;
+  }
+
+  return `${corpName}은 ${market} 시장에 상장된 ${listedName}${ticker} 기업입니다.${representative}`;
 }
 
 function formatChartDate(value) {
@@ -820,6 +844,7 @@ function renderCompanyDetail({ info, outline, listed, stock }) {
   const crno = new URLSearchParams(window.location.search).get("crno");
   const homepage = homepageUrl(outline.enpHmpgUrl);
   const market = text(listed.mrktCtg || outline.corpRegMrktDcdNm, "비상장/정보 없음");
+  const companySummary = companySummaryText({ info, outline, listed, market });
   const logo = document.querySelector(".company-logo-box");
 
   profileTitle.textContent = text(outline.corpNm, "기업 프로필");
@@ -838,8 +863,7 @@ function renderCompanyDetail({ info, outline, listed, stock }) {
             ${homepage ? `<a href="${homepage}" target="_blank" rel="noreferrer">홈페이지</a>` : ""}
           </div>
           <p class="company-summary">
-            ${text(outline.corpNm, "이 기업")}은 ${market} 시장 정보와 공공데이터 기업개요를 기준으로 정리된 프로필입니다.
-            법인등록번호, 대표자, 설립일, DART 공시와 KRX 종목 정보를 한 화면에서 확인할 수 있습니다.
+            ${escapeHtml(companySummary)}
           </p>
           <section class="company-profile-info-section" aria-label="기업 정보">
             <h3>기업 정보</h3>

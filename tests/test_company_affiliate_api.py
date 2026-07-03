@@ -165,7 +165,7 @@ def test_profile_page_serves_company_profile_frontend():
     assert "기업 프로필" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-12" in response.text
+    assert "/profile-page-5.js?v=company-profile-13" in response.text
 
 
 def test_profile_back_link_preserves_return_search_query():
@@ -210,6 +210,9 @@ def test_profile_overview_groups_company_information_without_relationship_card()
     assert ".company-profile-info-section" in style_response.text
     assert ".company-summary" in style_response.text
     assert "border-bottom: 1px solid #eef0f6;" in style_response.text
+    assert "companySummaryText" in script_response.text
+    assert "firstCompanyValue(info.corp_outline" in script_response.text
+    assert "DART 공시와 KRX 종목 정보를 한 화면에서 확인할 수 있습니다" not in script_response.text
 
 
 def test_profile_hero_uses_single_arrow_back_action_without_api_cta():
@@ -253,6 +256,10 @@ def test_profile_disclosures_open_inside_page_viewer():
     assert 'target="_blank" rel="noreferrer">${text(item.report_nm)}</a>' not in script_response.text
     assert ".disclosure-viewer-modal" in style_response.text
     assert ".disclosure-viewer-frame" in style_response.text
+    assert ".company-disclosure-card .block-heading" in style_response.text
+    assert ".company-disclosure-card .disclosure-list li" in style_response.text
+    assert "border-bottom: 1px solid #eef0f6;" in style_response.text
+    assert ".company-disclosure-card .disclosure-list li:last-child" in style_response.text
 
 
 def test_financial_summary_uses_metric_card_grid():

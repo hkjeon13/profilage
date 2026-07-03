@@ -805,6 +805,28 @@ a:hover {
   align-content: start;
 }
 
+.company-disclosure-card .block-heading {
+  margin-bottom: 18px;
+}
+
+.company-disclosure-card .disclosure-list {
+  gap: 0;
+}
+
+.company-disclosure-card .disclosure-list li {
+  border-bottom: 1px solid #eef0f6;
+  padding: 12px 0;
+}
+
+.company-disclosure-card .disclosure-list li:first-child {
+  padding-top: 0;
+}
+
+.company-disclosure-card .disclosure-list li:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
 .empty-copy {
   margin: 0;
   color: var(--muted);
