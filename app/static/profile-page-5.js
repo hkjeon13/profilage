@@ -1,6 +1,7 @@
 const profileTitle = document.querySelector("#profile-title");
 const profileSubtitle = document.querySelector("#profile-subtitle");
 const profileDetail = document.querySelector("#profile-detail");
+const profileCard = document.querySelector(".company-profile-card");
 
 const infoUrl = "/api/company/get_company_info";
 const stockUrl = "/api/company/get_stock_price";
@@ -27,6 +28,31 @@ function firstItem(payload) {
 
 function text(value, fallback = "-") {
   return value === undefined || value === null || value === "" ? fallback : value;
+}
+
+function initials(value) {
+  const source = text(value, "P").replace(/\(.*?\)/g, "").trim();
+  const koreanInitials = Array.from(source).filter((char) => /[가-힣A-Za-z0-9]/.test(char));
+  return (koreanInitials.slice(0, 2).join("") || "P").toUpperCase();
+}
+
+function itemCount(payload) {
+  return normalizeItems(payload).length;
+}
+
+function compactDate(value) {
+  if (!value) return "-";
+  const raw = String(value).replaceAll("-", "");
+  if (/^\d{8}$/.test(raw)) {
+    return `${raw.slice(0, 4)}.${raw.slice(4, 6)}.${raw.slice(6, 8)}`;
+  }
+  return value;
+}
+
+function homepageUrl(value) {
+  const url = text(value, "");
+  if (!url) return "";
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`;
 }
 
 function formatNumber(value) {
@@ -318,14 +344,26 @@ async function fetchJson(url, params) {
 }
 
 function renderProfileSkeleton() {
+  profileCard?.classList.add("is-loading");
   profileTitle.innerHTML = `<span class="skeleton-line skeleton-hero-title"></span>`;
   profileSubtitle.innerHTML = `<span class="skeleton-line skeleton-hero-subtitle"></span>`;
   profileDetail.innerHTML = `
-    <div class="detail-header skeleton-detail-header" aria-hidden="true">
-      <span class="skeleton-line skeleton-title"></span>
-      <span class="skeleton-line skeleton-short"></span>
-    </div>
-    <div class="detail-body" aria-hidden="true">
+    <div class="company-overview-grid" aria-hidden="true">
+      <div class="company-main-column">
+        <article class="info-block skeleton-block">
+          <span class="skeleton-line skeleton-section-title"></span>
+          <span class="skeleton-line"></span>
+          <span class="skeleton-line"></span>
+          <span class="skeleton-line skeleton-wide"></span>
+        </article>
+        <article class="info-block skeleton-block">
+          <span class="skeleton-line skeleton-section-title"></span>
+          <span class="skeleton-line skeleton-price"></span>
+          <span class="skeleton-line skeleton-short"></span>
+          <span class="skeleton-chart"></span>
+        </article>
+      </div>
+      <aside class="company-side-panel">
       ${Array.from({ length: 2 })
         .map(
           () => `
@@ -338,22 +376,13 @@ function renderProfileSkeleton() {
           `,
         )
         .join("")}
-      <article class="info-block skeleton-block">
-        <span class="skeleton-line skeleton-section-title"></span>
-        <span class="skeleton-line skeleton-price"></span>
-        <span class="skeleton-line skeleton-short"></span>
-        <span class="skeleton-chart"></span>
-      </article>
-      <article class="info-block full skeleton-block">
-        <span class="skeleton-line skeleton-section-title"></span>
-        <span class="skeleton-line"></span>
-        <span class="skeleton-line skeleton-wide"></span>
-      </article>
+      </aside>
     </div>
   `;
 }
 
 function renderError(message) {
+  profileCard?.classList.remove("is-loading");
   profileTitle.textContent = "기업 프로필을 열 수 없습니다";
   profileSubtitle.textContent = message;
   profileDetail.innerHTML = `
@@ -627,49 +656,101 @@ function renderCompanyDetail({ info, outline, listed, stock }) {
   const summary = stock?.summary || {};
   const price = summary.price || summary.extracted_price;
   const change = summary.price_movement?.percentage || summary.price_movement?.value;
+  const crno = new URLSearchParams(window.location.search).get("crno");
+  const homepage = homepageUrl(outline.enpHmpgUrl);
+  const affiliateCount = itemCount(info.affiliate);
+  const subsidiaryCount = itemCount(info.cons_subs_comp);
+  const disclosures = info.dart_disclosures?.list || [];
+  const latestDisclosure = disclosures[0];
+  const market = text(listed.mrktCtg || outline.corpRegMrktDcdNm, "비상장/정보 없음");
+  const logo = document.querySelector(".company-logo-box");
 
   profileTitle.textContent = text(outline.corpNm, "기업 프로필");
   profileSubtitle.textContent = text(outline.corpEnsnNm, "영문명 정보 없음");
+  profileCard?.classList.remove("is-loading");
+  if (logo) {
+    logo.textContent = initials(outline.corpNm);
+  }
 
   profileDetail.innerHTML = `
-    <div class="detail-header">
-      <h2>${text(outline.corpNm)}</h2>
-      <p>${text(outline.corpEnsnNm, "영문명 정보 없음")}</p>
-    </div>
-    <div class="detail-body">
-      <article class="info-block">
-        <h3>기업 개요</h3>
-        <dl class="kv">
-          <dt>법인등록번호</dt><dd>${text(outline.crno)}</dd>
-          <dt>대표자</dt><dd>${text(outline.enpRprFnm)}</dd>
-          <dt>사업자번호</dt><dd>${text(outline.bzno)}</dd>
-          <dt>설립일</dt><dd>${text(outline.enpEstbDt)}</dd>
-        </dl>
-      </article>
-      <article class="info-block">
-        <h3>상장 정보</h3>
-        <dl class="kv">
-          <dt>종목명</dt><dd>${text(listed.itmsNm)}</dd>
-          <dt>단축코드</dt><dd>${text(listed.srtnCd)}</dd>
-          <dt>시장</dt><dd>${text(listed.mrktCtg)}</dd>
-          <dt>ISIN</dt><dd>${text(listed.isinCd)}</dd>
-        </dl>
-      </article>
-      <article class="info-block">
-        <h3>주가</h3>
-        <div class="price">${formatNumber(price)}</div>
-        <div class="price-meta">${text(change, "변동 정보 없음")}</div>
-        ${renderStockChart(stock)}
-      </article>
-      ${renderDartFinancialAccounts(info)}
-      ${renderDartDisclosures(info.dart_disclosures)}
-      <article class="info-block full">
-        <h3>주소</h3>
-        <dl class="kv">
-          <dt>도로명</dt><dd>${text(outline.enpBsadr)}</dd>
-          <dt>홈페이지</dt><dd>${text(outline.enpHmpgUrl)}</dd>
-        </dl>
-      </article>
+    <div class="company-overview-grid">
+      <div class="company-main-column">
+        <article class="info-block company-about-card">
+          <div class="block-heading">
+            <h3>기업 개요</h3>
+            ${homepage ? `<a href="${homepage}" target="_blank" rel="noreferrer">홈페이지</a>` : ""}
+          </div>
+          <p class="company-summary">
+            ${text(outline.corpNm, "이 기업")}은 ${market} 시장 정보와 공공데이터 기업개요를 기준으로 정리된 프로필입니다.
+            법인등록번호, 대표자, 설립일, DART 공시와 KRX 종목 정보를 한 화면에서 확인할 수 있습니다.
+          </p>
+          <dl class="company-facts">
+            <div><dt>대표자</dt><dd>${text(outline.enpRprFnm)}</dd></div>
+            <div><dt>설립일</dt><dd>${compactDate(outline.enpEstbDt)}</dd></div>
+            <div><dt>법인등록번호</dt><dd>${text(outline.crno || crno)}</dd></div>
+            <div><dt>사업자번호</dt><dd>${text(outline.bzno)}</dd></div>
+          </dl>
+        </article>
+
+        <article class="info-block company-market-card">
+          <div class="block-heading">
+            <h3>상장 및 주가</h3>
+            <span class="market-pill">${market}</span>
+          </div>
+          <div class="price-row">
+            <div>
+              <span class="price-label">${text(listed.itmsNm || outline.corpNm, "종목")}</span>
+              <div class="price">${formatNumber(price)}</div>
+            </div>
+            <div class="price-meta">${text(change, "변동 정보 없음")}</div>
+          </div>
+          ${renderStockChart(stock)}
+        </article>
+
+        ${renderDartFinancialAccounts(info)}
+        ${renderDartDisclosures(info.dart_disclosures)}
+
+        <article class="info-block company-address-card">
+          <h3>주소</h3>
+          <p>${text(outline.enpBsadr, "주소 정보 없음")}</p>
+        </article>
+      </div>
+
+      <aside class="company-side-panel" aria-label="기업 요약">
+        <article class="info-block company-side-card">
+          <h3>핵심 정보</h3>
+          <dl class="side-list">
+            <div><dt>시장</dt><dd>${market}</dd></div>
+            <div><dt>단축코드</dt><dd>${text(listed.srtnCd)}</dd></div>
+            <div><dt>ISIN</dt><dd>${text(listed.isinCd)}</dd></div>
+            <div><dt>업종</dt><dd>${text(outline.enpMainBizNm || listed.itmsNm, "정보 없음")}</dd></div>
+          </dl>
+        </article>
+
+        <article class="info-block company-side-card">
+          <h3>관계 회사</h3>
+          <div class="network-row">
+            <strong>${affiliateCount.toLocaleString("ko-KR")}</strong>
+            <span>계열회사</span>
+          </div>
+          <div class="network-row">
+            <strong>${subsidiaryCount.toLocaleString("ko-KR")}</strong>
+            <span>연결대상 종속기업</span>
+          </div>
+        </article>
+
+        <article class="info-block company-side-card">
+          <h3>최근 공시</h3>
+          ${
+            latestDisclosure
+              ? `<a class="latest-disclosure" href="${text(latestDisclosure.viewer_url, "#")}" target="_blank" rel="noreferrer">
+                  ${text(latestDisclosure.report_nm)}
+                </a>
+                <p class="side-muted">${text(latestDisclosure.rcept_dt)} · ${text(latestDisclosure.flr_nm || latestDisclosure.corp_name)}</p>`
+              : `<p class="side-muted">표시할 공시가 없습니다.</p>`
+          }
+        </article>
+      </aside>
     </div>
   `;
   setupStockChartInteractions();

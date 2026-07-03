@@ -147,6 +147,21 @@ def test_profile_page_serves_company_profile_frontend():
     assert "/api/company/get_stock_price" in response.text
 
 
+def test_profile_frontend_exposes_card_layout_assets():
+    with TestClient(app) as client:
+        profile_response = client.get("/profile")
+        script_response = client.get("/profile-page-5.js")
+        style_response = client.get("/styles.css")
+
+    assert profile_response.status_code == 200
+    assert script_response.status_code == 200
+    assert style_response.status_code == 200
+    assert "company-canvas" in profile_response.text
+    assert "company-profile-card" in script_response.text
+    assert "company-side-panel" in script_response.text
+    assert ".company-background" in style_response.text
+
+
 def test_company_api_is_available_under_api_prefix(monkeypatch):
     monkeypatch.setenv("OPEN_API_DECODING_KEY", "decoded-service-key")
     monkeypatch.delenv("OPEN_API_ENCODING_KEY", raising=False)
