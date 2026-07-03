@@ -134,6 +134,7 @@ def test_root_serves_company_search_frontend():
     assert 'class="search-actions"' in response.text
     assert "/api/company/get_corp_outline" in response.text
     assert "/profile?crno=" in response.text
+    assert "/app.js?v=google-home-7" in response.text
 
 
 def test_search_results_status_has_breathing_room():
@@ -142,6 +143,17 @@ def test_search_results_status_has_breathing_room():
 
     assert response.status_code == 200
     assert ".google-like-home:not(.is-idle) .status {\n  margin-top: 36px;" in response.text
+
+
+def test_search_results_can_restore_query_from_return_url():
+    with TestClient(app) as client:
+        script_response = client.get("/app.js")
+
+    assert script_response.status_code == 200
+    assert 'window.location.search).get("q")' in script_response.text
+    assert "searchCompanies(restoredQuery" in script_response.text
+    assert 'window.history.replaceState({}, "", nextUrl)' in script_response.text
+    assert 'return_q' in script_response.text
 
 
 def test_profile_page_serves_company_profile_frontend():
@@ -153,7 +165,17 @@ def test_profile_page_serves_company_profile_frontend():
     assert "기업 프로필" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-11" in response.text
+    assert "/profile-page-5.js?v=company-profile-12" in response.text
+
+
+def test_profile_back_link_preserves_return_search_query():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+
+    assert script_response.status_code == 200
+    assert 'searchParams.get("return_q")' in script_response.text
+    assert 'document.querySelector(".back-link")' in script_response.text
+    assert 'backLink.href = `/?q=${encodeURIComponent(returnQuery)}`;' in script_response.text
 
 
 def test_profile_frontend_exposes_card_layout_assets():

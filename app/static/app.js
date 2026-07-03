@@ -7,8 +7,27 @@ const luckySearchButton = document.querySelector("#lucky-search");
 const outlineUrl = "/api/company/get_corp_outline";
 const listedUrl = "/api/company/get_krx_listed_item";
 
-function profileUrl(corporateRegistrationNumber) {
-  return `/profile?crno=${encodeURIComponent(corporateRegistrationNumber)}`;
+function currentSearchQuery() {
+  return queryInput.value.trim();
+}
+
+function profileUrl(corporateRegistrationNumber, returnQuery = currentSearchQuery()) {
+  const endpoint = new URL("/profile", window.location.origin);
+  endpoint.searchParams.set("crno", corporateRegistrationNumber);
+  if (returnQuery) {
+    endpoint.searchParams.set("return_q", returnQuery);
+  }
+  return `${endpoint.pathname}${endpoint.search}`;
+}
+
+function syncSearchUrl(query) {
+  const nextUrl = new URL(window.location.href);
+  if (query) {
+    nextUrl.searchParams.set("q", query);
+  } else {
+    nextUrl.searchParams.delete("q");
+  }
+  window.history.replaceState({}, "", nextUrl);
 }
 
 function normalizeItems(payload) {
@@ -150,6 +169,8 @@ async function fetchJson(url, params) {
 
 async function searchCompanies(query) {
   document.body.classList.remove("is-idle");
+  queryInput.value = query;
+  syncSearchUrl(query);
   setStatus("검색 중...");
   renderSearchSkeleton();
 
@@ -212,10 +233,11 @@ async function searchCompanies(query) {
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
-  const query = queryInput.value.trim();
+  const query = currentSearchQuery();
   if (!query) {
     setStatus("기업명을 입력해주세요.");
     clearResults();
+    syncSearchUrl("");
     return;
   }
   searchCompanies(query);
@@ -225,3 +247,8 @@ luckySearchButton.addEventListener("click", () => {
   queryInput.value = "삼성전자";
   searchCompanies("삼성전자");
 });
+
+const restoredQuery = new URLSearchParams(window.location.search).get("q");
+if (restoredQuery) {
+  searchCompanies(restoredQuery);
+}

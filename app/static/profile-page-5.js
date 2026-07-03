@@ -2,6 +2,7 @@ const profileTitle = document.querySelector("#profile-title");
 const profileSubtitle = document.querySelector("#profile-subtitle");
 const profileDetail = document.querySelector("#profile-detail");
 const profileCard = document.querySelector(".company-profile-card");
+const backLink = document.querySelector(".back-link");
 
 const infoUrl = "/api/company/get_company_info";
 const stockUrl = "/api/company/get_stock_price";
@@ -41,6 +42,13 @@ function escapeHtml(value) {
 
 function attr(value, fallback = "") {
   return escapeHtml(text(value, fallback));
+}
+
+function setupReturnSearchLink(searchParams) {
+  const returnQuery = searchParams.get("return_q");
+  if (returnQuery && backLink) {
+    backLink.href = `/?q=${encodeURIComponent(returnQuery)}`;
+  }
 }
 
 function initials(value) {
@@ -880,6 +888,7 @@ function renderCompanyDetail({ info, outline, listed, stock }) {
 
 async function loadProfile() {
   const searchParams = new URLSearchParams(window.location.search);
+  setupReturnSearchLink(searchParams);
   const crno = searchParams.get("crno");
   const view = searchParams.get("view");
   if (!crno) {
