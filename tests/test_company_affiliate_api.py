@@ -153,6 +153,7 @@ def test_profile_page_serves_company_profile_frontend():
     assert "기업 프로필" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
+    assert "/profile-page-5.js?v=company-profile-2" in response.text
 
 
 def test_profile_frontend_exposes_card_layout_assets():
