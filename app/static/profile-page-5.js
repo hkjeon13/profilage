@@ -239,22 +239,13 @@ function renderStockChart(stock) {
   const linePath = coordinates
     .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
     .join(" ");
-  const splitIndex = Math.max(1, Math.floor((coordinates.length - 1) * 0.68));
-  const primaryCoordinates = coordinates.slice(0, splitIndex + 1);
-  const mutedCoordinates = coordinates.slice(splitIndex);
-  const primaryPath = primaryCoordinates
-    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
-    .join(" ");
-  const mutedPath = mutedCoordinates
-    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
-    .join(" ");
   const areaBase = height - paddingY;
   const areaPath = `${linePath} L ${coordinates.at(-1).x.toFixed(2)} ${areaBase} L ${coordinates[0].x.toFixed(2)} ${areaBase} Z`;
   const axisLabels = [max, mid, min].map(formatChartAxisNumber);
   const xLabels = [
-    formatChartTime(points[0].date),
-    formatChartTime(points[Math.floor((points.length - 1) / 2)].date),
-    formatChartTime(points.at(-1).date),
+    formatChartDate(points[0].date),
+    formatChartDate(points[Math.floor((points.length - 1) / 2)].date),
+    formatChartDate(points.at(-1).date),
   ];
 
   return `
@@ -271,8 +262,7 @@ function renderStockChart(stock) {
       <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="1개월 주가 추이" tabindex="0">
         <path class="stock-chart-grid" d="M ${paddingX} ${paddingY} H ${width - paddingX} M ${paddingX} ${height / 2} H ${width - paddingX} M ${paddingX} ${height - paddingY} H ${width - paddingX}" />
         <path class="stock-chart-area" d="${areaPath}" />
-        <path class="stock-chart-line stock-chart-line-primary" d="${primaryPath}" />
-        <path class="stock-chart-line stock-chart-line-muted" d="${mutedPath}" />
+        <path class="stock-chart-line stock-chart-line-primary" d="${linePath}" />
         <line class="stock-chart-guide" x1="${coordinates.at(-1).x.toFixed(2)}" y1="${paddingY}" x2="${coordinates.at(-1).x.toFixed(2)}" y2="${height - paddingY}" />
         <circle class="stock-chart-dot" cx="${coordinates.at(-1).x.toFixed(2)}" cy="${coordinates.at(-1).y.toFixed(2)}" r="4" />
         <rect class="stock-chart-hit-area" x="0" y="0" width="${width}" height="${height}" />
@@ -556,7 +546,7 @@ function renderDartDisclosures(disclosures) {
   const crno = new URLSearchParams(window.location.search).get("crno");
 
   return `
-    <article class="info-block full">
+    <article class="info-block company-disclosure-card">
       <div class="block-heading">
         <h3>최근 공시</h3>
         <a href="/profile?crno=${encodeURIComponent(crno)}&view=disclosures">더보기</a>
@@ -653,6 +643,19 @@ function renderDartFinancialAccounts(info) {
       ${renderFinancialSummaryPanel({ report: quarterReport, key: "quarter", isActive: activeKey === "quarter" })}
       ${renderFinancialSummaryPanel({ report: annualReport, key: "annual", isActive: activeKey === "annual" })}
     </article>
+  `;
+}
+
+function renderCompanyInsightRow(info) {
+  const financialSummary = renderDartFinancialAccounts(info);
+  const disclosures = renderDartDisclosures(info.dart_disclosures);
+  if (!financialSummary && !disclosures) return "";
+
+  return `
+    <div class="company-insight-row">
+      ${financialSummary}
+      ${disclosures}
+    </div>
   `;
 }
 
@@ -866,8 +869,7 @@ function renderCompanyDetail({ info, outline, listed, stock }) {
           ${renderStockChart(stock)}
         </article>
 
-        ${renderDartFinancialAccounts(info)}
-        ${renderDartDisclosures(info.dart_disclosures)}
+        ${renderCompanyInsightRow(info)}
 
         <article class="info-block company-address-card">
           <h3>주소</h3>

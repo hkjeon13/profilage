@@ -153,7 +153,7 @@ def test_profile_page_serves_company_profile_frontend():
     assert "기업 프로필" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-6" in response.text
+    assert "/profile-page-5.js?v=company-profile-7" in response.text
 
 
 def test_profile_frontend_exposes_card_layout_assets():
@@ -225,6 +225,19 @@ def test_financial_summary_uses_metric_card_grid():
     assert ".financial-summary-panel[hidden]" in style_response.text
 
 
+def test_financial_summary_and_disclosures_share_horizontal_row():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+        style_response = client.get("/styles.css")
+
+    assert script_response.status_code == 200
+    assert style_response.status_code == 200
+    assert "company-insight-row" in script_response.text
+    assert "renderCompanyInsightRow(info)" in script_response.text
+    assert ".company-insight-row" in style_response.text
+    assert "grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);" in style_response.text
+
+
 def test_stock_chart_svg_uses_full_card_width():
     with TestClient(app) as client:
         script_response = client.get("/profile-page-5.js")
@@ -241,7 +254,18 @@ def test_stock_chart_matches_reference_style_structure():
     assert "stock-range-tabs" in script_response.text
     assert "stock-chart-axis-labels" in script_response.text
     assert "stock-chart-line-primary" in script_response.text
-    assert "stock-chart-line-muted" in script_response.text
+    assert "stock-chart-line-muted" not in script_response.text
+
+
+def test_stock_chart_uses_date_axis_for_monthly_data():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+
+    assert script_response.status_code == 200
+    assert "formatChartDate(points[0].date)" in script_response.text
+    assert "formatChartDate(points[Math.floor((points.length - 1) / 2)].date)" in script_response.text
+    assert "formatChartDate(points.at(-1).date)" in script_response.text
+    assert "formatChartTime(points[0].date)" not in script_response.text
 
 
 def test_stock_chart_keeps_endpoint_axis_labels_visible():

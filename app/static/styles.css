@@ -771,6 +771,34 @@ a:hover {
   word-break: keep-all;
 }
 
+.company-insight-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 22px;
+}
+
+.company-insight-row .info-block {
+  min-height: auto;
+}
+
+.company-insight-row .financial-metrics {
+  grid-template-columns: 1fr;
+}
+
+.company-insight-row .financial-summary-heading,
+.company-insight-row .financial-summary-panel-head {
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+.company-insight-row .summary-tabs {
+  width: 100%;
+}
+
+.company-disclosure-card {
+  align-content: start;
+}
+
 .empty-copy {
   margin: 0;
   color: var(--muted);
@@ -1313,7 +1341,8 @@ a:hover {
   }
 
   .company-overview-grid,
-  .company-facts {
+  .company-facts,
+  .company-insight-row {
     grid-template-columns: 1fr;
   }
 
