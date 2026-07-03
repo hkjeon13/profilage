@@ -788,7 +788,8 @@ a:hover {
 }
 
 .company-insight-row .financial-metrics {
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 220px));
+  justify-content: start;
 }
 
 .company-insight-row .financial-summary-panel-head {

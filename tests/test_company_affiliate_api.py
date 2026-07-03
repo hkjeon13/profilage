@@ -268,6 +268,8 @@ def test_financial_summary_uses_metric_card_grid():
     assert ".financial-metrics" in style_response.text
     assert ".financial-metric-card" in style_response.text
     assert ".financial-summary-panel[hidden]" in style_response.text
+    assert "repeat(auto-fit, minmax(min(100%, 210px), 220px))" in style_response.text
+    assert ".company-insight-row .financial-metrics {\n  grid-template-columns: 1fr;" not in style_response.text
 
 
 def test_financial_summary_more_link_is_in_card_heading():
