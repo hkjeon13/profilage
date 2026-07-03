@@ -153,7 +153,7 @@ def test_profile_page_serves_company_profile_frontend():
     assert "기업 프로필" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-5" in response.text
+    assert "/profile-page-5.js?v=company-profile-6" in response.text
 
 
 def test_profile_frontend_exposes_card_layout_assets():
@@ -169,6 +169,20 @@ def test_profile_frontend_exposes_card_layout_assets():
     assert "company-profile-card" in script_response.text
     assert "company-side-panel" in script_response.text
     assert ".company-background" in style_response.text
+
+
+def test_profile_hero_uses_icon_search_action_without_api_cta():
+    with TestClient(app) as client:
+        response = client.get("/profile")
+        style_response = client.get("/styles.css")
+
+    assert response.status_code == 200
+    assert style_response.status_code == 200
+    assert "API 보기" not in response.text
+    assert "primary-action" not in response.text
+    assert 'class="profile-search-action"' in response.text
+    assert 'aria-label="다시 검색"' in response.text
+    assert ".profile-search-action" in style_response.text
 
 
 def test_profile_frontend_does_not_duplicate_recent_disclosures():
@@ -194,6 +208,21 @@ def test_profile_disclosures_open_inside_page_viewer():
     assert 'target="_blank" rel="noreferrer">${text(item.report_nm)}</a>' not in script_response.text
     assert ".disclosure-viewer-modal" in style_response.text
     assert ".disclosure-viewer-frame" in style_response.text
+
+
+def test_financial_summary_uses_metric_card_grid():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+        style_response = client.get("/styles.css")
+
+    assert script_response.status_code == 200
+    assert style_response.status_code == 200
+    assert "financial-summary-heading" in script_response.text
+    assert "financial-metrics" in script_response.text
+    assert "financial-metric-card" in script_response.text
+    assert ".financial-metrics" in style_response.text
+    assert ".financial-metric-card" in style_response.text
+    assert ".financial-summary-panel[hidden]" in style_response.text
 
 
 def test_stock_chart_svg_uses_full_card_width():

@@ -604,18 +604,22 @@ function renderFinancialSummaryPanel({ report, key, isActive }) {
 
   return `
     <div class="financial-summary-panel ${isActive ? "is-active" : ""}" data-financial-panel="${key}" ${isActive ? "" : "hidden"}>
-      <p class="financial-summary-meta">${subtitle}</p>
-      <dl class="kv">
+      <div class="financial-summary-panel-head">
+        <p class="financial-summary-meta">${subtitle}</p>
+        <a class="text-link" href="${financialDetailUrl(crno, selected)}">더보기</a>
+      </div>
+      <dl class="financial-metrics">
         ${items
           .map(
             (item) => `
-              <dt>${text(item.account_nm)}</dt>
-              <dd>${formatFinancialAmount(item.thstrm_amount, item.currency)}</dd>
+              <div class="financial-metric-card">
+                <dt>${text(item.account_nm)}</dt>
+                <dd>${formatFinancialAmount(item.thstrm_amount, item.currency)}</dd>
+              </div>
             `,
           )
           .join("")}
       </dl>
-      <a class="text-link" href="${financialDetailUrl(crno, selected)}">더보기</a>
     </div>
   `;
 }
@@ -635,16 +639,16 @@ function renderDartFinancialAccounts(info) {
 
   return `
     <article class="info-block financial-summary">
-      <div class="block-heading">
+      <div class="block-heading financial-summary-heading">
         <h3>재무 요약</h3>
-      </div>
-      <div class="summary-tabs" role="tablist" aria-label="재무제표 기간">
-        <button type="button" class="${activeKey === "quarter" ? "is-active" : ""}" data-financial-tab="quarter" ${hasQuarter ? "" : "disabled"}>
-          분기
-        </button>
-        <button type="button" class="${activeKey === "annual" ? "is-active" : ""}" data-financial-tab="annual" ${hasAnnual ? "" : "disabled"}>
-          연간
-        </button>
+        <div class="summary-tabs" role="tablist" aria-label="재무제표 기간">
+          <button type="button" class="${activeKey === "quarter" ? "is-active" : ""}" data-financial-tab="quarter" ${hasQuarter ? "" : "disabled"}>
+            분기
+          </button>
+          <button type="button" class="${activeKey === "annual" ? "is-active" : ""}" data-financial-tab="annual" ${hasAnnual ? "" : "disabled"}>
+            연간
+          </button>
+        </div>
       </div>
       ${renderFinancialSummaryPanel({ report: quarterReport, key: "quarter", isActive: activeKey === "quarter" })}
       ${renderFinancialSummaryPanel({ report: annualReport, key: "annual", isActive: activeKey === "annual" })}
