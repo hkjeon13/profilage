@@ -1067,13 +1067,6 @@ a:hover {
   overflow-wrap: anywhere;
 }
 
-.profile-kicker {
-  margin: 0 0 8px;
-  color: #667085;
-  font-size: 12px;
-  font-weight: 800;
-}
-
 .profile-hero h1 {
   margin: 0 0 10px;
   max-width: min(640px, 100%);

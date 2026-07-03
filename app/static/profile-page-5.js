@@ -847,7 +847,7 @@ function renderCompanyDetail({ info, outline, listed, stock }) {
   const companySummary = companySummaryText({ info, outline, listed, market });
   const logo = document.querySelector(".company-logo-box");
 
-  profileTitle.textContent = text(outline.corpNm, "기업 프로필");
+  profileTitle.textContent = text(outline.corpNm, "기업명 정보 없음");
   profileSubtitle.textContent = text(outline.corpEnsnNm, "영문명 정보 없음");
   profileCard?.classList.remove("is-loading");
   if (logo) {

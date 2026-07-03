@@ -57,7 +57,7 @@ function renderCompanyDetail({ outline, listed, stock }) {
   const price = summary.price || summary.extracted_price;
   const change = summary.price_movement?.percentage || summary.price_movement?.value;
 
-  profileTitle.textContent = text(outline.corpNm, "기업 프로필");
+  profileTitle.textContent = text(outline.corpNm, "기업명 정보 없음");
   profileSubtitle.textContent = text(outline.corpEnsnNm, "영문명 정보 없음");
 
   profileDetail.innerHTML = `

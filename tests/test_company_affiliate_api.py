@@ -162,10 +162,12 @@ def test_profile_page_serves_company_profile_frontend():
 
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
-    assert "기업 프로필" in response.text
+    assert 'id="profile-title"' in response.text
+    assert 'id="profile-subtitle"' in response.text
+    assert "profile-kicker" not in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-13" in response.text
+    assert "/profile-page-5.js?v=company-profile-14" in response.text
 
 
 def test_profile_back_link_preserves_return_search_query():
