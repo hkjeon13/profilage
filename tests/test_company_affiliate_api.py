@@ -153,7 +153,7 @@ def test_profile_page_serves_company_profile_frontend():
     assert "기업 프로필" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-2" in response.text
+    assert "/profile-page-5.js?v=company-profile-3" in response.text
 
 
 def test_profile_frontend_exposes_card_layout_assets():
@@ -178,6 +178,14 @@ def test_profile_frontend_does_not_duplicate_recent_disclosures():
     assert script_response.status_code == 200
     assert "renderDartDisclosures(info.dart_disclosures)" in script_response.text
     assert "latest-disclosure" not in script_response.text
+
+
+def test_stock_chart_svg_uses_full_card_width():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+
+    assert script_response.status_code == 200
+    assert 'preserveAspectRatio="none"' in script_response.text
 
 
 def test_company_api_is_available_under_api_prefix(monkeypatch):

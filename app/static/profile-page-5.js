@@ -216,7 +216,7 @@ function renderStockChart(stock) {
         <strong>${formatChartDate(points.at(-1).date)}</strong>
         <span>${formatNumber(points.at(-1).price)} KRW</span>
       </div>
-      <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="1개월 주가 추이" tabindex="0">
+      <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="1개월 주가 추이" tabindex="0">
         <path class="stock-chart-grid" d="M ${paddingX} ${height / 2} H ${width - paddingX}" />
         <path class="stock-chart-area ${trendClass}" d="${areaPath}" />
         <path class="stock-chart-line ${trendClass}" d="${linePath}" />
