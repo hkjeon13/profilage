@@ -165,6 +165,14 @@ def test_profile_page_serves_company_profile_frontend():
     assert 'id="profile-title"' in response.text
     assert 'id="profile-subtitle"' in response.text
     assert "profile-kicker" not in response.text
+    assert '<nav class="top-nav-left">' in response.text
+    assert 'class="brand-mark"' in response.text
+    assert '<a href="/">검색</a>' in response.text
+    assert "top-nav-right" not in response.text
+    assert '<a href="/docs">API</a>' not in response.text
+    assert '<a href="/openapi.json">OpenAPI</a>' not in response.text
+    assert '<a href="/docs">문서</a>' not in response.text
+    assert '<a href="/">새 검색</a>' not in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
     assert "/profile-page-5.js?v=company-profile-14" in response.text
