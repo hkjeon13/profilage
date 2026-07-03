@@ -229,8 +229,12 @@ def test_profile_hero_uses_single_arrow_back_action_without_api_cta():
     assert 'class="back-link-icon"' in response.text
     assert ".back-link-icon" in style_response.text
     assert ".profile-search-action" not in style_response.text
-    assert "top: 88px;" in style_response.text
-    assert "padding: 164px 26px 24px;" in style_response.text
+    assert 'class="profile-identity-row"' in response.text
+    assert 'class="profile-title-block"' in response.text
+    assert ".profile-identity-row {\n  display: flex;" in style_response.text
+    assert "padding: 92px 26px 42px;" in style_response.text
+    assert ".company-logo-box {\n  display: grid;\n  width: 70px;" in style_response.text
+    assert ".company-logo-box {\n  display: grid;\n  position: absolute;" not in style_response.text
 
 
 def test_profile_frontend_does_not_duplicate_recent_disclosures():

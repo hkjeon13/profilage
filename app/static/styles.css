@@ -994,7 +994,7 @@ a:hover {
 
 .profile-hero {
   position: relative;
-  min-height: 274px;
+  min-height: 238px;
   margin-bottom: 22px;
   border: 1px solid #ecedf4;
   border-radius: 8px;
@@ -1003,7 +1003,7 @@ a:hover {
     #f5f8fd;
   box-shadow: 0 14px 36px rgba(31, 42, 68, 0.08);
   overflow: hidden;
-  padding: 164px 26px 24px;
+  padding: 92px 26px 42px;
 }
 
 .back-link {
@@ -1042,11 +1042,9 @@ a:hover {
 
 .company-logo-box {
   display: grid;
-  position: absolute;
-  left: 26px;
-  top: 88px;
   width: 70px;
   height: 70px;
+  flex: 0 0 70px;
   place-items: center;
   border: 1px solid #edf0f6;
   border-radius: 8px;
@@ -1055,6 +1053,17 @@ a:hover {
   box-shadow: 0 14px 26px rgba(42, 54, 94, 0.08);
   font-size: 21px;
   font-weight: 900;
+}
+
+.profile-identity-row {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  min-width: 0;
+}
+
+.profile-title-block {
+  min-width: 0;
 }
 
 .profile-kicker {
@@ -1300,12 +1309,23 @@ a:hover {
 
   .profile-hero {
     min-height: 0;
-    padding: 156px 18px 20px;
+    padding: 74px 18px 28px;
   }
 
-  .profile-hero .back-link,
-  .company-logo-box {
+  .profile-hero .back-link {
     left: 18px;
+  }
+
+  .profile-identity-row {
+    gap: 14px;
+    align-items: flex-start;
+  }
+
+  .company-logo-box {
+    width: 58px;
+    height: 58px;
+    flex-basis: 58px;
+    font-size: 18px;
   }
 
   .financial-summary-heading,
