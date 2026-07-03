@@ -136,6 +136,14 @@ def test_root_serves_company_search_frontend():
     assert "/profile?crno=" in response.text
 
 
+def test_search_results_status_has_breathing_room():
+    with TestClient(app) as client:
+        response = client.get("/styles.css")
+
+    assert response.status_code == 200
+    assert ".google-like-home:not(.is-idle) .status {\n  margin-top: 24px;" in response.text
+
+
 def test_profile_page_serves_company_profile_frontend():
     with TestClient(app) as client:
         response = client.get("/profile")

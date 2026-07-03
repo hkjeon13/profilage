@@ -103,7 +103,7 @@ a:hover {
 }
 
 .google-like-home:not(.is-idle) .status {
-  margin-top: 12px;
+  margin-top: 24px;
   font-size: 14px;
 }
 
