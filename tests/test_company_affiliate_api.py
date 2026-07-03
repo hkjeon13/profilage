@@ -153,7 +153,7 @@ def test_profile_page_serves_company_profile_frontend():
     assert "기업 프로필" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-9" in response.text
+    assert "/profile-page-5.js?v=company-profile-10" in response.text
 
 
 def test_profile_frontend_exposes_card_layout_assets():
@@ -167,8 +167,27 @@ def test_profile_frontend_exposes_card_layout_assets():
     assert style_response.status_code == 200
     assert "company-canvas" in profile_response.text
     assert "company-profile-card" in script_response.text
-    assert "company-side-panel" in script_response.text
+    assert "company-profile-info-section" in script_response.text
+    assert "company-side-panel" not in script_response.text
     assert ".company-background" in style_response.text
+
+
+def test_profile_overview_groups_company_information_without_relationship_card():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+        style_response = client.get("/styles.css")
+
+    assert script_response.status_code == 200
+    assert style_response.status_code == 200
+    assert "company-profile-info-section" in script_response.text
+    assert "<h3>기업 정보</h3>" in script_response.text
+    assert "<h3>핵심 정보</h3>" not in script_response.text
+    assert "<h3>관계 회사</h3>" not in script_response.text
+    assert "network-row" not in script_response.text
+    assert "side-list" not in script_response.text
+    assert ".company-profile-info-section" in style_response.text
+    assert ".company-summary" in style_response.text
+    assert "border-bottom: 1px solid #eef0f6;" in style_response.text
 
 
 def test_profile_hero_uses_single_arrow_back_action_without_api_cta():

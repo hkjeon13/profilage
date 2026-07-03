@@ -1067,20 +1067,14 @@ a:hover {
 
 .company-overview-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 330px;
+  grid-template-columns: minmax(0, 1fr);
   gap: 22px;
   align-items: start;
 }
 
-.company-main-column,
-.company-side-panel {
+.company-main-column {
   display: grid;
   gap: 18px;
-}
-
-.company-side-panel {
-  position: sticky;
-  top: 18px;
 }
 
 .profile-page .info-block {
@@ -1099,13 +1093,22 @@ a:hover {
 }
 
 .company-summary {
-  margin: 0 0 20px;
+  margin: 0;
+  border-bottom: 1px solid #eef0f6;
+  padding-bottom: 18px;
   color: #3f4757;
   line-height: 1.75;
 }
 
-.company-facts,
-.side-list {
+.company-profile-info-section {
+  margin-top: 18px;
+}
+
+.company-profile-info-section h3 {
+  margin-bottom: 14px;
+}
+
+.company-facts {
   display: grid;
   gap: 10px;
   margin: 0;
@@ -1115,22 +1118,19 @@ a:hover {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.company-facts div,
-.side-list div {
+.company-facts div {
   display: grid;
   gap: 4px;
   min-width: 0;
 }
 
-.company-facts dt,
-.side-list dt {
+.company-facts dt {
   color: #7b8497;
   font-size: 12px;
   font-weight: 800;
 }
 
-.company-facts dd,
-.side-list dd {
+.company-facts dd {
   min-width: 0;
   margin: 0;
   color: #111827;
@@ -1183,35 +1183,6 @@ a:hover {
   margin: 0;
   color: #667085;
   line-height: 1.6;
-}
-
-.company-side-card {
-  padding: 20px;
-}
-
-.network-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 12px 0;
-  border-top: 1px solid #eef0f6;
-}
-
-.network-row:first-of-type {
-  border-top: 0;
-}
-
-.network-row strong {
-  color: #111827;
-  font-size: 28px;
-}
-
-.network-row span {
-  color: #667085;
-  font-size: 13px;
-  font-weight: 750;
-  text-align: right;
 }
 
 .latest-disclosure {
@@ -1323,10 +1294,6 @@ a:hover {
   .company-facts,
   .company-insight-row {
     grid-template-columns: 1fr;
-  }
-
-  .company-side-panel {
-    position: static;
   }
 
   .profile-page .info-block {

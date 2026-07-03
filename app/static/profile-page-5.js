@@ -49,10 +49,6 @@ function initials(value) {
   return (koreanInitials.slice(0, 2).join("") || "P").toUpperCase();
 }
 
-function itemCount(payload) {
-  return normalizeItems(payload).length;
-}
-
 function compactDate(value) {
   if (!value) return "-";
   const raw = String(value).replaceAll("-", "");
@@ -409,20 +405,6 @@ function renderProfileSkeleton() {
           <span class="skeleton-chart"></span>
         </article>
       </div>
-      <aside class="company-side-panel">
-      ${Array.from({ length: 2 })
-        .map(
-          () => `
-            <article class="info-block skeleton-block">
-              <span class="skeleton-line skeleton-section-title"></span>
-              <span class="skeleton-line"></span>
-              <span class="skeleton-line"></span>
-              <span class="skeleton-line skeleton-short"></span>
-            </article>
-          `,
-        )
-        .join("")}
-      </aside>
     </div>
   `;
 }
@@ -822,8 +804,6 @@ function renderCompanyDetail({ info, outline, listed, stock }) {
   const change = summary.price_movement?.percentage || summary.price_movement?.value;
   const crno = new URLSearchParams(window.location.search).get("crno");
   const homepage = homepageUrl(outline.enpHmpgUrl);
-  const affiliateCount = itemCount(info.affiliate);
-  const subsidiaryCount = itemCount(info.cons_subs_comp);
   const market = text(listed.mrktCtg || outline.corpRegMrktDcdNm, "비상장/정보 없음");
   const logo = document.querySelector(".company-logo-box");
 
@@ -846,12 +826,19 @@ function renderCompanyDetail({ info, outline, listed, stock }) {
             ${text(outline.corpNm, "이 기업")}은 ${market} 시장 정보와 공공데이터 기업개요를 기준으로 정리된 프로필입니다.
             법인등록번호, 대표자, 설립일, DART 공시와 KRX 종목 정보를 한 화면에서 확인할 수 있습니다.
           </p>
-          <dl class="company-facts">
-            <div><dt>대표자</dt><dd>${text(outline.enpRprFnm)}</dd></div>
-            <div><dt>설립일</dt><dd>${compactDate(outline.enpEstbDt)}</dd></div>
-            <div><dt>법인등록번호</dt><dd>${text(outline.crno || crno)}</dd></div>
-            <div><dt>사업자번호</dt><dd>${text(outline.bzno)}</dd></div>
-          </dl>
+          <section class="company-profile-info-section" aria-label="기업 정보">
+            <h3>기업 정보</h3>
+            <dl class="company-facts">
+              <div><dt>대표자</dt><dd>${text(outline.enpRprFnm)}</dd></div>
+              <div><dt>설립일</dt><dd>${compactDate(outline.enpEstbDt)}</dd></div>
+              <div><dt>법인등록번호</dt><dd>${text(outline.crno || crno)}</dd></div>
+              <div><dt>사업자번호</dt><dd>${text(outline.bzno)}</dd></div>
+              <div><dt>시장</dt><dd>${market}</dd></div>
+              <div><dt>단축코드</dt><dd>${text(listed.srtnCd)}</dd></div>
+              <div><dt>ISIN</dt><dd>${text(listed.isinCd)}</dd></div>
+              <div><dt>업종</dt><dd>${text(outline.enpMainBizNm || listed.itmsNm, "정보 없음")}</dd></div>
+            </dl>
+          </section>
         </article>
 
         <article class="info-block company-market-card">
@@ -877,30 +864,6 @@ function renderCompanyDetail({ info, outline, listed, stock }) {
         </article>
       </div>
 
-      <aside class="company-side-panel" aria-label="기업 요약">
-        <article class="info-block company-side-card">
-          <h3>핵심 정보</h3>
-          <dl class="side-list">
-            <div><dt>시장</dt><dd>${market}</dd></div>
-            <div><dt>단축코드</dt><dd>${text(listed.srtnCd)}</dd></div>
-            <div><dt>ISIN</dt><dd>${text(listed.isinCd)}</dd></div>
-            <div><dt>업종</dt><dd>${text(outline.enpMainBizNm || listed.itmsNm, "정보 없음")}</dd></div>
-          </dl>
-        </article>
-
-        <article class="info-block company-side-card">
-          <h3>관계 회사</h3>
-          <div class="network-row">
-            <strong>${affiliateCount.toLocaleString("ko-KR")}</strong>
-            <span>계열회사</span>
-          </div>
-          <div class="network-row">
-            <strong>${subsidiaryCount.toLocaleString("ko-KR")}</strong>
-            <span>연결대상 종속기업</span>
-          </div>
-        </article>
-
-      </aside>
     </div>
   `;
   setupStockChartInteractions();
