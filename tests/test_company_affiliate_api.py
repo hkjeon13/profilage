@@ -173,9 +173,10 @@ def test_profile_page_serves_company_profile_frontend():
     assert '<a href="/openapi.json">OpenAPI</a>' not in response.text
     assert '<a href="/docs">문서</a>' not in response.text
     assert '<a href="/">새 검색</a>' not in response.text
+    assert "/styles.css?v=company-profile-17" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-14" in response.text
+    assert "/profile-page-5.js?v=company-profile-17" in response.text
 
 
 def test_profile_back_link_preserves_return_search_query():
@@ -223,6 +224,10 @@ def test_profile_overview_groups_company_information_without_relationship_card()
     assert "companySummaryText" in script_response.text
     assert "firstCompanyValue(info.corp_outline" in script_response.text
     assert "DART 공시와 KRX 종목 정보를 한 화면에서 확인할 수 있습니다" not in script_response.text
+    assert 'class="homepage-icon-link"' in script_response.text
+    assert 'aria-label="홈페이지"' in script_response.text
+    assert 'target="_blank" rel="noreferrer">홈페이지</a>' not in script_response.text
+    assert ".homepage-icon-link" in style_response.text
     assert ".company-facts dd {\n  min-width: 0;\n  margin: 0;\n  color: #111827;\n  font-weight: 500;" in style_response.text
     assert "font-weight: 780;" not in style_response.text
 
@@ -295,7 +300,11 @@ def test_financial_summary_uses_metric_card_grid():
     assert ".financial-metric-card" in style_response.text
     assert ".financial-summary-panel[hidden]" in style_response.text
     assert "repeat(auto-fit, minmax(min(100%, 210px), 220px))" in style_response.text
-    assert ".company-insight-row .financial-metrics {\n  grid-template-columns: 1fr;" not in style_response.text
+    assert ".company-insight-row .financial-metrics {\n    grid-template-columns: 1fr;" in style_response.text
+    assert "    width: 100%;" in style_response.text
+    assert "    justify-items: stretch;" in style_response.text
+    assert "justify-content: stretch;" in style_response.text
+    assert ".company-insight-row .financial-metric-card {\n    width: 100%;" in style_response.text
 
 
 def test_financial_summary_more_link_is_in_card_heading():
@@ -328,6 +337,42 @@ def test_profile_recent_disclosures_shows_ten_items():
     assert script_response.status_code == 200
     assert "slice(0, 10)" in script_response.text
     assert "slice(0, 5)" not in script_response.text
+
+
+def test_disclosures_page_loads_more_items_on_scroll():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+        style_response = client.get("/styles.css")
+
+    assert script_response.status_code == 200
+    assert style_response.status_code == 200
+    assert "setupInfiniteDisclosureScroll" in script_response.text
+    assert "IntersectionObserver" in script_response.text
+    assert 'data-disclosure-list="true"' in script_response.text
+    assert 'data-disclosure-sentinel="true"' in script_response.text
+    assert 'data-disclosure-count="true"' in script_response.text
+    assert "appendDisclosureItems" in script_response.text
+    assert "page: nextPage" in script_response.text
+    assert "per_page: DISCLOSURE_PAGE_SIZE" in script_response.text
+    assert "total_count" in script_response.text
+    assert ".disclosure-load-status" in style_response.text
+
+
+def test_disclosures_page_uses_flat_list_layout():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+        style_response = client.get("/styles.css")
+
+    assert script_response.status_code == 200
+    assert style_response.status_code == 200
+    assert 'class="info-block full disclosure-subpage-card"' in script_response.text
+    assert ".profile-page .disclosure-subpage-card {" in style_response.text
+    assert "box-shadow: none;" in style_response.text
+    assert ".disclosure-subpage-card .disclosure-list-large {" in style_response.text
+    assert "gap: 0;" in style_response.text
+    assert ".disclosure-subpage-card .disclosure-list-large li {" in style_response.text
+    assert "padding: 16px 22px;" in style_response.text
+    assert "border-bottom: 1px solid #eef0f6;" in style_response.text
 
 
 def test_stock_chart_svg_uses_full_card_width():
@@ -379,6 +424,16 @@ def test_stock_chart_keeps_endpoint_axis_labels_visible():
     assert chart_style_response.status_code == 200
     assert "stock-chart-meta-end" in script_response.text
     assert "visibility: hidden" not in chart_style_response.text
+
+
+def test_stock_chart_uses_wide_mobile_aspect_ratio():
+    with TestClient(app) as client:
+        chart_style_response = client.get("/profile-chart-2.css")
+
+    assert chart_style_response.status_code == 200
+    assert "@media (max-width: 820px)" in chart_style_response.text
+    assert ".stock-chart svg {\n    height: 156px;" in chart_style_response.text
+    assert ".stock-chart-axis-labels {\n    height: 156px;" in chart_style_response.text
 
 
 def test_company_api_is_available_under_api_prefix(monkeypatch):

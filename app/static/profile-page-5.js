@@ -16,6 +16,7 @@ const financialStatementOptions = [
   ["CFS", "연결재무제표"],
   ["OFS", "별도재무제표"],
 ];
+const DISCLOSURE_PAGE_SIZE = 30;
 
 function normalizeItems(payload) {
   const item = payload?.body?.items?.item;
@@ -554,6 +555,115 @@ function setupDisclosureViewer() {
   });
 }
 
+function disclosureListItemsHtml(items, includeReceiptNo = false) {
+  return (
+    items
+      .map(
+        (item) => `
+          <li>
+            ${renderDisclosureViewerTrigger(item)}
+            <span>${escapeHtml(disclosureMeta(item, includeReceiptNo))}</span>
+          </li>
+        `,
+      )
+      .join("") || `<li><span>표시할 공시가 없습니다.</span></li>`
+  );
+}
+
+function disclosureTotalCount(disclosures) {
+  const total = Number(disclosures?.total_count);
+  return Number.isFinite(total) && total >= 0 ? total : null;
+}
+
+function disclosureCountText(loadedCount, totalCount) {
+  if (totalCount !== null && totalCount !== undefined) {
+    return `${loadedCount.toLocaleString("ko-KR")} / ${totalCount.toLocaleString("ko-KR")}개 공시`;
+  }
+  return `${loadedCount.toLocaleString("ko-KR")}개 공시`;
+}
+
+function updateDisclosureCount(loadedCount, totalCount) {
+  const count = document.querySelector("[data-disclosure-count='true']");
+  if (count) {
+    count.textContent = disclosureCountText(loadedCount, totalCount);
+  }
+}
+
+function appendDisclosureItems(items) {
+  const list = document.querySelector("[data-disclosure-list='true']");
+  if (!list || !items.length) return;
+  list.insertAdjacentHTML("beforeend", disclosureListItemsHtml(items, true));
+  setupDisclosureViewer();
+}
+
+function setupInfiniteDisclosureScroll({ corpCode, initialPage, perPage, loadedCount, totalCount }) {
+  const sentinel = document.querySelector("[data-disclosure-sentinel='true']");
+  const status = document.querySelector("[data-disclosure-load-status='true']");
+  if (!corpCode || !sentinel || !status) return;
+
+  let nextPage = initialPage + 1;
+  let currentLoadedCount = loadedCount;
+  let isLoading = false;
+  let isComplete = totalCount !== null && currentLoadedCount >= totalCount;
+
+  const setStatus = (message) => {
+    status.textContent = message;
+  };
+
+  const loadMore = async () => {
+    if (isLoading || isComplete) return;
+    isLoading = true;
+    setStatus("공시를 더 불러오는 중입니다.");
+
+    try {
+      const payload = await fetchJson("/api/company/get_dart_disclosures", {
+        corp_code: corpCode,
+        page: nextPage,
+        per_page: DISCLOSURE_PAGE_SIZE,
+      });
+      const items = payload?.list || [];
+      appendDisclosureItems(items);
+      currentLoadedCount += items.length;
+      nextPage += 1;
+      if (totalCount === null) {
+        totalCount = disclosureTotalCount(payload);
+      }
+      updateDisclosureCount(currentLoadedCount, totalCount);
+      isComplete =
+        !items.length ||
+        items.length < perPage ||
+        (totalCount !== null && currentLoadedCount >= totalCount);
+      setStatus(isComplete ? "모든 공시를 불러왔습니다." : "아래로 스크롤하면 공시를 더 불러옵니다.");
+    } catch (error) {
+      setStatus(error.message || "공시를 더 불러오지 못했습니다.");
+    } finally {
+      isLoading = false;
+    }
+  };
+
+  if (isComplete) {
+    setStatus("모든 공시를 불러왔습니다.");
+    return;
+  }
+
+  if (!("IntersectionObserver" in window)) {
+    window.addEventListener("scroll", () => {
+      const rect = sentinel.getBoundingClientRect();
+      if (rect.top < window.innerHeight + 160) loadMore();
+    });
+    setStatus("아래로 스크롤하면 공시를 더 불러옵니다.");
+    return;
+  }
+
+  const observer = new IntersectionObserver((entries) => {
+    if (entries.some((entry) => entry.isIntersecting)) {
+      loadMore();
+    }
+  }, { rootMargin: "240px 0px" });
+  observer.observe(sentinel);
+  setStatus("아래로 스크롤하면 공시를 더 불러옵니다.");
+}
+
 function renderDartDisclosures(disclosures) {
   const items = (disclosures?.list || []).slice(0, 10);
   if (!items.length) return "";
@@ -700,7 +810,7 @@ function setupFinancialSummaryTabs() {
 
 function renderSubpageHeader({ kicker, title, subtitle, crno }) {
   profileTitle.textContent = title;
-  profileSubtitle.textContent = subtitle;
+  profileSubtitle.textContent = String(subtitle).replace(/<[^>]*>/g, "");
   return `
     <div class="detail-header subpage-header">
       <a class="back-link" href="/profile?crno=${encodeURIComponent(crno)}">기업 프로필로 돌아가기</a>
@@ -809,28 +919,23 @@ function renderFinancialsPage({ accountsPayload, outline, crno, selected }) {
 
 function renderDisclosuresPage({ disclosures, outline, crno }) {
   const items = disclosures?.list || [];
+  const totalCount = disclosureTotalCount(disclosures);
+  const loadedCount = items.length;
   profileDetail.innerHTML = `
     ${renderSubpageHeader({
       kicker: "DART 공시",
       title: `${text(outline.corpNm, "기업")} 공시`,
-      subtitle: `${items.length.toLocaleString("ko-KR")}개 공시`,
+      subtitle: `<span data-disclosure-count="true">${disclosureCountText(loadedCount, totalCount)}</span>`,
       crno,
     })}
     <div class="detail-body subpage-body">
-      <article class="info-block full">
+      <article class="info-block full disclosure-subpage-card">
         <h3>공시 목록</h3>
-        <ul class="disclosure-list disclosure-list-large">
-          ${items
-            .map(
-              (item) => `
-                <li>
-                  ${renderDisclosureViewerTrigger(item)}
-                  <span>${escapeHtml(disclosureMeta(item, true))}</span>
-                </li>
-              `,
-            )
-            .join("") || `<li><span>표시할 공시가 없습니다.</span></li>`}
+        <ul class="disclosure-list disclosure-list-large" data-disclosure-list="true">
+          ${disclosureListItemsHtml(items, true)}
         </ul>
+        <div class="disclosure-load-status" data-disclosure-load-status="true" role="status"></div>
+        <div class="disclosure-scroll-sentinel" data-disclosure-sentinel="true" aria-hidden="true"></div>
       </article>
     </div>
   `;
@@ -860,7 +965,7 @@ function renderCompanyDetail({ info, outline, listed, stock }) {
         <article class="info-block company-about-card">
           <div class="block-heading">
             <h3>기업 개요</h3>
-            ${homepage ? `<a href="${homepage}" target="_blank" rel="noreferrer">홈페이지</a>` : ""}
+            ${homepage ? `<a class="homepage-icon-link" href="${homepage}" target="_blank" rel="noreferrer" aria-label="홈페이지" title="홈페이지"><span aria-hidden="true">↗</span></a>` : ""}
           </div>
           <p class="company-summary">
             ${escapeHtml(companySummary)}
@@ -953,10 +1058,17 @@ async function loadProfile() {
         ? await fetchJson("/api/company/get_dart_disclosures", {
             corp_code: corpCode,
             page: 1,
-            per_page: 30,
+            per_page: DISCLOSURE_PAGE_SIZE,
           }).catch(() => info.dart_disclosures)
         : info.dart_disclosures;
       renderDisclosuresPage({ disclosures, outline, crno });
+      setupInfiniteDisclosureScroll({
+        corpCode,
+        initialPage: 1,
+        perPage: DISCLOSURE_PAGE_SIZE,
+        loadedCount: disclosures?.list?.length || 0,
+        totalCount: disclosureTotalCount(disclosures),
+      });
       return;
     }
 

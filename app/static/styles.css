@@ -426,6 +426,26 @@ a:hover {
   white-space: nowrap;
 }
 
+.block-heading .homepage-icon-link {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e7ebf3;
+  border-radius: 8px;
+  background: #f8fbff;
+  color: var(--accent);
+  font-size: 16px;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.block-heading .homepage-icon-link:hover {
+  border-color: #cfe0ff;
+  background: #eef4ff;
+}
+
 .kv {
   display: grid;
   grid-template-columns: 110px minmax(0, 1fr);
@@ -494,6 +514,53 @@ a:hover {
 
 .disclosure-list-large {
   gap: 16px;
+}
+
+.profile-page .disclosure-subpage-card {
+  border: 1px solid #eef0f6;
+  background: #ffffff;
+  box-shadow: none;
+  overflow: hidden;
+  padding: 0;
+}
+
+.disclosure-subpage-card h3 {
+  border-bottom: 1px solid #eef0f6;
+  margin: 0;
+  padding: 20px 22px 16px;
+}
+
+.disclosure-subpage-card .disclosure-list-large {
+  gap: 0;
+}
+
+.disclosure-subpage-card .disclosure-list-large li {
+  border-bottom: 1px solid #eef0f6;
+  padding: 16px 22px;
+}
+
+.disclosure-subpage-card .disclosure-list-large li:last-child {
+  border-bottom: 0;
+}
+
+.disclosure-subpage-card .disclosure-viewer-trigger {
+  color: #1269b0;
+  font-weight: 820;
+}
+
+.disclosure-load-status {
+  border-top: 1px solid #eef0f6;
+  margin-top: 0;
+  padding: 14px 22px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 750;
+  text-align: center;
+}
+
+.disclosure-scroll-sentinel {
+  width: 100%;
+  height: 1px;
 }
 
 .subpage-header .back-link {
@@ -1334,6 +1401,18 @@ a:hover {
     grid-template-columns: 1fr;
   }
 
+  .company-insight-row .financial-metrics {
+    grid-template-columns: 1fr;
+    width: 100%;
+    justify-items: stretch;
+    justify-content: stretch;
+  }
+
+  .company-insight-row .financial-metric-card {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
   .company-overview-grid,
   .company-facts,
   .company-insight-row {
@@ -1342,6 +1421,17 @@ a:hover {
 
   .profile-page .info-block {
     padding: 18px;
+  }
+
+  .profile-page .disclosure-subpage-card {
+    padding: 0;
+  }
+
+  .disclosure-subpage-card h3,
+  .disclosure-subpage-card .disclosure-list-large li,
+  .disclosure-load-status {
+    padding-left: 18px;
+    padding-right: 18px;
   }
 
   .price-row {

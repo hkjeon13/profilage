@@ -150,3 +150,13 @@
   background: #f0f1f4;
   color: #101828;
 }
+
+@media (max-width: 820px) {
+  .stock-chart svg {
+    height: 156px;
+  }
+
+  .stock-chart-axis-labels {
+    height: 156px;
+  }
+}
