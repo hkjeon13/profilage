@@ -162,6 +162,15 @@ def test_profile_frontend_exposes_card_layout_assets():
     assert ".company-background" in style_response.text
 
 
+def test_profile_frontend_does_not_duplicate_recent_disclosures():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+
+    assert script_response.status_code == 200
+    assert "renderDartDisclosures(info.dart_disclosures)" in script_response.text
+    assert "latest-disclosure" not in script_response.text
+
+
 def test_company_api_is_available_under_api_prefix(monkeypatch):
     monkeypatch.setenv("OPEN_API_DECODING_KEY", "decoded-service-key")
     monkeypatch.delenv("OPEN_API_ENCODING_KEY", raising=False)

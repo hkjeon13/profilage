@@ -660,8 +660,6 @@ function renderCompanyDetail({ info, outline, listed, stock }) {
   const homepage = homepageUrl(outline.enpHmpgUrl);
   const affiliateCount = itemCount(info.affiliate);
   const subsidiaryCount = itemCount(info.cons_subs_comp);
-  const disclosures = info.dart_disclosures?.list || [];
-  const latestDisclosure = disclosures[0];
   const market = text(listed.mrktCtg || outline.corpRegMrktDcdNm, "비상장/정보 없음");
   const logo = document.querySelector(".company-logo-box");
 
@@ -739,17 +737,6 @@ function renderCompanyDetail({ info, outline, listed, stock }) {
           </div>
         </article>
 
-        <article class="info-block company-side-card">
-          <h3>최근 공시</h3>
-          ${
-            latestDisclosure
-              ? `<a class="latest-disclosure" href="${text(latestDisclosure.viewer_url, "#")}" target="_blank" rel="noreferrer">
-                  ${text(latestDisclosure.report_nm)}
-                </a>
-                <p class="side-muted">${text(latestDisclosure.rcept_dt)} · ${text(latestDisclosure.flr_nm || latestDisclosure.corp_name)}</p>`
-              : `<p class="side-muted">표시할 공시가 없습니다.</p>`
-          }
-        </article>
       </aside>
     </div>
   `;
