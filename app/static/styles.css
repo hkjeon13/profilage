@@ -966,7 +966,7 @@ a:hover {
 
 .profile-hero {
   position: relative;
-  min-height: 230px;
+  min-height: 274px;
   margin-bottom: 22px;
   border: 1px solid #ecedf4;
   border-radius: 8px;
@@ -975,7 +975,7 @@ a:hover {
     #f5f8fd;
   box-shadow: 0 14px 36px rgba(31, 42, 68, 0.08);
   overflow: hidden;
-  padding: 120px 26px 24px;
+  padding: 164px 26px 24px;
 }
 
 .back-link {
@@ -991,17 +991,32 @@ a:hover {
   position: absolute;
   top: 22px;
   left: 26px;
+  gap: 7px;
   min-height: 0;
   margin: 0;
   color: #4c5b76;
   font-size: 13px;
 }
 
+.back-link-icon {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(52, 120, 246, 0.1);
+  color: #3478f6;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1;
+}
+
 .company-logo-box {
   display: grid;
   position: absolute;
   left: 26px;
-  top: 64px;
+  top: 88px;
   width: 70px;
   height: 70px;
   place-items: center;
@@ -1035,37 +1050,6 @@ a:hover {
   max-width: 640px;
   color: #667085;
   line-height: 1.55;
-}
-
-.profile-search-action {
-  display: grid;
-  position: absolute;
-  right: 26px;
-  top: 22px;
-  width: 42px;
-  height: 42px;
-  place-items: center;
-  border: 1px solid rgba(52, 120, 246, 0.22);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.82);
-  color: #3478f6;
-  box-shadow: 0 10px 22px rgba(42, 54, 94, 0.12);
-  text-decoration: none;
-}
-
-.profile-search-action:hover {
-  background: #ffffff;
-  text-decoration: none;
-}
-
-.profile-search-action svg {
-  width: 19px;
-  height: 19px;
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 2.4;
 }
 
 .profile-layout {
@@ -1317,17 +1301,12 @@ a:hover {
 
   .profile-hero {
     min-height: 0;
-    padding: 112px 18px 20px;
+    padding: 156px 18px 20px;
   }
 
   .profile-hero .back-link,
   .company-logo-box {
     left: 18px;
-  }
-
-  .profile-search-action {
-    right: 18px;
-    top: 18px;
   }
 
   .financial-summary-heading,

@@ -153,7 +153,7 @@ def test_profile_page_serves_company_profile_frontend():
     assert "기업 프로필" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-8" in response.text
+    assert "/profile-page-5.js?v=company-profile-9" in response.text
 
 
 def test_profile_frontend_exposes_card_layout_assets():
@@ -171,7 +171,7 @@ def test_profile_frontend_exposes_card_layout_assets():
     assert ".company-background" in style_response.text
 
 
-def test_profile_hero_uses_icon_search_action_without_api_cta():
+def test_profile_hero_uses_single_arrow_back_action_without_api_cta():
     with TestClient(app) as client:
         response = client.get("/profile")
         style_response = client.get("/styles.css")
@@ -180,9 +180,13 @@ def test_profile_hero_uses_icon_search_action_without_api_cta():
     assert style_response.status_code == 200
     assert "API 보기" not in response.text
     assert "primary-action" not in response.text
-    assert 'class="profile-search-action"' in response.text
-    assert 'aria-label="다시 검색"' in response.text
-    assert ".profile-search-action" in style_response.text
+    assert "profile-search-action" not in response.text
+    assert 'class="back-link"' in response.text
+    assert 'class="back-link-icon"' in response.text
+    assert ".back-link-icon" in style_response.text
+    assert ".profile-search-action" not in style_response.text
+    assert "top: 88px;" in style_response.text
+    assert "padding: 164px 26px 24px;" in style_response.text
 
 
 def test_profile_frontend_does_not_duplicate_recent_disclosures():
