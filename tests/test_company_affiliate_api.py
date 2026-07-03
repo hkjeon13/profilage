@@ -16,6 +16,7 @@ from app.services.company_affiliate import (
     CompanyStockPriceQuery,
     CompanyStockPriceService,
 )
+from app.services.company_dart import DartCompanyService
 from app.services.company_store import (
     AFFILIATE_GROUP,
     COMPANY_ENTITY_TYPE,
@@ -1003,3 +1004,79 @@ def test_get_dart_financial_accounts_maps_query_to_dart_api(monkeypatch):
         "fs_div": "CFS",
     }
     assert response.json()["list"][0]["account_nm"] == "매출액"
+
+
+@pytest.mark.asyncio
+async def test_dart_latest_financial_reports_selects_latest_quarter_and_annual(
+    monkeypatch,
+):
+    monkeypatch.setenv("DART_API_KEY", "dart-key")
+    captured_requests = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        params = dict(request.url.params)
+        captured_requests.append(params)
+        year = params["bsns_year"]
+        report_code = params["reprt_code"]
+        if (year, report_code) == ("2026", "11013"):
+            items = [
+                {
+                    "bsns_year": "2026",
+                    "reprt_code": "11013",
+                    "fs_div": "CFS",
+                    "account_nm": "매출액",
+                    "thstrm_amount": "100000000",
+                }
+            ]
+        elif (year, report_code) == ("2025", "11011"):
+            items = [
+                {
+                    "bsns_year": "2025",
+                    "reprt_code": "11011",
+                    "fs_div": "CFS",
+                    "account_nm": "매출액",
+                    "thstrm_amount": "90000000",
+                }
+            ]
+        else:
+            items = []
+        return httpx.Response(
+            200,
+            json={
+                "status": "000" if items else "013",
+                "message": "정상" if items else "조회된 데이타가 없습니다.",
+                "list": items,
+            },
+        )
+
+    service = DartCompanyService(
+        transport=httpx.MockTransport(handler),
+        cache=FakeJsonCache(),
+        data_group_store=FakeDataGroupStore(),
+    )
+
+    payload = await service.get_latest_financial_reports(
+        corp_code="00126380",
+        current_year=2026,
+        fs_division="CFS",
+    )
+
+    assert payload["quarter"]["selected"] == {
+        "business_year": "2026",
+        "report_code": "11013",
+        "fs_division": "CFS",
+        "report_name": "1분기보고서",
+    }
+    assert payload["quarter"]["accounts"]["list"][0]["thstrm_amount"] == "100000000"
+    assert payload["annual"]["selected"] == {
+        "business_year": "2025",
+        "report_code": "11011",
+        "fs_division": "CFS",
+        "report_name": "사업보고서",
+    }
+    assert payload["annual"]["accounts"]["list"][0]["thstrm_amount"] == "90000000"
+    assert [request["reprt_code"] for request in captured_requests[:3]] == [
+        "11014",
+        "11012",
+        "11013",
+    ]

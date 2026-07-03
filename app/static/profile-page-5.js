@@ -126,6 +126,22 @@ function optionLabel(options, value) {
   return options.find(([optionValue]) => optionValue === value)?.[1] || value;
 }
 
+function financialDetailUrl(crno, selected) {
+  const endpoint = new URL("/profile", window.location.origin);
+  endpoint.searchParams.set("crno", crno);
+  endpoint.searchParams.set("view", "financials");
+  if (selected?.business_year) {
+    endpoint.searchParams.set("business_year", selected.business_year);
+  }
+  if (selected?.report_code) {
+    endpoint.searchParams.set("report_code", selected.report_code);
+  }
+  if (selected?.fs_division) {
+    endpoint.searchParams.set("fs_division", selected.fs_division);
+  }
+  return `${endpoint.pathname}${endpoint.search}`;
+}
+
 function renderStockChart(stock) {
   const points = (stock?.graph || [])
     .map((point) => ({
@@ -376,9 +392,9 @@ function renderDartDisclosures(disclosures) {
   `;
 }
 
-function renderDartFinancialAccounts(accounts) {
+function financialSummaryItems(accounts) {
   const preferred = new Set(["매출액", "영업이익", "당기순이익", "자산총계", "부채총계", "자본총계"]);
-  const items = Array.from(
+  return Array.from(
     (accounts?.list || [])
       .filter((item) => preferred.has(item.account_nm))
       .reduce((itemsByName, item) => {
@@ -389,15 +405,21 @@ function renderDartFinancialAccounts(accounts) {
       }, new Map())
       .values(),
   ).slice(0, 6);
+}
+
+function renderFinancialSummaryPanel({ report, key, isActive }) {
+  const selected = report?.selected;
+  const accounts = report?.accounts;
+  const items = financialSummaryItems(accounts);
   if (!items.length) return "";
   const crno = new URLSearchParams(window.location.search).get("crno");
+  const subtitle = selected
+    ? `${selected.business_year} · ${selected.report_name} · ${optionLabel(financialStatementOptions, selected.fs_division)}`
+    : "재무정보";
 
   return `
-    <article class="info-block">
-      <div class="block-heading">
-        <h3>재무 요약</h3>
-        <a href="/profile?crno=${encodeURIComponent(crno)}&view=financials">더보기</a>
-      </div>
+    <div class="financial-summary-panel ${isActive ? "is-active" : ""}" data-financial-panel="${key}" ${isActive ? "" : "hidden"}>
+      <p class="financial-summary-meta">${subtitle}</p>
       <dl class="kv">
         ${items
           .map(
@@ -408,8 +430,59 @@ function renderDartFinancialAccounts(accounts) {
           )
           .join("")}
       </dl>
+      <a class="text-link" href="${financialDetailUrl(crno, selected)}">더보기</a>
+    </div>
+  `;
+}
+
+function renderDartFinancialAccounts(info) {
+  const quarterReport = info.dart_latest_quarter_financial_accounts;
+  const annualReport =
+    info.dart_latest_annual_financial_accounts || {
+      selected: null,
+      accounts: info.dart_financial_accounts,
+    };
+  const hasQuarter = Boolean(quarterReport?.accounts?.list?.length);
+  const hasAnnual = Boolean(annualReport?.accounts?.list?.length);
+  if (!hasQuarter && !hasAnnual) return "";
+  const activeKey = hasQuarter ? "quarter" : "annual";
+  const crno = new URLSearchParams(window.location.search).get("crno");
+
+  return `
+    <article class="info-block financial-summary">
+      <div class="block-heading">
+        <h3>재무 요약</h3>
+      </div>
+      <div class="summary-tabs" role="tablist" aria-label="재무제표 기간">
+        <button type="button" class="${activeKey === "quarter" ? "is-active" : ""}" data-financial-tab="quarter" ${hasQuarter ? "" : "disabled"}>
+          분기
+        </button>
+        <button type="button" class="${activeKey === "annual" ? "is-active" : ""}" data-financial-tab="annual" ${hasAnnual ? "" : "disabled"}>
+          연간
+        </button>
+      </div>
+      ${renderFinancialSummaryPanel({ report: quarterReport, key: "quarter", isActive: activeKey === "quarter" })}
+      ${renderFinancialSummaryPanel({ report: annualReport, key: "annual", isActive: activeKey === "annual" })}
     </article>
   `;
+}
+
+function setupFinancialSummaryTabs() {
+  document.querySelectorAll(".financial-summary").forEach((summary) => {
+    const tabs = Array.from(summary.querySelectorAll("[data-financial-tab]"));
+    const panels = Array.from(summary.querySelectorAll("[data-financial-panel]"));
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        const key = tab.dataset.financialTab;
+        tabs.forEach((item) => item.classList.toggle("is-active", item === tab));
+        panels.forEach((panel) => {
+          const isActive = panel.dataset.financialPanel === key;
+          panel.classList.toggle("is-active", isActive);
+          panel.hidden = !isActive;
+        });
+      });
+    });
+  });
 }
 
 function renderSubpageHeader({ kicker, title, subtitle, crno }) {
@@ -588,7 +661,7 @@ function renderCompanyDetail({ info, outline, listed, stock }) {
         <div class="price-meta">${text(change, "변동 정보 없음")}</div>
         ${renderStockChart(stock)}
       </article>
-      ${renderDartFinancialAccounts(info.dart_financial_accounts)}
+      ${renderDartFinancialAccounts(info)}
       ${renderDartDisclosures(info.dart_disclosures)}
       <article class="info-block full">
         <h3>주소</h3>
@@ -600,6 +673,7 @@ function renderCompanyDetail({ info, outline, listed, stock }) {
     </div>
   `;
   setupStockChartInteractions();
+  setupFinancialSummaryTabs();
 }
 
 async function loadProfile() {

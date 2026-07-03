@@ -25,8 +25,12 @@ function setStatus(message) {
   statusEl.textContent = message;
 }
 
-function renderSearchSkeleton(count = 5) {
+function clearResults() {
   resultList.innerHTML = "";
+}
+
+function renderSearchSkeleton(count = 5) {
+  clearResults();
   const fragment = document.createDocumentFragment();
 
   Array.from({ length: count }).forEach(() => {
@@ -45,7 +49,7 @@ function renderSearchSkeleton(count = 5) {
 }
 
 function renderResults(items) {
-  resultList.innerHTML = "";
+  clearResults();
   const fragment = document.createDocumentFragment();
 
   items.forEach((company) => {
@@ -194,6 +198,7 @@ async function searchCompanies(query) {
 
     if (items.length === 0) {
       setStatus("검색 결과가 없습니다.");
+      clearResults();
       return;
     }
 
@@ -201,6 +206,7 @@ async function searchCompanies(query) {
     renderResults(items);
   } catch (error) {
     setStatus(error.message);
+    clearResults();
   }
 }
 
@@ -209,6 +215,7 @@ form.addEventListener("submit", (event) => {
   const query = queryInput.value.trim();
   if (!query) {
     setStatus("기업명을 입력해주세요.");
+    clearResults();
     return;
   }
   searchCompanies(query);

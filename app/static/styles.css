@@ -552,6 +552,50 @@ a:hover {
   font-size: 12px;
 }
 
+.summary-tabs {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(64px, 1fr));
+  gap: 4px;
+  margin-bottom: 14px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.summary-tabs button {
+  min-height: 32px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.summary-tabs button.is-active {
+  background: var(--text);
+  color: var(--bg);
+}
+
+.summary-tabs button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.financial-summary-meta {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.financial-summary-panel .text-link {
+  display: inline-block;
+  margin-top: 14px;
+}
+
 .empty-copy {
   margin: 0;
   color: var(--muted);

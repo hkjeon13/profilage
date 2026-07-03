@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from datetime import UTC, datetime
 import hashlib
 import json
 import random
@@ -20,7 +19,6 @@ from app.services.company_dart import (
     DartCompanyService,
     DartCorpCodeQuery,
     DartDisclosureQuery,
-    DartFinancialAccountsQuery,
 )
 from app.services.company_store import (
     AFFILIATE_GROUP,
@@ -59,11 +57,6 @@ def _first_openapi_item(payload: dict[str, Any]) -> dict[str, Any]:
     if isinstance(item, list):
         return item[0] if item else {}
     return item if isinstance(item, dict) else {}
-
-
-def _latest_business_year() -> str:
-    today = datetime.now(UTC)
-    return str(today.year - 1)
 
 
 @dataclass(frozen=True)
@@ -441,20 +434,24 @@ class CompanyInfoService(OpenApiCompanyService):
                 per_page=5,
             )
         )
-        latest_business_year = _latest_business_year()
-        dart_financial_accounts = await dart_service.get_financial_accounts(
-            DartFinancialAccountsQuery(
-                corp_code=corp_code,
-                business_year=latest_business_year,
-                report_code="11011",
-                fs_division="CFS",
-            )
+        dart_financial_reports = await dart_service.get_latest_financial_reports(
+            corp_code=corp_code,
+            fs_division="CFS",
+        )
+        dart_latest_quarter_financial_accounts = dart_financial_reports["quarter"]
+        dart_latest_annual_financial_accounts = dart_financial_reports["annual"]
+        dart_financial_accounts = (
+            dart_latest_quarter_financial_accounts["accounts"]
+            if dart_latest_quarter_financial_accounts["accounts"].get("list")
+            else dart_latest_annual_financial_accounts["accounts"]
         )
         return {
             "dart_corp_code": corp_code_payload,
             "dart_company": dart_company,
             "dart_disclosures": dart_disclosures,
             "dart_financial_accounts": dart_financial_accounts,
+            "dart_latest_quarter_financial_accounts": dart_latest_quarter_financial_accounts,
+            "dart_latest_annual_financial_accounts": dart_latest_annual_financial_accounts,
         }
 
 

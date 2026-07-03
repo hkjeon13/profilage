@@ -38,6 +38,12 @@ DART_DISCLOSURES_TTL = timedelta(hours=1)
 DART_FINANCIAL_ACCOUNTS_TTL = timedelta(days=1)
 NO_DATA_STATUS = "013"
 SUCCESS_STATUS = "000"
+FINANCIAL_REPORT_NAMES = {
+    "11011": "사업보고서",
+    "11012": "반기보고서",
+    "11013": "1분기보고서",
+    "11014": "3분기보고서",
+}
 
 
 @dataclass(frozen=True)
@@ -349,3 +355,64 @@ class DartCompanyService:
             if item.get("fs_div") in (None, query.fs_division)
         ]
         return payload
+
+    async def get_latest_financial_reports(
+        self,
+        *,
+        corp_code: str,
+        current_year: int | None = None,
+        fs_division: str = "CFS",
+    ) -> dict[str, Any]:
+        year = current_year or datetime.now(UTC).year
+        quarter_candidates = [
+            (str(year), "11014"),
+            (str(year), "11012"),
+            (str(year), "11013"),
+            (str(year - 1), "11014"),
+            (str(year - 1), "11012"),
+            (str(year - 1), "11013"),
+        ]
+        annual_candidates = [
+            (str(candidate_year), "11011")
+            for candidate_year in range(year, year - 6, -1)
+        ]
+
+        async def first_available(
+            candidates: list[tuple[str, str]],
+        ) -> dict[str, Any] | None:
+            for business_year, report_code in candidates:
+                accounts = await self.get_financial_accounts(
+                    DartFinancialAccountsQuery(
+                        corp_code=corp_code,
+                        business_year=business_year,
+                        report_code=report_code,
+                        fs_division=fs_division,
+                    )
+                )
+                if accounts.get("list"):
+                    return {
+                        "selected": {
+                            "business_year": business_year,
+                            "report_code": report_code,
+                            "fs_division": fs_division,
+                            "report_name": FINANCIAL_REPORT_NAMES.get(
+                                report_code,
+                                report_code,
+                            ),
+                        },
+                        "accounts": accounts,
+                    }
+            return None
+
+        empty_report = {
+            "selected": None,
+            "accounts": {
+                "status": NO_DATA_STATUS,
+                "message": "조회된 데이타가 없습니다.",
+                "list": [],
+            },
+        }
+        return {
+            "quarter": await first_available(quarter_candidates) or empty_report,
+            "annual": await first_available(annual_candidates) or empty_report,
+        }
