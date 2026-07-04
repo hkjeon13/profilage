@@ -29,7 +29,6 @@ def normalize_ownership(payload: dict[str, Any] | None) -> dict[str, Any] | None
     rows = _items(payload)
     if not rows:
         return None
-    first = rows[0]
     holders = []
     for row in rows:
         ratio = _first_value(
@@ -47,10 +46,16 @@ def normalize_ownership(payload: dict[str, Any] | None) -> dict[str, Any] | None
                 "ratio_number": ratio_number,
             }
         )
+    holders.sort(key=lambda holder: holder["ratio_number"], reverse=True)
+    largest_holder = holders[0] if holders else {}
+    first = rows[0]
     return {
-        "largest_holder_name": _first_value(first, ["nm", "holder_nm", "stockholdr_nm"]),
-        "largest_holder_relation": _first_value(first, ["relate", "relate_nm"]),
-        "largest_holder_ratio": _first_value(
+        "largest_holder_name": largest_holder.get("name")
+        or _first_value(first, ["nm", "holder_nm", "stockholdr_nm"]),
+        "largest_holder_relation": largest_holder.get("relation")
+        or _first_value(first, ["relate", "relate_nm"]),
+        "largest_holder_ratio": largest_holder.get("ratio")
+        or _first_value(
             first,
             ["bsis_posesn_stock_qota_rt", "posesn_stock_qota_rt", "stock_qota_rt"],
         ),

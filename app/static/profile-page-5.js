@@ -1218,6 +1218,7 @@ function ownershipBarColor(index) {
 function renderOwnershipStackedBar(ownership) {
   const holders = (ownership?.holders || [])
     .filter((holder) => Number.isFinite(Number(holder.ratio_number)) && Number(holder.ratio_number) > 0)
+    .sort((a, b) => Number(b.ratio_number) - Number(a.ratio_number))
     .slice(0, OWNERSHIP_BAR_MAX_HOLDERS);
   if (!holders.length) {
     return `

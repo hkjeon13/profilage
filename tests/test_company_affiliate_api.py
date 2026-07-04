@@ -190,7 +190,7 @@ def test_profile_page_serves_company_profile_frontend():
     assert "/profile-chart-2.css?v=interactive-7" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-30" in response.text
+    assert "/profile-page-5.js?v=company-profile-31" in response.text
 
 
 def test_profile_back_link_preserves_return_search_query():
@@ -356,7 +356,7 @@ def test_financial_summary_cards_open_trend_modal_with_account_checks():
     assert "financial-trend-account-check" in script_response.text
     assert ".financial-trend-modal" in style_response.text
     assert ".financial-trend-chart" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-30" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-31" in profile_response.text
 
 
 def test_financial_summary_more_link_is_in_card_heading():
@@ -487,7 +487,7 @@ def test_stock_window_tabs_expose_loading_error_and_refresh_metadata():
     assert "주가 정보를 불러오지 못했습니다" in script_response.text
     assert ".stock-window-status" in style_response.text
     assert ".company-market-card.is-loading-stock" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-30" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-31" in profile_response.text
 
 
 def test_profile_sections_render_source_and_basis_metadata():
@@ -649,7 +649,7 @@ def test_relationship_summary_cards_open_company_list_modal():
     assert ".relationship-list-modal" in style_response.text
     assert ".relationship-list-items" in style_response.text
     assert "/styles.css?v=company-profile-28" in profile_response.text
-    assert "/profile-page-5.js?v=company-profile-30" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-31" in profile_response.text
 
 
 def test_relationship_summary_terms_have_tooltips():
@@ -684,6 +684,7 @@ def test_profile_frontend_renders_normalized_dart_insight_cards():
     assert "insights.ratios" in script_response.text
     assert "renderOwnershipStackedBar" in script_response.text
     assert "ownership-bar-segment" in script_response.text
+    assert "Number(b.ratio_number) - Number(a.ratio_number)" in script_response.text
     assert "기타 주주" in script_response.text
     assert "최대주주" in script_response.text
     assert "주당배당금" in script_response.text
@@ -693,7 +694,7 @@ def test_profile_frontend_renders_normalized_dart_insight_cards():
     assert ".ownership-stacked-bar" in style_response.text
     assert ".ownership-bar-segment" in style_response.text
     assert "/styles.css?v=company-profile-28" in profile_response.text
-    assert "/profile-page-5.js?v=company-profile-30" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-31" in profile_response.text
 
 
 def test_profile_frontend_exposes_lazy_dart_detail_modal():
@@ -769,6 +770,11 @@ def test_company_insight_normalizer_returns_stable_phase_one_shape():
                         "relate": "계열회사",
                         "bsis_posesn_stock_qota_rt": "5.5",
                     },
+                    {
+                        "nm": "더큰주주",
+                        "relate": "계열회사",
+                        "bsis_posesn_stock_qota_rt": "15.5",
+                    },
                 ],
             },
             "dividends": {
@@ -803,15 +809,16 @@ def test_company_insight_normalizer_returns_stable_phase_one_shape():
     )
 
     assert payload["basis"]["business_year"] == "2025"
-    assert payload["ownership"]["largest_holder_name"] == "홍길동"
-    assert payload["ownership"]["largest_holder_ratio"] == "10.0"
+    assert payload["ownership"]["largest_holder_name"] == "더큰주주"
+    assert payload["ownership"]["largest_holder_ratio"] == "15.5"
     assert payload["ownership"]["holders"][0] == {
-        "name": "홍길동",
-        "relation": "본인",
-        "ratio": "10.0",
-        "ratio_number": 10.0,
+        "name": "더큰주주",
+        "relation": "계열회사",
+        "ratio": "15.5",
+        "ratio_number": 15.5,
     }
-    assert payload["ownership"]["holders"][1]["ratio_number"] == 5.5
+    assert payload["ownership"]["holders"][1]["ratio_number"] == 10.0
+    assert payload["ownership"]["holders"][2]["ratio_number"] == 5.5
     assert payload["dividend"]["dividend_per_share"] == "1,444"
     assert payload["audit"]["auditor"] == "삼일회계법인"
     assert payload["audit"]["opinion"] == "적정"
