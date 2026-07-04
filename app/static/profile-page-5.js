@@ -1233,7 +1233,18 @@ function relationshipPayload(items) {
   return attr(JSON.stringify(items));
 }
 
+function relationshipTermDescription(type) {
+  if (type === "subsidiaries") {
+    return "현재 회사가 지배하는 회사입니다. 연결재무제표에 포함되는 자회사 성격의 회사로 보면 됩니다.";
+  }
+  if (type === "listed-affiliates") {
+    return "같은 기업집단에 속한 회사 중 상장된 회사입니다.";
+  }
+  return "같은 기업집단에 속한 회사입니다. 현재 회사가 직접 지배하지 않는 그룹 내 회사도 포함될 수 있습니다.";
+}
+
 function relationshipSummaryButton({ type, label, count, items }) {
+  const description = relationshipTermDescription(type);
   return `
     <button
       type="button"
@@ -1243,8 +1254,12 @@ function relationshipSummaryButton({ type, label, count, items }) {
       data-relationship-list-payload="${relationshipPayload(items)}"
       ${items.length ? "" : "disabled"}
     >
-      <span class="relationship-summary-label">${label}</span>
+      <span class="relationship-summary-label">
+        ${label}
+        <span class="relationship-summary-help" title="${attr(description)}" aria-label="${attr(description)}">?</span>
+      </span>
       <span class="relationship-summary-count">${count.toLocaleString("ko-KR")}</span>
+      <span class="relationship-summary-tooltip" data-relationship-tooltip>${escapeHtml(description)}</span>
     </button>
   `;
 }
