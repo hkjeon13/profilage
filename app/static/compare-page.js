@@ -281,7 +281,7 @@ function renderCompareTable(companies) {
                         <th>
                           <span class="compare-column-head">
                             <span>${escapeHtml(company.name)}</span>
-                            <button type="button" class="compare-remove-button" data-compare-remove="${attr(company.crno)}" aria-label="${attr(company.name)} 비교에서 삭제">삭제</button>
+                            <button type="button" class="compare-remove-button" data-compare-remove="${attr(company.crno)}" aria-label="${attr(company.name)} 비교에서 삭제">×</button>
                           </span>
                         </th>
                       `,

@@ -1964,13 +1964,18 @@ a:hover {
 }
 
 .compare-remove-button {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 50%;
   background: #f2f4f7;
   color: #667085;
-  padding: 4px 7px;
-  font-size: 11px;
+  padding: 0;
+  font-size: 16px;
   font-weight: 850;
+  line-height: 1;
   cursor: pointer;
 }
 
