@@ -17,10 +17,14 @@ from app.services.company_affiliate import (
     CompanyStockPriceService,
 )
 from app.services.company_dart import (
+    DART_PERIODIC_ENDPOINTS,
+    DartPeriodicReportInfoQuery,
     DartFinancialAccountsQuery,
     DartCompanyService,
     dart_financial_accounts_ttl,
+    dart_periodic_report_ttl,
 )
+from app.services.company_insights import normalize_dart_insights
 from app.services.company_store import (
     AFFILIATE_GROUP,
     COMPANY_ENTITY_TYPE,
@@ -182,11 +186,11 @@ def test_profile_page_serves_company_profile_frontend():
     assert '<a href="/openapi.json">OpenAPI</a>' not in response.text
     assert '<a href="/docs">문서</a>' not in response.text
     assert '<a href="/">새 검색</a>' not in response.text
-    assert "/styles.css?v=company-profile-24" in response.text
+    assert "/styles.css?v=company-profile-26" in response.text
     assert "/profile-chart-2.css?v=interactive-7" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-26" in response.text
+    assert "/profile-page-5.js?v=company-profile-28" in response.text
 
 
 def test_profile_back_link_preserves_return_search_query():
@@ -352,7 +356,7 @@ def test_financial_summary_cards_open_trend_modal_with_account_checks():
     assert "financial-trend-account-check" in script_response.text
     assert ".financial-trend-modal" in style_response.text
     assert ".financial-trend-chart" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-26" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-28" in profile_response.text
 
 
 def test_financial_summary_more_link_is_in_card_heading():
@@ -483,7 +487,7 @@ def test_stock_window_tabs_expose_loading_error_and_refresh_metadata():
     assert "주가 정보를 불러오지 못했습니다" in script_response.text
     assert ".stock-window-status" in style_response.text
     assert ".company-market-card.is-loading-stock" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-26" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-28" in profile_response.text
 
 
 def test_profile_sections_render_source_and_basis_metadata():
@@ -644,8 +648,8 @@ def test_relationship_summary_cards_open_company_list_modal():
     assert "relationship-list-modal" in script_response.text
     assert ".relationship-list-modal" in style_response.text
     assert ".relationship-list-items" in style_response.text
-    assert "/styles.css?v=company-profile-24" in profile_response.text
-    assert "/profile-page-5.js?v=company-profile-26" in profile_response.text
+    assert "/styles.css?v=company-profile-26" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-28" in profile_response.text
 
 
 def test_relationship_summary_terms_have_tooltips():
@@ -662,6 +666,310 @@ def test_relationship_summary_terms_have_tooltips():
     assert "relationship-summary-help" in script_response.text
     assert ".relationship-summary-help" in style_response.text
     assert ".relationship-summary-tooltip" in style_response.text
+
+
+def test_profile_frontend_renders_normalized_dart_insight_cards():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+        style_response = client.get("/styles.css")
+        profile_response = client.get("/profile")
+
+    assert script_response.status_code == 200
+    assert style_response.status_code == 200
+    assert profile_response.status_code == 200
+    assert "renderCompanyInsightCards" in script_response.text
+    assert "insights.ownership" in script_response.text
+    assert "insights.dividend" in script_response.text
+    assert "insights.audit" in script_response.text
+    assert "insights.ratios" in script_response.text
+    assert "최대주주" in script_response.text
+    assert "주당배당금" in script_response.text
+    assert "감사의견" in script_response.text
+    assert "재무비율" in script_response.text
+    assert ".company-insight-cards" in style_response.text
+    assert "/styles.css?v=company-profile-26" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-28" in profile_response.text
+
+
+def test_profile_frontend_exposes_lazy_dart_detail_modal():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+        style_response = client.get("/styles.css")
+
+    assert script_response.status_code == 200
+    assert style_response.status_code == 200
+    assert "ensureDartInsightDetailModal" in script_response.text
+    assert "openDartInsightDetailModal" in script_response.text
+    assert "/api/company/get_dart_company_insight_detail" in script_response.text
+    assert "data-dart-insight-detail-kind" in script_response.text
+    assert "주식구조 더보기" in script_response.text
+    assert "임직원 더보기" in script_response.text
+    assert ".dart-insight-detail-modal" in style_response.text
+
+
+def test_dart_insight_cards_include_source_and_empty_state_copy():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+        style_response = client.get("/styles.css")
+
+    assert script_response.status_code == 200
+    assert style_response.status_code == 200
+    assert "DART 정기보고서" in script_response.text
+    assert "정정 공시가 있으면 수치가 바뀔 수 있습니다" in script_response.text
+    assert "표시할 심화 정보가 없습니다" in script_response.text
+    assert ".company-insight-source" in style_response.text
+    assert "@media (max-width: 820px)" in style_response.text
+
+
+def test_dart_periodic_endpoint_registry_contains_phase_one_sources():
+    assert DART_PERIODIC_ENDPOINTS["major_shareholders"]["group_name"] == "dart_major_shareholders"
+    assert DART_PERIODIC_ENDPOINTS["dividends"]["group_name"] == "dart_dividends"
+    assert DART_PERIODIC_ENDPOINTS["audit_opinion"]["group_name"] == "dart_audit_opinion"
+    assert DART_PERIODIC_ENDPOINTS["financial_ratios"]["group_name"] == "dart_financial_ratios"
+    assert DART_PERIODIC_ENDPOINTS["major_shareholders"]["endpoint"].endswith(".json") is False
+
+
+def test_company_insight_normalizer_returns_stable_phase_one_shape():
+    payload = normalize_dart_insights(
+        {
+            "major_shareholders": {
+                "status": "000",
+                "list": [
+                    {
+                        "nm": "홍길동",
+                        "relate": "본인",
+                        "stock_knd": "보통주",
+                        "bsis_posesn_stock_co": "1,000",
+                        "bsis_posesn_stock_qota_rt": "10.0",
+                    }
+                ],
+            },
+            "dividends": {
+                "status": "000",
+                "list": [
+                    {
+                        "se": "주당 현금배당금(원)",
+                        "thstrm": "1,444",
+                        "frmtrm": "1,444",
+                    }
+                ],
+            },
+            "audit_opinion": {
+                "status": "000",
+                "list": [
+                    {
+                        "bsns_year": "2025",
+                        "adtor": "삼일회계법인",
+                        "adt_opinion": "적정",
+                    }
+                ],
+            },
+            "financial_ratios": {
+                "status": "000",
+                "list": [
+                    {"idx_nm": "부채비율", "idx_val": "30.0"},
+                    {"idx_nm": "영업이익률", "idx_val": "15.5"},
+                ],
+            },
+        },
+        basis={"business_year": "2025", "report_code": "11011", "report_name": "사업보고서"},
+    )
+
+    assert payload["basis"]["business_year"] == "2025"
+    assert payload["ownership"]["largest_holder_name"] == "홍길동"
+    assert payload["ownership"]["largest_holder_ratio"] == "10.0"
+    assert payload["dividend"]["dividend_per_share"] == "1,444"
+    assert payload["audit"]["auditor"] == "삼일회계법인"
+    assert payload["audit"]["opinion"] == "적정"
+    assert payload["ratios"]["items"][0] == {"name": "부채비율", "value": "30.0"}
+
+
+@pytest.mark.asyncio
+async def test_dart_periodic_report_info_maps_query_to_dart_api(monkeypatch):
+    monkeypatch.setenv("DART_API_KEY", "dart-key")
+    captured_request = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured_request["url"] = str(request.url.copy_with(query=None))
+        captured_request["params"] = dict(request.url.params)
+        return httpx.Response(200, json={"status": "000", "list": [{"corp_code": "00126380"}]})
+
+    service = DartCompanyService(
+        transport=httpx.MockTransport(handler),
+        cache=FakeJsonCache(),
+        data_group_store=FakeDataGroupStore(),
+    )
+
+    payload = await service.get_periodic_report_info(
+        DartPeriodicReportInfoQuery(
+            corp_code="00126380",
+            business_year="2025",
+            report_code="11011",
+            kind="major_shareholders",
+        )
+    )
+
+    assert payload["list"][0]["corp_code"] == "00126380"
+    assert captured_request["url"] == "https://opendart.fss.or.kr/api/hyslrSttus.json"
+    assert captured_request["params"] == {
+        "crtfc_key": "dart-key",
+        "corp_code": "00126380",
+        "bsns_year": "2025",
+        "reprt_code": "11011",
+    }
+
+
+def test_dart_periodic_report_ttl_expires_only_recent_periods():
+    assert dart_periodic_report_ttl(
+        "2025",
+        "11011",
+        now=datetime(2026, 7, 4, tzinfo=UTC),
+    ) is None
+    assert dart_periodic_report_ttl(
+        "2026",
+        "11013",
+        now=datetime(2026, 7, 4, tzinfo=UTC),
+    ) == timedelta(days=1)
+
+
+@pytest.mark.asyncio
+async def test_dart_financial_ratio_report_includes_required_index_class(monkeypatch):
+    monkeypatch.setenv("DART_API_KEY", "dart-key")
+    captured_request = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured_request["params"] = dict(request.url.params)
+        return httpx.Response(200, json={"status": "000", "list": [{"idx_nm": "부채비율", "idx_val": "30.0"}]})
+
+    service = DartCompanyService(
+        transport=httpx.MockTransport(handler),
+        cache=FakeJsonCache(),
+        data_group_store=FakeDataGroupStore(),
+    )
+
+    await service.get_periodic_report_info(
+        DartPeriodicReportInfoQuery(
+            corp_code="00126380",
+            business_year="2025",
+            report_code="11011",
+            kind="financial_ratios",
+            idx_cl_code="M220000",
+        )
+    )
+
+    assert captured_request["params"]["idx_cl_code"] == "M220000"
+
+
+@pytest.mark.asyncio
+async def test_company_info_service_attaches_normalized_dart_insights(monkeypatch):
+    monkeypatch.setenv("DART_API_KEY", "dart-key")
+    monkeypatch.setenv("OPEN_API_DECODING_KEY", "decoded-service-key")
+
+    crno = "1301110006246"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        path = request.url.path
+        if path.endswith("/getCorpOutline_V2"):
+            body = {"items": {"item": {"crno": crno, "corpNm": "삼성전자(주)"}}}
+            return httpx.Response(200, json={"response": {"header": {"resultCode": "00"}, "body": body}})
+        if path.endswith("/getItemInfo"):
+            body = {"items": {"item": {"srtnCd": "005930", "crno": crno}}}
+            return httpx.Response(200, json={"response": {"header": {"resultCode": "00"}, "body": body}})
+        if path.endswith("/getAffiliate_V2") or path.endswith("/getConsSubsComp_V2"):
+            body = {"items": {"item": []}}
+            return httpx.Response(200, json={"response": {"header": {"resultCode": "00"}, "body": body}})
+        if path.endswith("/corpCode.xml"):
+            return httpx.Response(200, content=dart_corp_code_zip())
+        if path.endswith("/company.json"):
+            return httpx.Response(200, json={"status": "000", "corp_code": "00126380", "corp_name": "삼성전자"})
+        if path.endswith("/list.json"):
+            return httpx.Response(200, json={"status": "000", "list": []})
+        if path.endswith("/fnlttSinglAcnt.json"):
+            return httpx.Response(
+                200,
+                json={
+                    "status": "000",
+                    "list": [
+                        {
+                            "fs_div": "CFS",
+                            "sj_div": "BS",
+                            "account_nm": "자산총계",
+                            "thstrm_amount": "100",
+                        }
+                    ],
+                },
+            )
+        if path.endswith("/hyslrSttus.json"):
+            return httpx.Response(200, json={"status": "000", "list": [{"nm": "삼성생명", "bsis_posesn_stock_qota_rt": "8.51"}]})
+        if path.endswith("/alotMatter.json"):
+            return httpx.Response(200, json={"status": "000", "list": [{"se": "주당 현금배당금(원)", "thstrm": "1,444"}]})
+        if path.endswith("/accnutAdtorNmNdAdtOpinion.json"):
+            return httpx.Response(200, json={"status": "000", "list": [{"adtor": "삼일회계법인", "adt_opinion": "적정"}]})
+        if path.endswith("/fnlttSinglIndx.json"):
+            return httpx.Response(200, json={"status": "000", "list": [{"idx_nm": "부채비율", "idx_val": "30.0"}]})
+        raise AssertionError(path)
+
+    service = CompanyInfoService(
+        transport=httpx.MockTransport(handler),
+        cache=FakeJsonCache(),
+        data_group_store=FakeDataGroupStore(),
+    )
+
+    payload = await service.fetch(
+        CompanyInfoQuery(corporate_registration_number=crno, page=1, per_page=10)
+    )
+
+    insights = payload["dart_insights"]
+    assert insights["ownership"]["largest_holder_name"] == "삼성생명"
+    assert insights["ownership"]["largest_holder_ratio"] == "8.51"
+    assert insights["dividend"]["dividend_per_share"] == "1,444"
+    assert insights["audit"]["opinion"] == "적정"
+    assert insights["ratios"]["items"][0]["name"] == "부채비율"
+
+
+def test_get_dart_company_insight_detail_returns_capital_detail(monkeypatch):
+    monkeypatch.setenv("DART_API_KEY", "dart-key")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/stockTotqySttus.json"):
+            return httpx.Response(200, json={"status": "000", "list": [{"se": "보통주", "istc_totqy": "5,969,782,550"}]})
+        if request.url.path.endswith("/tesstkAcqsDspsSttus.json"):
+            return httpx.Response(200, json={"status": "000", "list": [{"stock_knd": "보통주", "trmend_qy": "100"}]})
+        raise AssertionError(request.url.path)
+
+    with TestClient(app) as client:
+        app.state.http_transport = httpx.MockTransport(handler)
+        response = client.get(
+            "/company/get_dart_company_insight_detail",
+            params={
+                "corp_code": "00126380",
+                "business_year": "2025",
+                "report_code": "11011",
+                "kind": "capital",
+            },
+        )
+        del app.state.http_transport
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["kind"] == "capital"
+    assert payload["total_stock"][0]["istc_totqy"] == "5,969,782,550"
+    assert payload["treasury_stock"][0]["trmend_qy"] == "100"
+
+
+def test_get_dart_company_insight_detail_rejects_unknown_kind():
+    with TestClient(app) as client:
+        response = client.get(
+            "/company/get_dart_company_insight_detail",
+            params={
+                "corp_code": "00126380",
+                "business_year": "2025",
+                "report_code": "11011",
+                "kind": "unknown",
+            },
+        )
+
+    assert response.status_code == 422
 
 
 def test_company_api_is_available_under_api_prefix(monkeypatch):

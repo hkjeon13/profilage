@@ -31,6 +31,44 @@ DART_CORP_CODE_GROUP = "dart_corp_code"
 DART_COMPANY_GROUP = "dart_company"
 DART_DISCLOSURES_GROUP = "dart_disclosures"
 DART_FINANCIAL_ACCOUNTS_GROUP = "dart_financial_accounts"
+DART_PERIODIC_ENDPOINTS = {
+    "major_shareholders": {
+        "endpoint": "hyslrSttus",
+        "group_name": "dart_major_shareholders",
+    },
+    "minor_shareholders": {
+        "endpoint": "mrhlSttus",
+        "group_name": "dart_minor_shareholders",
+    },
+    "dividends": {
+        "endpoint": "alotMatter",
+        "group_name": "dart_dividends",
+    },
+    "audit_opinion": {
+        "endpoint": "accnutAdtorNmNdAdtOpinion",
+        "group_name": "dart_audit_opinion",
+    },
+    "financial_ratios": {
+        "endpoint": "fnlttSinglIndx",
+        "group_name": "dart_financial_ratios",
+    },
+    "total_stock": {
+        "endpoint": "stockTotqySttus",
+        "group_name": "dart_total_stock",
+    },
+    "treasury_stock": {
+        "endpoint": "tesstkAcqsDspsSttus",
+        "group_name": "dart_treasury_stock",
+    },
+    "executives": {
+        "endpoint": "exctvSttus",
+        "group_name": "dart_executives",
+    },
+    "employees": {
+        "endpoint": "empSttus",
+        "group_name": "dart_employees",
+    },
+}
 
 DART_CORP_CODE_TTL = timedelta(days=7)
 DART_COMPANY_TTL = timedelta(days=7)
@@ -83,6 +121,15 @@ class DartFinancialAccountsQuery:
     business_year: str
     report_code: str
     fs_division: str | None
+
+
+@dataclass(frozen=True)
+class DartPeriodicReportInfoQuery:
+    corp_code: str
+    business_year: str
+    report_code: str
+    kind: str
+    idx_cl_code: str | None = None
 
 
 @dataclass(frozen=True)
@@ -158,6 +205,20 @@ def dart_financial_accounts_ttl(
     if current - period_end >= DART_FINANCIAL_ACCOUNTS_STABLE_AFTER:
         return None
     return DART_FINANCIAL_ACCOUNTS_RECENT_TTL
+
+
+def dart_periodic_report_ttl(
+    business_year: str,
+    report_code: str,
+    *,
+    now: datetime | None = None,
+) -> timedelta | None:
+    current = now or datetime.now(UTC)
+    month, day = FINANCIAL_REPORT_PERIOD_END.get(report_code, (12, 31))
+    period_end = datetime(int(business_year), month, day, tzinfo=UTC)
+    if current - period_end >= DART_FINANCIAL_ACCOUNTS_STABLE_AFTER:
+        return None
+    return timedelta(days=1)
 
 
 class DartCompanyService:
@@ -392,6 +453,151 @@ class DartCompanyService:
             if item.get("fs_div") in (None, query.fs_division)
         ]
         return payload
+
+    async def get_periodic_report_info(
+        self,
+        query: DartPeriodicReportInfoQuery,
+    ) -> dict[str, Any]:
+        config = DART_PERIODIC_ENDPOINTS[query.kind]
+        params = {
+            "corp_code": query.corp_code,
+            "bsns_year": query.business_year,
+            "reprt_code": query.report_code,
+        }
+        if query.idx_cl_code:
+            params["idx_cl_code"] = query.idx_cl_code
+        group_suffix = f":{query.idx_cl_code}" if query.idx_cl_code else ""
+        return await fetch_with_group_store(
+            store=self._data_group_store,
+            entity_type=COMPANY_ENTITY_TYPE,
+            entity_key=_dart_entity_key(query.corp_code),
+            group_name=f"{config['group_name']}:{query.business_year}:{query.report_code}{group_suffix}",
+            source=f"dart:{config['endpoint']}",
+            ttl=dart_periodic_report_ttl(query.business_year, query.report_code),
+            fetcher=lambda: self._fetch_json(
+                url=f"{DART_BASE_URL}/{config['endpoint']}.json",
+                params=params,
+                allow_no_data=True,
+            ),
+        )
+
+    async def get_phase_one_insight_sources(
+        self,
+        *,
+        corp_code: str,
+        business_year: str,
+        report_code: str,
+    ) -> dict[str, Any]:
+        return {
+            "major_shareholders": await self.get_periodic_report_info(
+                DartPeriodicReportInfoQuery(
+                    corp_code=corp_code,
+                    business_year=business_year,
+                    report_code=report_code,
+                    kind="major_shareholders",
+                )
+            ),
+            "dividends": await self.get_periodic_report_info(
+                DartPeriodicReportInfoQuery(
+                    corp_code=corp_code,
+                    business_year=business_year,
+                    report_code=report_code,
+                    kind="dividends",
+                )
+            ),
+            "audit_opinion": await self.get_periodic_report_info(
+                DartPeriodicReportInfoQuery(
+                    corp_code=corp_code,
+                    business_year=business_year,
+                    report_code=report_code,
+                    kind="audit_opinion",
+                )
+            ),
+            "financial_ratios": await self.get_financial_ratio_sources(
+                corp_code=corp_code,
+                business_year=business_year,
+                report_code=report_code,
+            ),
+        }
+
+    async def get_financial_ratio_sources(
+        self,
+        *,
+        corp_code: str,
+        business_year: str,
+        report_code: str,
+    ) -> dict[str, Any]:
+        payloads = [
+            await self.get_periodic_report_info(
+                DartPeriodicReportInfoQuery(
+                    corp_code=corp_code,
+                    business_year=business_year,
+                    report_code=report_code,
+                    kind="financial_ratios",
+                    idx_cl_code=idx_cl_code,
+                )
+            )
+            for idx_cl_code in ("M210000", "M220000")
+        ]
+        merged = dict(payloads[0] if payloads else {"status": SUCCESS_STATUS, "list": []})
+        merged["list"] = [
+            item
+            for payload in payloads
+            for item in payload.get("list", [])
+        ]
+        return merged
+
+    async def get_company_capital_sources(
+        self,
+        *,
+        corp_code: str,
+        business_year: str,
+        report_code: str,
+    ) -> dict[str, Any]:
+        return {
+            "total_stock": await self.get_periodic_report_info(
+                DartPeriodicReportInfoQuery(
+                    corp_code=corp_code,
+                    business_year=business_year,
+                    report_code=report_code,
+                    kind="total_stock",
+                )
+            ),
+            "treasury_stock": await self.get_periodic_report_info(
+                DartPeriodicReportInfoQuery(
+                    corp_code=corp_code,
+                    business_year=business_year,
+                    report_code=report_code,
+                    kind="treasury_stock",
+                )
+            ),
+        }
+
+    async def get_company_people_sources(
+        self,
+        *,
+        corp_code: str,
+        business_year: str,
+        report_code: str,
+    ) -> dict[str, Any]:
+        return {
+            "executives": await self.get_periodic_report_info(
+                DartPeriodicReportInfoQuery(
+                    corp_code=corp_code,
+                    business_year=business_year,
+                    report_code=report_code,
+                    kind="executives",
+                )
+            ),
+            "employees": await self.get_periodic_report_info(
+                DartPeriodicReportInfoQuery(
+                    corp_code=corp_code,
+                    business_year=business_year,
+                    report_code=report_code,
+                    kind="employees",
+                )
+            ),
+        }
 
     async def get_financial_trends(
         self,

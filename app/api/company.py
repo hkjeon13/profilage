@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
@@ -23,6 +23,10 @@ from app.services.company_dart import (
     DartDisclosureQuery,
     DartFinancialAccountsQuery,
     DartFinancialTrendsQuery,
+)
+from app.services.company_insights import (
+    normalize_capital_detail,
+    normalize_people_detail,
 )
 
 router = APIRouter(prefix="/company", tags=["company"])
@@ -374,3 +378,32 @@ async def get_dart_financial_trends(
             years=years,
         )
     )
+
+
+@router.get("/get_dart_company_insight_detail")
+async def get_dart_company_insight_detail(
+    request: Request,
+    corp_code: Annotated[str, Query(description="DART 고유번호")],
+    business_year: Annotated[str, Query(description="사업연도(YYYY)")],
+    report_code: Annotated[
+        str,
+        Query(description="보고서 코드: 11011 사업보고서, 11012 반기, 11013 1분기, 11014 3분기"),
+    ] = "11011",
+    kind: Annotated[Literal["capital", "people"], Query(description="상세 정보 종류")] = "capital",
+):
+    service = DartCompanyService(
+        transport=getattr(request.app.state, "http_transport", None)
+    )
+    if kind == "capital":
+        raw = await service.get_company_capital_sources(
+            corp_code=corp_code,
+            business_year=business_year,
+            report_code=report_code,
+        )
+        return normalize_capital_detail(raw)
+    raw = await service.get_company_people_sources(
+        corp_code=corp_code,
+        business_year=business_year,
+        report_code=report_code,
+    )
+    return normalize_people_detail(raw)

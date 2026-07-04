@@ -1559,6 +1559,168 @@ a:hover {
   color: #185abc;
 }
 
+.company-insight-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.company-insight-card {
+  min-width: 0;
+}
+
+.compact-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.compact-metric-grid > div {
+  border: 1px solid #eef0f6;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.compact-metric-grid dt {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.compact-metric-grid dd {
+  margin: 6px 0 0;
+  color: #101828;
+  font-size: 18px;
+  font-weight: 850;
+}
+
+.dart-insight-detail-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.company-insight-source {
+  grid-column: 1 / -1;
+  margin: -2px 0 0;
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.company-insight-empty {
+  padding: 18px;
+}
+
+.dart-insight-detail-actions button {
+  border: 1px solid #d8e4f5;
+  border-radius: 8px;
+  background: #fff;
+  color: #185abc;
+  cursor: pointer;
+  padding: 8px 11px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.dart-insight-detail-modal[hidden] {
+  display: none;
+}
+
+.dart-insight-detail-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 85;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.dart-insight-detail-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgb(15 23 42 / 42%);
+}
+
+.dart-insight-detail-dialog {
+  position: relative;
+  width: min(720px, 100%);
+  max-height: min(760px, calc(100vh - 48px));
+  overflow: hidden;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 24px 80px rgb(15 23 42 / 22%);
+}
+
+.dart-insight-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid #eef0f6;
+  padding: 20px 22px 16px;
+}
+
+.dart-insight-detail-header h3 {
+  margin: 0;
+  color: #101828;
+  font-size: 20px;
+  font-weight: 850;
+}
+
+.dart-insight-detail-close {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #e7ebf3;
+  border-radius: 8px;
+  background: #fff;
+  color: #344054;
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.dart-insight-detail-body {
+  max-height: calc(min(760px, 100vh - 48px) - 72px);
+  overflow: auto;
+  padding: 18px 22px 22px;
+}
+
+.dart-insight-detail-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dart-insight-detail-list li {
+  border: 1px solid #eef0f6;
+  border-radius: 8px;
+  background: #fbfcff;
+  padding: 13px 14px;
+}
+
+.dart-insight-detail-list strong,
+.dart-insight-detail-list span {
+  display: block;
+}
+
+.dart-insight-detail-list strong {
+  color: #101828;
+  font-size: 15px;
+}
+
+.dart-insight-detail-list span {
+  margin-top: 7px;
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .company-relationship-summary .relationship-summary-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1869,6 +2031,8 @@ a:hover {
   .company-overview-grid,
   .company-facts,
   .company-insight-row,
+  .company-insight-cards,
+  .compact-metric-grid,
   .relationship-summary-grid {
     grid-template-columns: 1fr;
   }
@@ -1889,6 +2053,21 @@ a:hover {
 
   .relationship-list-body {
     max-height: calc(100vh - 120px);
+    padding: 14px 18px 18px;
+  }
+
+  .dart-insight-detail-modal {
+    align-items: end;
+    padding: 14px;
+  }
+
+  .dart-insight-detail-dialog {
+    max-height: calc(100vh - 28px);
+    border-radius: 10px;
+  }
+
+  .dart-insight-detail-body {
+    max-height: calc(100vh - 112px);
     padding: 14px 18px 18px;
   }
 

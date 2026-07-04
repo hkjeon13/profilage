@@ -1205,6 +1205,173 @@ function renderCompanyInsightRow(info) {
   `;
 }
 
+function renderInsightMetric(label, value) {
+  if (!value) return "";
+  return `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`;
+}
+
+function renderDartInsightDetailButtons(insights) {
+  if (!insights?.basis?.business_year || !insights?.basis?.report_code) return "";
+  return `
+    <div class="dart-insight-detail-actions">
+      <button type="button" data-dart-insight-detail-kind="capital">주식구조 더보기</button>
+      <button type="button" data-dart-insight-detail-kind="people">임직원 더보기</button>
+    </div>
+  `;
+}
+
+function renderCompanyInsightCards(insights) {
+  if (!insights) return "";
+  const ratioItems = insights.ratios?.items || [];
+  const basisPayload = attr(JSON.stringify(insights.basis || {}));
+  const cards = [
+    insights.ownership
+      ? `
+        <article class="info-block company-insight-card">
+          <div class="block-heading"><h3>최대주주</h3></div>
+          <dl class="compact-metric-grid">
+            ${renderInsightMetric("이름", insights.ownership.largest_holder_name)}
+            ${renderInsightMetric("지분율", insights.ownership.largest_holder_ratio)}
+          </dl>
+        </article>
+      `
+      : "",
+    insights.dividend
+      ? `
+        <article class="info-block company-insight-card">
+          <div class="block-heading"><h3>배당</h3></div>
+          <dl class="compact-metric-grid">
+            ${renderInsightMetric("주당배당금", insights.dividend.dividend_per_share)}
+            ${renderInsightMetric("배당성향", insights.dividend.payout_ratio)}
+          </dl>
+        </article>
+      `
+      : "",
+    insights.audit
+      ? `
+        <article class="info-block company-insight-card">
+          <div class="block-heading"><h3>감사의견</h3></div>
+          <dl class="compact-metric-grid">
+            ${renderInsightMetric("의견", insights.audit.opinion)}
+            ${renderInsightMetric("회계감사인", insights.audit.auditor)}
+          </dl>
+        </article>
+      `
+      : "",
+    ratioItems.length
+      ? `
+        <article class="info-block company-insight-card">
+          <div class="block-heading"><h3>재무비율</h3></div>
+          <dl class="compact-metric-grid">
+            ${ratioItems.map((item) => renderInsightMetric(item.name, item.value)).join("")}
+          </dl>
+        </article>
+      `
+      : "",
+  ].filter(Boolean);
+  if (!cards.length) {
+    return `<article class="info-block company-insight-empty"><p class="empty-copy">표시할 심화 정보가 없습니다.</p></article>`;
+  }
+  const sourceMeta = insights.basis
+    ? `<p class="company-insight-source">출처 DART 정기보고서 · ${escapeHtml(insights.basis.business_year || "")} ${escapeHtml(insights.basis.report_name || "")} · 정정 공시가 있으면 수치가 바뀔 수 있습니다.</p>`
+    : `<p class="company-insight-source">출처 DART 정기보고서 · 정정 공시가 있으면 수치가 바뀔 수 있습니다.</p>`;
+  return `
+    <section class="company-insight-cards" aria-label="기업 심화 정보" data-dart-insight-basis="${basisPayload}">
+      ${cards.join("")}
+      ${sourceMeta}
+      ${renderDartInsightDetailButtons(insights)}
+    </section>
+  `;
+}
+
+function renderDartInsightDetailRows(payload) {
+  const rows = payload.kind === "capital"
+    ? [...(payload.total_stock || []), ...(payload.treasury_stock || [])]
+    : [...(payload.executives || []), ...(payload.employees || [])];
+  if (!rows.length) return `<p class="empty-copy">표시할 상세 정보가 없습니다.</p>`;
+  return `
+    <ul class="dart-insight-detail-list">
+      ${rows
+        .slice(0, 80)
+        .map((row) => {
+          const entries = Object.entries(row).filter(([, value]) => value !== undefined && value !== null && value !== "");
+          const title = row.nm || row.name || row.se || row.stock_knd || row.dept || entries[0]?.[1] || "상세 항목";
+          return `
+            <li>
+              <strong>${escapeHtml(title)}</strong>
+              <span>${entries.map(([key, value]) => `${escapeHtml(key)} ${escapeHtml(value)}`).join(" · ")}</span>
+            </li>
+          `;
+        })
+        .join("")}
+    </ul>
+  `;
+}
+
+function ensureDartInsightDetailModal() {
+  const existing = document.querySelector(".dart-insight-detail-modal");
+  if (existing) return existing;
+  const wrapper = document.createElement("div");
+  wrapper.innerHTML = `
+    <div class="dart-insight-detail-modal" hidden>
+      <button type="button" class="dart-insight-detail-backdrop" data-dart-insight-detail-close aria-label="닫기"></button>
+      <section class="dart-insight-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="dart-insight-detail-title">
+        <div class="dart-insight-detail-header">
+          <h3 id="dart-insight-detail-title">상세 정보</h3>
+          <button type="button" class="dart-insight-detail-close" data-dart-insight-detail-close aria-label="닫기">×</button>
+        </div>
+        <div class="dart-insight-detail-body" data-dart-insight-detail-body></div>
+      </section>
+    </div>
+  `;
+  const modal = wrapper.firstElementChild;
+  document.body.appendChild(modal);
+  modal.querySelectorAll("[data-dart-insight-detail-close]").forEach((button) => {
+    button.addEventListener("click", () => {
+      modal.hidden = true;
+      document.body.classList.remove("has-dart-insight-detail-open");
+    });
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !modal.hidden) {
+      modal.hidden = true;
+      document.body.classList.remove("has-dart-insight-detail-open");
+    }
+  });
+  return modal;
+}
+
+async function openDartInsightDetailModal(button) {
+  const kind = button.dataset.dartInsightDetailKind;
+  const basis = JSON.parse(button.closest("[data-dart-insight-basis]")?.dataset.dartInsightBasis || "{}");
+  const corpCode = profileDetail.dataset.dartCorpCode;
+  const modal = ensureDartInsightDetailModal();
+  modal.hidden = false;
+  document.body.classList.add("has-dart-insight-detail-open");
+  modal.querySelector("#dart-insight-detail-title").textContent = kind === "capital" ? "주식 구조" : "임직원";
+  modal.querySelector("[data-dart-insight-detail-body]").innerHTML = `<p class="empty-copy">불러오는 중입니다.</p>`;
+  const payload = await fetchJson("/api/company/get_dart_company_insight_detail", {
+    corp_code: corpCode,
+    business_year: basis.business_year,
+    report_code: basis.report_code,
+    kind,
+  });
+  modal.querySelector("[data-dart-insight-detail-body]").innerHTML = renderDartInsightDetailRows(payload);
+}
+
+function setupDartInsightDetailButtons() {
+  document.querySelectorAll("[data-dart-insight-detail-kind]").forEach((button) => {
+    if (button.dataset.dartInsightDetailBound === "true") return;
+    button.dataset.dartInsightDetailBound = "true";
+    button.addEventListener("click", () => {
+      openDartInsightDetailModal(button).catch((error) => {
+        const modal = ensureDartInsightDetailModal();
+        modal.querySelector("[data-dart-insight-detail-body]").innerHTML = `<p class="empty-copy">${escapeHtml(error.message || "상세 정보를 불러오지 못했습니다.")}</p>`;
+      });
+    });
+  });
+}
+
 function countListedRelationships(items) {
   return items.filter((item) => item.lstgYn === "Y" || item.lstgYn === "상장").length;
 }
@@ -1610,6 +1777,8 @@ function renderCompanyDetail({ info, outline, listed, stock, stockWindow }) {
 
         ${renderCompanyInsightRow(info)}
 
+        ${renderCompanyInsightCards(info.dart_insights)}
+
         ${renderRelationshipSummary(info)}
 
         <article class="info-block company-address-card">
@@ -1624,6 +1793,7 @@ function renderCompanyDetail({ info, outline, listed, stock, stockWindow }) {
   setupStockWindowTabs();
   setupFinancialSummaryTabs();
   setupFinancialTrendCards();
+  setupDartInsightDetailButtons();
   setupRelationshipSummaryCards();
   setupDisclosureViewer();
 }

@@ -20,6 +20,7 @@ from app.services.company_dart import (
     DartCorpCodeQuery,
     DartDisclosureQuery,
 )
+from app.services.company_insights import normalize_dart_insights
 from app.services.company_store import (
     AFFILIATE_GROUP,
     COMPANY_ENTITY_TYPE,
@@ -400,14 +401,17 @@ class CompanyInfoService(OpenApiCompanyService):
         corp_outline: dict[str, Any],
         krx_listed_item: dict[str, Any],
     ) -> dict[str, Any]:
-        if self._transport is not None or not get_dart_api_key(required=False):
+        if not get_dart_api_key(required=False):
             return {}
 
         outline_item = _first_openapi_item(corp_outline)
         listed_item = _first_openapi_item(krx_listed_item)
         stock_code = (listed_item.get("srtnCd") or "").replace("A", "", 1)
         company_name = outline_item.get("corpNm") or listed_item.get("corpNm")
-        dart_service = DartCompanyService(data_group_store=self._data_group_store)
+        dart_service = DartCompanyService(
+            transport=self._transport,
+            data_group_store=self._data_group_store,
+        )
         corp_code_payload = await dart_service.find_corp_code(
             DartCorpCodeQuery(
                 corporate_registration_number=crno,
@@ -445,6 +449,22 @@ class CompanyInfoService(OpenApiCompanyService):
             if dart_latest_quarter_financial_accounts["accounts"].get("list")
             else dart_latest_annual_financial_accounts["accounts"]
         )
+        annual_selected = dart_latest_annual_financial_accounts.get("selected") or {}
+        dart_insights = None
+        if annual_selected.get("business_year") and annual_selected.get("report_code"):
+            raw_insight_sources = await dart_service.get_phase_one_insight_sources(
+                corp_code=corp_code,
+                business_year=annual_selected["business_year"],
+                report_code=annual_selected["report_code"],
+            )
+            dart_insights = normalize_dart_insights(
+                raw_insight_sources,
+                basis={
+                    "business_year": annual_selected["business_year"],
+                    "report_code": annual_selected["report_code"],
+                    "report_name": annual_selected.get("report_name"),
+                },
+            )
         return {
             "dart_corp_code": corp_code_payload,
             "dart_company": dart_company,
@@ -452,6 +472,7 @@ class CompanyInfoService(OpenApiCompanyService):
             "dart_financial_accounts": dart_financial_accounts,
             "dart_latest_quarter_financial_accounts": dart_latest_quarter_financial_accounts,
             "dart_latest_annual_financial_accounts": dart_latest_annual_financial_accounts,
+            "dart_insights": dart_insights,
         }
 
 
