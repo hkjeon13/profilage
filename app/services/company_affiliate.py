@@ -463,6 +463,7 @@ class CompanyInfoService(OpenApiCompanyService):
                     "business_year": annual_selected["business_year"],
                     "report_code": annual_selected["report_code"],
                     "report_name": annual_selected.get("report_name"),
+                    "fs_division": annual_selected.get("fs_division"),
                 },
             )
         return {

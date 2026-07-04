@@ -1932,6 +1932,38 @@ a:hover {
   line-height: 1.5;
 }
 
+.compare-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.compare-share-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #175cd3;
+  padding: 8px 12px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.compare-share-button:hover,
+.compare-share-button:focus-visible {
+  border-color: #84adff;
+  color: #1849a9;
+}
+
+.compare-share-status {
+  min-height: 18px;
+  overflow-wrap: anywhere;
+}
+
 .compare-table-wrap {
   overflow-x: auto;
 }
@@ -1961,6 +1993,25 @@ a:hover {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+.compare-column-title {
+  display: inline-grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.compare-column-name {
+  color: #344054;
+  font-weight: 850;
+}
+
+.compare-column-basis {
+  color: #667085;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .compare-remove-button {
@@ -2398,10 +2449,21 @@ a:hover {
     flex-direction: column;
   }
 
+  .compare-toolbar-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
   .compare-add-button,
   .compare-link-button,
+  .compare-share-button,
   .primary-link-button {
     width: 100%;
+  }
+
+  .compare-column-head {
+    align-items: flex-start;
+    flex-wrap: wrap;
   }
 
   .compare-table {

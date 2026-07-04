@@ -5,6 +5,18 @@ const compareDetail = document.querySelector("#compare-detail");
 const infoUrl = compareRoot?.dataset.infoUrl || "/api/company/get_company_info";
 const stockUrl = compareRoot?.dataset.stockUrl || "/api/company/get_stock_price";
 
+const financialStatementLabels = {
+  CFS: "연결",
+  OFS: "별도",
+};
+
+const financialReportLabels = {
+  "11011": "사업보고서",
+  "11012": "반기보고서",
+  "11013": "1분기보고서",
+  "11014": "3분기보고서",
+};
+
 const metricGroups = [
   {
     title: "기본 정보",
@@ -143,6 +155,31 @@ function compareUrlForCrnos(crnos) {
   return `${endpoint.pathname}${endpoint.search}`;
 }
 
+function compareShareUrl(companies) {
+  const endpoint = new URL("/compare", window.location.origin);
+  Array.from(new Set(companies.map((company) => company.crno).filter(Boolean)))
+    .slice(0, MAX_COMPARE_COMPANIES)
+    .forEach((crno) => endpoint.searchParams.append("crno", crno));
+  return endpoint.toString();
+}
+
+async function shareCompareLink(button, companies) {
+  const defaultLabel = "공유 링크 복사";
+  const status = document.querySelector("[data-compare-share-status]");
+  try {
+    await navigator.clipboard.writeText(compareShareUrl(companies));
+    button.textContent = "복사됨";
+    if (status) status.textContent = "";
+    window.setTimeout(() => {
+      button.textContent = defaultLabel;
+    }, 1500);
+  } catch {
+    if (status) {
+      status.textContent = `공유 링크를 복사하지 못했습니다. 아래 링크를 길게 눌러 복사해주세요: ${compareShareUrl(companies)}`;
+    }
+  }
+}
+
 function removeCompanyFromCompare(crno) {
   const remainingCrnos = requestedCrnos().filter((item) => item !== crno);
   saveCompareStorageItems(compareStorageItems().filter((item) => item.crno !== crno));
@@ -250,6 +287,20 @@ function formattedMetricValue(company, row) {
   return row.numeric ? formatNumber(value) : text(value);
 }
 
+function basisLabel(company) {
+  const basis = company?.basis || {};
+  const year = basis.business_year || basis.businessYear;
+  const reportCode = basis.report_code || basis.reportCode;
+  const report = basis.report_name || basis.reportName || financialReportLabels[reportCode];
+  const fsDivision = basis.fs_division || basis.fsDivision;
+  const statement = financialStatementLabels[fsDivision] || "";
+  const head = [year, report].filter(Boolean).join(" ");
+  if (head && statement) return `${head} · ${statement}`;
+  if (head) return head;
+  if (statement) return statement;
+  return "기준 정보 없음";
+}
+
 function bestCompanyCrnos(companies, row) {
   if (!row.numeric) return new Set();
   const scored = companies
@@ -280,7 +331,10 @@ function renderCompareTable(companies) {
                       (company) => `
                         <th>
                           <span class="compare-column-head">
-                            <span>${escapeHtml(company.name)}</span>
+                            <span class="compare-column-title">
+                              <span class="compare-column-name">${escapeHtml(company.name)}</span>
+                              <span class="compare-column-basis">${escapeHtml(basisLabel(company))}</span>
+                            </span>
                             <button type="button" class="compare-remove-button" data-compare-remove="${attr(company.crno)}" aria-label="${attr(company.name)} 비교에서 삭제">×</button>
                           </span>
                         </th>
@@ -333,13 +387,18 @@ function renderComparePage(companies) {
     <section class="compare-toolbar info-block">
       <div>
         <h3>선택한 기업 ${companies.length}개</h3>
-        <p>재무 수치는 최근 사업보고서 또는 DART 정기보고서 기준입니다. 기준 보고서가 다르면 수치 해석에 주의하세요.</p>
+        <p>재무 수치는 각 컬럼의 기준 보고서 기준입니다. 기준 보고서가 다르면 수치 해석에 주의하세요.</p>
+        <p class="compare-share-status" data-compare-share-status role="status"></p>
       </div>
-      <a class="primary-link-button" href="/">기업 추가</a>
+      <div class="compare-toolbar-actions">
+        <button type="button" class="compare-share-button" data-compare-share>공유 링크 복사</button>
+        <a class="primary-link-button" href="/">기업 추가</a>
+      </div>
     </section>
     ${renderCompareTable(companies)}
   `;
   setupCompareRemoveButtons();
+  setupCompareShareButton(companies);
 }
 
 async function loadComparePage() {
@@ -368,6 +427,13 @@ function setupCompareRemoveButtons() {
     button.dataset.compareRemoveBound = "true";
     button.addEventListener("click", () => removeCompanyFromCompare(button.dataset.compareRemove));
   });
+}
+
+function setupCompareShareButton(companies) {
+  const button = document.querySelector("[data-compare-share]");
+  if (!button || button.dataset.compareShareBound === "true") return;
+  button.dataset.compareShareBound = "true";
+  button.addEventListener("click", () => shareCompareLink(button, companies));
 }
 
 loadComparePage();

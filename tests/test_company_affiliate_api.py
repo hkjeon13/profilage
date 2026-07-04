@@ -186,7 +186,7 @@ def test_profile_page_serves_company_profile_frontend():
     assert '<a href="/openapi.json">OpenAPI</a>' not in response.text
     assert '<a href="/docs">문서</a>' not in response.text
     assert '<a href="/">새 검색</a>' not in response.text
-    assert "/styles.css?v=company-profile-36" in response.text
+    assert "/styles.css?v=company-profile-37" in response.text
     assert "/profile-chart-2.css?v=interactive-7" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
@@ -202,11 +202,23 @@ def test_compare_page_serves_company_compare_frontend():
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
     assert 'id="compare-root"' in response.text
-    assert "/styles.css?v=company-profile-36" in response.text
-    assert "/compare-page.js?v=company-compare-4" in response.text
+    assert "/styles.css?v=company-profile-37" in response.text
+    assert "/compare-page.js?v=company-compare-5" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "COMPARE_STORAGE_KEY" in script_response.text
     assert "renderCompareTable" in script_response.text
+    assert "basisLabel" in script_response.text
+    assert "financialReportLabels" in script_response.text
+    assert "financialStatementLabels" in script_response.text
+    assert "compareShareUrl" in script_response.text
+    assert "shareCompareLink" in script_response.text
+    assert "setupCompareShareButton" in script_response.text
+    assert "new Set(companies.map((company) => company.crno)" in script_response.text
+    assert "공유 링크 복사" in script_response.text
+    assert "복사됨" in script_response.text
+    assert "공유 링크를 복사하지 못했습니다" in script_response.text
+    assert "data-compare-share" in script_response.text
+    assert "data-compare-share-status" in script_response.text
     assert "removeCompanyFromCompare" in script_response.text
     assert "data-compare-remove" in script_response.text
     assert "setupCompareRemoveButtons" in script_response.text
@@ -220,6 +232,8 @@ def test_compare_page_serves_company_compare_frontend():
     assert ".compare-best" in style_response.text
     assert ".compare-remove-button" in style_response.text
     assert ".compare-column-head" in style_response.text
+    assert ".compare-column-basis" in style_response.text
+    assert ".compare-share-button" in style_response.text
     assert "border-radius: 50%;" in style_response.text
     remove_button_rule = style_response.text.split(
         ".compare-remove-button {", 1
@@ -704,7 +718,7 @@ def test_relationship_summary_cards_open_company_list_modal():
     assert "relationship-list-modal" in script_response.text
     assert ".relationship-list-modal" in style_response.text
     assert ".relationship-list-items" in style_response.text
-    assert "/styles.css?v=company-profile-36" in profile_response.text
+    assert "/styles.css?v=company-profile-37" in profile_response.text
     assert "/profile-page-5.js?v=company-profile-34" in profile_response.text
 
 
@@ -764,7 +778,7 @@ def test_profile_frontend_renders_normalized_dart_insight_cards():
     assert ".company-insight-cards" in style_response.text
     assert ".ownership-stacked-bar" in style_response.text
     assert ".ownership-bar-segment" in style_response.text
-    assert "/styles.css?v=company-profile-36" in profile_response.text
+    assert "/styles.css?v=company-profile-37" in profile_response.text
     assert "/profile-page-5.js?v=company-profile-34" in profile_response.text
 
 
@@ -880,10 +894,16 @@ def test_company_insight_normalizer_returns_stable_phase_one_shape():
                 ],
             },
         },
-        basis={"business_year": "2025", "report_code": "11011", "report_name": "사업보고서"},
+        basis={
+            "business_year": "2025",
+            "report_code": "11011",
+            "report_name": "사업보고서",
+            "fs_division": "CFS",
+        },
     )
 
     assert payload["basis"]["business_year"] == "2025"
+    assert payload["basis"]["fs_division"] == "CFS"
     assert payload["ownership"]["largest_holder_name"] == "더큰주주"
     assert payload["ownership"]["largest_holder_ratio"] == "15.5"
     assert [holder["name"] for holder in payload["ownership"]["holders"]] == [
