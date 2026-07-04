@@ -1215,9 +1215,14 @@ function ownershipBarColor(index) {
   return ["#1d5faa", "#0f8b6d", "#d97706", "#7c3aed", "#dc2626"][index % 5];
 }
 
+function isOwnershipTotalHolder(holder) {
+  return ["계", "합계", "소계", "총계"].includes(String(holder?.name || "").trim());
+}
+
 function renderOwnershipStackedBar(ownership) {
   const holders = (ownership?.holders || [])
     .filter((holder) => Number.isFinite(Number(holder.ratio_number)) && Number(holder.ratio_number) > 0)
+    .filter((holder) => !isOwnershipTotalHolder(holder))
     .sort((a, b) => Number(b.ratio_number) - Number(a.ratio_number))
     .slice(0, OWNERSHIP_BAR_MAX_HOLDERS);
   if (!holders.length) {

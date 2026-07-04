@@ -25,12 +25,19 @@ def _number(value: str | None) -> float | None:
         return None
 
 
+def _is_ownership_total_row(row: dict[str, Any]) -> bool:
+    name = _first_value(row, ["nm", "holder_nm", "stockholdr_nm"])
+    return str(name or "").strip() in {"계", "합계", "소계", "총계"}
+
+
 def normalize_ownership(payload: dict[str, Any] | None) -> dict[str, Any] | None:
     rows = _items(payload)
     if not rows:
         return None
     holders = []
     for row in rows:
+        if _is_ownership_total_row(row):
+            continue
         ratio = _first_value(
             row,
             ["bsis_posesn_stock_qota_rt", "posesn_stock_qota_rt", "stock_qota_rt"],
