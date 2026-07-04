@@ -1289,23 +1289,53 @@ function renderDartInsightDetailRows(payload) {
     ? [...(payload.total_stock || []), ...(payload.treasury_stock || [])]
     : [...(payload.executives || []), ...(payload.employees || [])];
   if (!rows.length) return `<p class="empty-copy">표시할 상세 정보가 없습니다.</p>`;
+  const kind = payload.kind || "capital";
   return `
     <ul class="dart-insight-detail-list">
       ${rows
         .slice(0, 80)
         .map((row) => {
-          const entries = Object.entries(row).filter(([, value]) => value !== undefined && value !== null && value !== "");
-          const title = row.nm || row.name || row.se || row.stock_knd || row.dept || entries[0]?.[1] || "상세 항목";
+          const title = row.nm || row.name || row.se || row.stock_knd || row.ofcps || row.chrg_job || "상세 항목";
+          const meta = renderDartInsightDetailMeta(row, kind);
           return `
             <li>
               <strong>${escapeHtml(title)}</strong>
-              <span>${entries.map(([key, value]) => `${escapeHtml(key)} ${escapeHtml(value)}`).join(" · ")}</span>
+              ${meta}
             </li>
           `;
         })
         .join("")}
     </ul>
   `;
+}
+
+function formatDartInsightDetailField(label, value) {
+  if (value === undefined || value === null || value === "" || value === "-") return "";
+  return `<span class="dart-insight-detail-meta"><b>${label}</b> ${escapeHtml(value)}</span>`;
+}
+
+function renderDartInsightDetailMeta(row, kind) {
+  const fields = kind === "people"
+    ? [
+        ["직위", row.ofcps],
+        ["담당업무", row.chrg_job],
+        ["상근여부", row.fte_at],
+        ["성별", row.sexdstn],
+        ["출생", row.birth_ym],
+        ["임기만료", row.tenure_end_on],
+        ["주요경력", row.main_career],
+      ]
+    : [
+        ["구분", row.se || row.stock_knd],
+        ["주식수", row.istc_totqy || row.trmend_qy || row.acqs_stock_qy || row.dsps_stock_qy],
+        ["비율", row.qota_rt || row.stock_qota_rt],
+        ["기초", row.bsis_qy || row.bsis_posesn_stock_co],
+        ["증가", row.incrs_qy],
+        ["감소", row.dcrs_qy],
+        ["기말", row.trmend_qy],
+      ];
+  const html = fields.map(([label, value]) => formatDartInsightDetailField(label, value)).filter(Boolean).join("");
+  return html || `<span class="dart-insight-detail-meta">표시할 주요 항목이 없습니다.</span>`;
 }
 
 function ensureDartInsightDetailModal() {

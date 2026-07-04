@@ -1705,7 +1705,7 @@ a:hover {
 }
 
 .dart-insight-detail-list strong,
-.dart-insight-detail-list span {
+.dart-insight-detail-meta {
   display: block;
 }
 
@@ -1714,11 +1714,16 @@ a:hover {
   font-size: 15px;
 }
 
-.dart-insight-detail-list span {
+.dart-insight-detail-meta {
   margin-top: 7px;
   color: #667085;
   font-size: 12px;
   line-height: 1.45;
+}
+
+.dart-insight-detail-meta b {
+  color: #344054;
+  font-weight: 850;
 }
 
 .company-relationship-summary .relationship-summary-grid {
