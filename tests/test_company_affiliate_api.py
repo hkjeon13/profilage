@@ -1,5 +1,5 @@
 import os
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from io import BytesIO
 from zipfile import ZipFile
 
@@ -16,7 +16,11 @@ from app.services.company_affiliate import (
     CompanyStockPriceQuery,
     CompanyStockPriceService,
 )
-from app.services.company_dart import DartCompanyService
+from app.services.company_dart import (
+    DartFinancialAccountsQuery,
+    DartCompanyService,
+    dart_financial_accounts_ttl,
+)
 from app.services.company_store import (
     AFFILIATE_GROUP,
     COMPANY_ENTITY_TYPE,
@@ -107,7 +111,11 @@ class FakeDataGroupStore:
         record = DataGroupRecord(
             payload=payload,
             fetched_at=datetime.now(UTC),
-            expires_at=datetime.now(UTC) + ttl,
+            expires_at=(
+                datetime.max.replace(tzinfo=UTC)
+                if ttl is None
+                else datetime.now(UTC) + ttl
+            ),
             source=source,
         )
         self.records[(entity_type, entity_key, group_name)] = record
@@ -1588,6 +1596,30 @@ def test_get_dart_financial_trends_returns_last_five_years(monkeypatch):
         "2026",
     ]
     assert payload["periods"][-1]["accounts"][0]["account_nm"] == "자산총계"
+
+
+def test_dart_financial_accounts_ttl_expires_only_recent_periods():
+    stable_query = DartFinancialAccountsQuery(
+        corp_code="00126380",
+        business_year="2025",
+        report_code="11011",
+        fs_division="CFS",
+    )
+    recent_query = DartFinancialAccountsQuery(
+        corp_code="00126380",
+        business_year="2026",
+        report_code="11012",
+        fs_division="CFS",
+    )
+
+    assert dart_financial_accounts_ttl(
+        stable_query,
+        now=datetime(2026, 7, 4, tzinfo=UTC),
+    ) is None
+    assert dart_financial_accounts_ttl(
+        recent_query,
+        now=datetime(2026, 7, 4, tzinfo=UTC),
+    ) == timedelta(days=1)
 
 
 @pytest.mark.asyncio

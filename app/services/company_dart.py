@@ -35,7 +35,8 @@ DART_FINANCIAL_ACCOUNTS_GROUP = "dart_financial_accounts"
 DART_CORP_CODE_TTL = timedelta(days=7)
 DART_COMPANY_TTL = timedelta(days=7)
 DART_DISCLOSURES_TTL = timedelta(hours=1)
-DART_FINANCIAL_ACCOUNTS_TTL = timedelta(days=1)
+DART_FINANCIAL_ACCOUNTS_RECENT_TTL = timedelta(days=1)
+DART_FINANCIAL_ACCOUNTS_STABLE_AFTER = timedelta(days=183)
 NO_DATA_STATUS = "013"
 SUCCESS_STATUS = "000"
 FINANCIAL_REPORT_NAMES = {
@@ -43,6 +44,12 @@ FINANCIAL_REPORT_NAMES = {
     "11012": "반기보고서",
     "11013": "1분기보고서",
     "11014": "3분기보고서",
+}
+FINANCIAL_REPORT_PERIOD_END = {
+    "11013": (3, 31),
+    "11012": (6, 30),
+    "11014": (9, 30),
+    "11011": (12, 31),
 }
 
 
@@ -138,6 +145,19 @@ def _financial_account_key(item: dict[str, Any]) -> tuple[str, str, str]:
         str(item.get("sj_div") or ""),
         str(item.get("account_nm") or ""),
     )
+
+
+def dart_financial_accounts_ttl(
+    query: DartFinancialAccountsQuery,
+    *,
+    now: datetime | None = None,
+) -> timedelta | None:
+    current = now or datetime.now(UTC)
+    month, day = FINANCIAL_REPORT_PERIOD_END.get(query.report_code, (12, 31))
+    period_end = datetime(int(query.business_year), month, day, tzinfo=UTC)
+    if current - period_end >= DART_FINANCIAL_ACCOUNTS_STABLE_AFTER:
+        return None
+    return DART_FINANCIAL_ACCOUNTS_RECENT_TTL
 
 
 class DartCompanyService:
@@ -355,7 +375,7 @@ class DartCompanyService:
             entity_key=_dart_entity_key(query.corp_code),
             group_name=f"{DART_FINANCIAL_ACCOUNTS_GROUP}:{query.business_year}:{query.report_code}:{query.fs_division or 'all'}",
             source="dart:fnlttSinglAcnt",
-            ttl=DART_FINANCIAL_ACCOUNTS_TTL,
+            ttl=dart_financial_accounts_ttl(query),
             fetcher=lambda: self._fetch_json(
                 url=DART_FINANCIAL_ACCOUNT_URL,
                 params=params,

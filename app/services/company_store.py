@@ -60,7 +60,7 @@ class DataGroupStore(Protocol):
         group_name: str,
         source: str,
         payload: dict[str, Any],
-        ttl: timedelta,
+        ttl: timedelta | None,
     ) -> DataGroupRecord:
         ...
 
@@ -147,13 +147,17 @@ class PostgresDataGroupStore:
         group_name: str,
         source: str,
         payload: dict[str, Any],
-        ttl: timedelta,
+        ttl: timedelta | None,
     ) -> DataGroupRecord:
         from psycopg import AsyncConnection
         from psycopg.types.json import Jsonb
 
         fetched_at = datetime.now(UTC)
-        expires_at = fetched_at + ttl
+        expires_at = (
+            datetime.max.replace(tzinfo=UTC)
+            if ttl is None
+            else fetched_at + ttl
+        )
         async with await AsyncConnection.connect(self._database_url) as conn:
             async with conn.cursor() as cursor:
                 await cursor.execute(
@@ -282,7 +286,11 @@ def with_group_meta(
     expires_at: datetime,
     stale: bool = False,
 ) -> dict[str, Any]:
-    ttl_seconds = max(int((expires_at - fetched_at).total_seconds()), 0)
+    ttl_seconds = (
+        None
+        if expires_at.year >= 9999
+        else max(int((expires_at - fetched_at).total_seconds()), 0)
+    )
     return {
         **payload,
         "_meta": {
@@ -304,7 +312,7 @@ async def fetch_with_group_store(
     entity_key: str,
     group_name: str,
     source: str,
-    ttl: timedelta,
+    ttl: timedelta | None,
     fetcher: Callable[[], Awaitable[dict[str, Any]]],
 ) -> dict[str, Any]:
     if store is None:
