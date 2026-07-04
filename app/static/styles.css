@@ -2391,4 +2391,20 @@ a:hover {
   .stock-chart svg {
     height: 118px;
   }
+
+  .profile-heading-actions,
+  .compare-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .compare-add-button,
+  .compare-link-button,
+  .primary-link-button {
+    width: 100%;
+  }
+
+  .compare-table {
+    min-width: 560px;
+  }
 }
