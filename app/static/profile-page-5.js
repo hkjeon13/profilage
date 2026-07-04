@@ -17,6 +17,15 @@ const financialStatementOptions = [
   ["OFS", "별도재무제표"],
 ];
 const DISCLOSURE_PAGE_SIZE = 30;
+const STOCK_WINDOWS = ["1D", "5D", "1M", "6M", "YTD", "1Y", "5Y", "MAX"];
+const DISCLOSURE_FILTERS = [
+  ["", "전체"],
+  ["A", "정기공시"],
+  ["B", "주요사항"],
+  ["C", "발행공시"],
+  ["D", "지분공시"],
+  ["E", "기타공시"],
+];
 
 function normalizeItems(payload) {
   const item = payload?.body?.items?.item;
@@ -75,6 +84,18 @@ function compactDate(value) {
     return `${raw.slice(0, 4)}.${raw.slice(4, 6)}.${raw.slice(6, 8)}`;
   }
   return value;
+}
+
+function formatDateTime(value) {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return String(value);
+  return parsed.toLocaleString("ko-KR", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function homepageUrl(value) {
@@ -229,7 +250,54 @@ function financialDetailUrl(crno, selected) {
   return `${endpoint.pathname}${endpoint.search}`;
 }
 
-function renderStockChart(stock) {
+function selectedStockWindow(searchParams) {
+  const requested = (searchParams.get("stock_window") || "1D").toUpperCase();
+  return STOCK_WINDOWS.includes(requested) ? requested : "1D";
+}
+
+function selectedDisclosureType(searchParams) {
+  const requested = searchParams.get("disclosure_type") || "";
+  return DISCLOSURE_FILTERS.some(([value]) => value === requested) ? requested : "";
+}
+
+function renderSourceMeta(items) {
+  const visibleItems = items.filter((item) => item?.value);
+  if (!visibleItems.length) return "";
+  return `
+    <dl class="source-meta">
+      ${visibleItems
+        .map(
+          (item) => `
+            <div>
+              <dt>${escapeHtml(item.label)}</dt>
+              <dd>${escapeHtml(item.value)}</dd>
+            </div>
+          `,
+        )
+        .join("")}
+    </dl>
+  `;
+}
+
+function stockUpdatedLabel(stock) {
+  const fetchedAt = formatDateTime(stock?._meta?.fetched_at);
+  const expiresAt = formatDateTime(stock?._meta?.expires_at);
+  if (fetchedAt && expiresAt) return `갱신 ${fetchedAt} · 캐시 만료 ${expiresAt}`;
+  if (fetchedAt) return `갱신 ${fetchedAt}`;
+  return "갱신 시각 정보 없음";
+}
+
+function renderStockChart(stock, activeWindow = "1D") {
+  const tabs = `
+    <div class="stock-range-tabs" role="tablist" aria-label="주가 기간">
+      ${STOCK_WINDOWS
+        .map((rangeLabel) => `<button type="button" class="${rangeLabel === activeWindow ? "is-active" : ""}" role="tab" data-stock-window="${rangeLabel}" ${rangeLabel === activeWindow ? 'aria-selected="true"' : 'aria-selected="false"'}>${rangeLabel}</button>`)
+        .join("")}
+    </div>
+    <p class="stock-window-status" role="status">
+      ${escapeHtml(stockUpdatedLabel(stock))}
+    </p>
+  `;
   const points = (stock?.graph || [])
     .map((point) => ({
       price: Number(point.price),
@@ -238,7 +306,7 @@ function renderStockChart(stock) {
     }))
     .filter((point) => Number.isFinite(point.price));
 
-  if (points.length < 2) return "";
+  if (points.length < 2) return tabs;
 
   const width = 640;
   const height = 220;
@@ -278,17 +346,13 @@ function renderStockChart(stock) {
   ];
 
   return `
-    <div class="stock-range-tabs" role="tablist" aria-label="주가 기간">
-      ${["1D", "1M", "3M", "1Y", "5Y", "All"]
-        .map((rangeLabel, index) => `<button type="button" class="${index === 0 ? "is-active" : ""}" ${index === 0 ? 'aria-selected="true"' : 'aria-selected="false"'}>${rangeLabel}</button>`)
-        .join("")}
-    </div>
-    <div class="stock-chart" aria-label="1개월 주가 차트" data-chart-points="${encodeURIComponent(JSON.stringify(interactionPoints))}" data-chart-width="${width}" data-chart-last-index="${points.length - 1}">
+    ${tabs}
+    <div class="stock-chart" aria-label="${activeWindow} 주가 차트" data-chart-points="${encodeURIComponent(JSON.stringify(interactionPoints))}" data-chart-width="${width}" data-chart-last-index="${points.length - 1}">
       <div class="stock-chart-tooltip" role="status" aria-live="polite">
         <strong>${formatChartDate(points.at(-1).date)}</strong>
         <span>${formatNumber(points.at(-1).price)} KRW</span>
       </div>
-      <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="1개월 주가 추이" tabindex="0">
+      <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="${activeWindow} 주가 추이" tabindex="0">
         <path class="stock-chart-grid" d="M ${paddingX} ${paddingY} H ${width - paddingX} M ${paddingX} ${height / 2} H ${width - paddingX} M ${paddingX} ${height - paddingY} H ${width - paddingX}" />
         <path class="stock-chart-area" d="${areaPath}" />
         <path class="stock-chart-line stock-chart-line-primary" d="${linePath}" />
@@ -398,6 +462,74 @@ function setupStockChartInteractions() {
           ? Math.max((currentIndex < 0 ? fallbackIndex : currentIndex) - 1, 0)
           : Math.min((currentIndex < 0 ? fallbackIndex : currentIndex) + 1, points.length - 1);
       updateStockChartSelection(chart, points[nextIndex]);
+    });
+  });
+}
+
+function updateStockWindowUrl(nextWindow) {
+  const nextParams = new URLSearchParams(window.location.search);
+  nextParams.set("stock_window", nextWindow);
+  window.history.replaceState({}, "", `${window.location.pathname}?${nextParams.toString()}`);
+}
+
+function updateStockSummary(card, stock) {
+  const summary = stock?.summary || {};
+  const price = summary.price || summary.extracted_price;
+  const change = summary.price_movement?.percentage || summary.price_movement?.value;
+  const priceElement = card.querySelector(".price");
+  const priceRow = card.querySelector(".price-row");
+  const existingMeta = card.querySelector(".price-meta");
+
+  if (priceElement) {
+    priceElement.textContent = formatNumber(price);
+  }
+  if (existingMeta) {
+    existingMeta.remove();
+  }
+  if (change && priceRow) {
+    priceRow.insertAdjacentHTML("beforeend", `<div class="price-meta">${text(change)}</div>`);
+  }
+}
+
+function setupStockWindowTabs() {
+  document.querySelectorAll("[data-stock-window]").forEach((button) => {
+    if (button.dataset.stockWindowBound === "true") return;
+    button.dataset.stockWindowBound = "true";
+    button.addEventListener("click", async () => {
+      const card = button.closest(".company-market-card");
+      const chartShell = card?.querySelector(".stock-chart-shell");
+      const status = card?.querySelector(".stock-window-status");
+      const nextWindow = button.dataset.stockWindow;
+      if (!card || !chartShell || !nextWindow || button.classList.contains("is-active")) return;
+
+      card.classList.add("is-loading-stock");
+      if (status) {
+        status.textContent = "주가 정보를 불러오는 중입니다.";
+      }
+      try {
+        const stock = await fetchJson(stockUrl, {
+          stock_code: card.dataset.stockCode,
+          exchange: card.dataset.stockExchange,
+          language: card.dataset.stockLanguage,
+          window: nextWindow,
+          corporate_registration_number: card.dataset.crno,
+        });
+        updateStockSummary(card, stock);
+        chartShell.innerHTML = renderStockChart(stock, nextWindow);
+        updateStockWindowUrl(nextWindow);
+        setupStockChartInteractions();
+        setupStockWindowTabs();
+      } catch (error) {
+        if (status) {
+          status.textContent = error.message || "주가 정보를 불러오지 못했습니다.";
+        }
+        chartShell.insertAdjacentHTML(
+          "beforeend",
+          `<p class="stock-chart-error">${escapeHtml(error.message || "주가 정보를 불러오지 못했습니다.")}</p>`,
+        );
+      } finally {
+        card.classList.remove("is-loading-stock");
+      }
     });
   });
 }
@@ -596,7 +728,7 @@ function appendDisclosureItems(items) {
   setupDisclosureViewer();
 }
 
-function setupInfiniteDisclosureScroll({ corpCode, initialPage, perPage, loadedCount, totalCount }) {
+function setupInfiniteDisclosureScroll({ corpCode, disclosureType, initialPage, perPage, loadedCount, totalCount }) {
   const sentinel = document.querySelector("[data-disclosure-sentinel='true']");
   const status = document.querySelector("[data-disclosure-load-status='true']");
   if (!corpCode || !sentinel || !status) return;
@@ -618,6 +750,7 @@ function setupInfiniteDisclosureScroll({ corpCode, initialPage, perPage, loadedC
     try {
       const payload = await fetchJson("/api/company/get_dart_disclosures", {
         corp_code: corpCode,
+        disclosure_type: disclosureType,
         page: nextPage,
         per_page: DISCLOSURE_PAGE_SIZE,
       });
@@ -664,6 +797,52 @@ function setupInfiniteDisclosureScroll({ corpCode, initialPage, perPage, loadedC
   setStatus("아래로 스크롤하면 공시를 더 불러옵니다.");
 }
 
+function renderDisclosureFilters(activeType) {
+  return `
+    <div class="disclosure-filter-tabs" role="tablist" aria-label="공시 유형">
+      ${DISCLOSURE_FILTERS
+        .map(
+          ([value, label]) => `
+            <button type="button" class="${value === activeType ? "is-active" : ""}" data-disclosure-type="${attr(value)}" aria-selected="${value === activeType ? "true" : "false"}">
+              ${label}
+            </button>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function setupDisclosureFilters({ corpCode, outline, crno }) {
+  document.querySelectorAll("[data-disclosure-type]").forEach((button) => {
+    if (button.dataset.disclosureFilterBound === "true") return;
+    button.dataset.disclosureFilterBound = "true";
+    button.addEventListener("click", async () => {
+      const disclosureType = button.dataset.disclosureType;
+      const payload = await fetchJson("/api/company/get_dart_disclosures", {
+        corp_code: corpCode,
+        disclosure_type: disclosureType,
+        page: 1,
+        per_page: DISCLOSURE_PAGE_SIZE,
+      });
+      const nextParams = new URLSearchParams(window.location.search);
+      if (disclosureType) nextParams.set("disclosure_type", disclosureType);
+      else nextParams.delete("disclosure_type");
+      window.history.replaceState({}, "", `${window.location.pathname}?${nextParams.toString()}`);
+      renderDisclosuresPage({ disclosures: payload, outline, crno, activeDisclosureType: disclosureType });
+      setupInfiniteDisclosureScroll({
+        corpCode,
+        disclosureType,
+        initialPage: 1,
+        perPage: DISCLOSURE_PAGE_SIZE,
+        loadedCount: payload?.list?.length || 0,
+        totalCount: disclosureTotalCount(payload),
+      });
+      setupDisclosureFilters({ corpCode, outline, crno });
+    });
+  });
+}
+
 function renderDartDisclosures(disclosures) {
   const items = (disclosures?.list || []).slice(0, 10);
   if (!items.length) return "";
@@ -706,6 +885,26 @@ function financialSummaryItems(accounts) {
   ).slice(0, 6);
 }
 
+function financialDelta(item) {
+  const current = Number(String(item.thstrm_amount || "").replaceAll(",", ""));
+  const previous = Number(String(item.frmtrm_amount || "").replaceAll(",", ""));
+  if (!Number.isFinite(current) || !Number.isFinite(previous) || previous === 0) {
+    return null;
+  }
+  const ratio = ((current - previous) / Math.abs(previous)) * 100;
+  return {
+    ratio,
+    className: ratio >= 0 ? "is-positive" : "is-negative",
+  };
+}
+
+function financialDeltaText(item) {
+  const delta = financialDelta(item);
+  if (!delta) return "";
+  const sign = delta.ratio > 0 ? "+" : "";
+  return `${sign}${delta.ratio.toFixed(1)}% YoY`;
+}
+
 function renderFinancialSummaryPanel({ report, key, isActive }) {
   const selected = report?.selected;
   const accounts = report?.accounts;
@@ -724,12 +923,16 @@ function renderFinancialSummaryPanel({ report, key, isActive }) {
       <dl class="financial-metrics">
         ${items
           .map(
-            (item) => `
-              <div class="financial-metric-card">
-                <dt>${text(item.account_nm)}</dt>
-                <dd>${formatFinancialAmount(item.thstrm_amount, item.currency)}</dd>
-              </div>
-            `,
+            (item) => {
+              const delta = financialDelta(item);
+              return `
+                <div class="financial-metric-card">
+                  <dt>${text(item.account_nm)}</dt>
+                  <dd>${formatFinancialAmount(item.thstrm_amount, item.currency)}</dd>
+                  ${financialDeltaText(item) ? `<span class="delta-badge ${delta.className}">${financialDeltaText(item)}</span>` : ""}
+                </div>
+              `;
+            },
           )
           .join("")}
       </dl>
@@ -781,6 +984,29 @@ function renderCompanyInsightRow(info) {
       ${financialSummary}
       ${disclosures}
     </div>
+  `;
+}
+
+function countListedRelationships(items) {
+  return items.filter((item) => item.lstgYn === "Y" || item.lstgYn === "상장").length;
+}
+
+function renderRelationshipSummary(info) {
+  const affiliates = normalizeItems(info.affiliate);
+  const subsidiaries = normalizeItems(info.cons_subs_comp);
+  if (!affiliates.length && !subsidiaries.length) return "";
+  const listedCount = countListedRelationships(affiliates);
+  return `
+    <article class="info-block company-relationship-summary">
+      <div class="block-heading">
+        <h3>관계회사 요약</h3>
+      </div>
+      <dl>
+        <div><dt>계열회사</dt><dd>${affiliates.length.toLocaleString("ko-KR")}</dd></div>
+        <div><dt>종속기업</dt><dd>${subsidiaries.length.toLocaleString("ko-KR")}</dd></div>
+        <div><dt>상장 관계사</dt><dd>${listedCount.toLocaleString("ko-KR")}</dd></div>
+      </dl>
+    </article>
   `;
 }
 
@@ -917,7 +1143,7 @@ function renderFinancialsPage({ accountsPayload, outline, crno, selected }) {
   `;
 }
 
-function renderDisclosuresPage({ disclosures, outline, crno }) {
+function renderDisclosuresPage({ disclosures, outline, crno, activeDisclosureType = "" }) {
   const items = disclosures?.list || [];
   const totalCount = disclosureTotalCount(disclosures);
   const loadedCount = items.length;
@@ -931,6 +1157,7 @@ function renderDisclosuresPage({ disclosures, outline, crno }) {
     <div class="detail-body subpage-body">
       <article class="info-block full disclosure-subpage-card">
         <h3>공시 목록</h3>
+        ${renderDisclosureFilters(activeDisclosureType)}
         <ul class="disclosure-list disclosure-list-large" data-disclosure-list="true">
           ${disclosureListItemsHtml(items, true)}
         </ul>
@@ -942,18 +1169,19 @@ function renderDisclosuresPage({ disclosures, outline, crno }) {
   setupDisclosureViewer();
 }
 
-function renderCompanyDetail({ info, outline, listed, stock }) {
+function renderCompanyDetail({ info, outline, listed, stock, stockWindow }) {
   const summary = stock?.summary || {};
   const price = summary.price || summary.extracted_price;
   const change = summary.price_movement?.percentage || summary.price_movement?.value;
   const crno = new URLSearchParams(window.location.search).get("crno");
-  const homepage = homepageUrl(outline.enpHmpgUrl);
+  const dartCompany = info.dart_company || {};
+  const homepage = homepageUrl(outline.enpHmpgUrl || dartCompany.hm_url);
   const market = text(listed.mrktCtg || outline.corpRegMrktDcdNm, "비상장/정보 없음");
   const companySummary = companySummaryText({ info, outline, listed, market });
   const logo = document.querySelector(".company-logo-box");
 
   profileTitle.textContent = text(outline.corpNm, "기업명 정보 없음");
-  profileSubtitle.textContent = text(outline.corpEnsnNm, "영문명 정보 없음");
+  profileSubtitle.textContent = text(outline.corpEnsnNm || dartCompany.corp_name_eng, "영문명 정보 없음");
   profileCard?.classList.remove("is-loading");
   if (logo) {
     logo.textContent = initials(outline.corpNm);
@@ -973,19 +1201,35 @@ function renderCompanyDetail({ info, outline, listed, stock }) {
           <section class="company-profile-info-section" aria-label="기업 정보">
             <h3>기업 정보</h3>
             <dl class="company-facts">
-              <div><dt>대표자</dt><dd>${text(outline.enpRprFnm)}</dd></div>
-              <div><dt>설립일</dt><dd>${compactDate(outline.enpEstbDt)}</dd></div>
-              <div><dt>법인등록번호</dt><dd>${text(outline.crno || crno)}</dd></div>
-              <div><dt>사업자번호</dt><dd>${text(outline.bzno)}</dd></div>
+              <div><dt>대표자</dt><dd>${text(outline.enpRprFnm || dartCompany.ceo_nm)}</dd></div>
+              <div><dt>설립일</dt><dd>${compactDate(outline.enpEstbDt || dartCompany.est_dt)}</dd></div>
+              <div><dt>직원 수</dt><dd>${formatNumber(outline.enpEmpeCnt)}</dd></div>
+              <div><dt>전화번호</dt><dd>${text(outline.enpTlno || dartCompany.phn_no)}</dd></div>
+              <div><dt>법인등록번호</dt><dd>${text(outline.crno || dartCompany.jurir_no || crno)}</dd></div>
+              <div><dt>사업자번호</dt><dd>${text(outline.bzno || dartCompany.bizr_no)}</dd></div>
+              <div><dt>DART 고유번호</dt><dd>${text(dartCompany.corp_code || info.dart_corp_code?.match?.corp_code)}</dd></div>
+              <div><dt>FSS 고유번호</dt><dd>${text(outline.fssCorpUnqNo)}</dd></div>
               <div><dt>시장</dt><dd>${market}</dd></div>
               <div><dt>단축코드</dt><dd>${text(listed.srtnCd)}</dd></div>
               <div><dt>ISIN</dt><dd>${text(listed.isinCd)}</dd></div>
               <div><dt>업종</dt><dd>${text(outline.enpMainBizNm || listed.itmsNm, "정보 없음")}</dd></div>
+              <div><dt>최초 영업일</dt><dd>${compactDate(outline.fstOpegDt)}</dd></div>
+              <div><dt>최종 영업일</dt><dd>${compactDate(outline.lastOpegDt)}</dd></div>
             </dl>
+            ${renderSourceMeta([
+              { label: "출처", value: "금융위원회 기업기본정보 · DART" },
+              { label: "기준일", value: compactDate(outline.basDt || listed.basDt) },
+            ])}
           </section>
         </article>
 
-        <article class="info-block company-market-card">
+        <article
+          class="info-block company-market-card"
+          data-stock-code="${attr(String(listed.srtnCd || "").replace(/^A/, ""))}"
+          data-stock-exchange="KRX"
+          data-stock-language="ko"
+          data-crno="${attr(crno)}"
+        >
           <div class="block-heading">
             <h3>상장 및 주가</h3>
             <span class="market-pill">${market}</span>
@@ -997,10 +1241,18 @@ function renderCompanyDetail({ info, outline, listed, stock }) {
             </div>
             ${change ? `<div class="price-meta">${text(change)}</div>` : ""}
           </div>
-          ${renderStockChart(stock)}
+          <div class="stock-chart-shell">
+            ${renderStockChart(stock, stockWindow)}
+          </div>
+          ${renderSourceMeta([
+            { label: "출처", value: "SearchAPI Google Finance" },
+            { label: "캐시 만료", value: formatDateTime(stock?._meta?.expires_at) },
+          ])}
         </article>
 
         ${renderCompanyInsightRow(info)}
+
+        ${renderRelationshipSummary(info)}
 
         <article class="info-block company-address-card">
           <h3>주소</h3>
@@ -1011,6 +1263,7 @@ function renderCompanyDetail({ info, outline, listed, stock }) {
     </div>
   `;
   setupStockChartInteractions();
+  setupStockWindowTabs();
   setupFinancialSummaryTabs();
   setupDisclosureViewer();
 }
@@ -1020,6 +1273,8 @@ async function loadProfile() {
   setupReturnSearchLink(searchParams);
   const crno = searchParams.get("crno");
   const view = searchParams.get("view");
+  const stockWindow = selectedStockWindow(searchParams);
+  const disclosureType = selectedDisclosureType(searchParams);
   if (!crno) {
     renderError("법인등록번호가 필요합니다.");
     return;
@@ -1057,18 +1312,21 @@ async function loadProfile() {
       const disclosures = corpCode
         ? await fetchJson("/api/company/get_dart_disclosures", {
             corp_code: corpCode,
+            disclosure_type: disclosureType,
             page: 1,
             per_page: DISCLOSURE_PAGE_SIZE,
           }).catch(() => info.dart_disclosures)
         : info.dart_disclosures;
-      renderDisclosuresPage({ disclosures, outline, crno });
+      renderDisclosuresPage({ disclosures, outline, crno, activeDisclosureType: disclosureType });
       setupInfiniteDisclosureScroll({
         corpCode,
+        disclosureType,
         initialPage: 1,
         perPage: DISCLOSURE_PAGE_SIZE,
         loadedCount: disclosures?.list?.length || 0,
         totalCount: disclosureTotalCount(disclosures),
       });
+      setupDisclosureFilters({ corpCode, outline, crno });
       return;
     }
 
@@ -1077,7 +1335,7 @@ async function loadProfile() {
         stock_code: listed.srtnCd.replace(/^A/, ""),
         exchange: "KRX",
         language: "ko",
-        window: "1M",
+        window: stockWindow,
         corporate_registration_number: crno,
       }).catch(() => null);
     }
@@ -1087,6 +1345,7 @@ async function loadProfile() {
       outline,
       listed,
       stock,
+      stockWindow,
     });
   } catch (error) {
     renderError(error.message);

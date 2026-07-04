@@ -518,7 +518,7 @@ class CompanyStockPriceService(OpenApiCompanyService):
                 ),
                 group_name=STOCK_PRICE_GROUP,
                 source="searchapi:google_finance",
-                ttl=stock_price_ttl(query.exchange),
+                ttl=stock_price_ttl(query.exchange, query.window),
                 fetcher=fetch_searchapi,
             )
 
@@ -535,6 +535,6 @@ class CompanyStockPriceService(OpenApiCompanyService):
         await self._cache.set_json(
             cache_key,
             payload,
-            get_cache_settings().ttl_seconds,
+            int(stock_price_ttl(query.exchange, query.window).total_seconds()),
         )
         return payload

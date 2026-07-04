@@ -428,13 +428,10 @@ a:hover {
 
 .block-heading .homepage-icon-link {
   display: inline-flex;
-  width: 30px;
-  height: 30px;
+  width: auto;
+  height: auto;
   align-items: center;
   justify-content: center;
-  border: 1px solid #e7ebf3;
-  border-radius: 8px;
-  background: #f8fbff;
   color: var(--accent);
   font-size: 16px;
   line-height: 1;
@@ -442,8 +439,7 @@ a:hover {
 }
 
 .block-heading .homepage-icon-link:hover {
-  border-color: #cfe0ff;
-  background: #eef4ff;
+  color: #185abc;
 }
 
 .kv {
@@ -1298,6 +1294,116 @@ a:hover {
   grid-column: auto;
 }
 
+.stock-window-status {
+  margin: 8px 0 0;
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.company-market-card.is-loading-stock .stock-chart {
+  opacity: 0.55;
+}
+
+.stock-chart-error {
+  margin: 10px 0 0;
+  color: #b42318;
+  font-size: 12px;
+}
+
+.source-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin: 14px 0 0;
+  color: #667085;
+  font-size: 12px;
+}
+
+.source-meta div {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.source-meta dt {
+  font-weight: 700;
+}
+
+.source-meta dd {
+  margin: 0;
+}
+
+.delta-badge {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 8px;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.delta-badge.is-positive {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.delta-badge.is-negative {
+  background: #fef3f2;
+  color: #b42318;
+}
+
+.disclosure-filter-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 0 22px;
+}
+
+.disclosure-filter-tabs button {
+  border: 1px solid #e7ebf3;
+  border-radius: 999px;
+  background: #fff;
+  color: #344054;
+  cursor: pointer;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.disclosure-filter-tabs button.is-active {
+  border-color: #1a73e8;
+  background: #eef4ff;
+  color: #185abc;
+}
+
+.company-relationship-summary dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.company-relationship-summary dl div {
+  border: 1px solid #eef0f6;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.company-relationship-summary dt {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.company-relationship-summary dd {
+  margin: 6px 0 0;
+  color: #101828;
+  font-size: 20px;
+  font-weight: 850;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -1415,7 +1521,8 @@ a:hover {
 
   .company-overview-grid,
   .company-facts,
-  .company-insight-row {
+  .company-insight-row,
+  .company-relationship-summary dl {
     grid-template-columns: 1fr;
   }
 
@@ -1428,6 +1535,7 @@ a:hover {
   }
 
   .disclosure-subpage-card h3,
+  .disclosure-filter-tabs,
   .disclosure-subpage-card .disclosure-list-large li,
   .disclosure-load-status {
     padding-left: 18px;

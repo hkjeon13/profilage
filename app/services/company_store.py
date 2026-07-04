@@ -225,9 +225,29 @@ def is_krx_market_open(now: datetime | None = None) -> bool:
     )
 
 
-def stock_price_ttl(exchange: str | None, now: datetime | None = None) -> timedelta:
-    if (exchange or "").upper() == "KRX" and is_krx_market_open(now):
-        return timedelta(minutes=5)
+def stock_price_ttl(
+    exchange: str | None,
+    window: str | None,
+    now: datetime | None = None,
+) -> timedelta:
+    normalized_window = (window or "1D").upper()
+    is_realtime_window = normalized_window in {"1D", "5D"}
+    market_is_open = (exchange or "").upper() == "KRX" and is_krx_market_open(now)
+
+    if normalized_window == "1D":
+        return timedelta(minutes=1 if market_is_open else 10)
+    if normalized_window == "5D":
+        return timedelta(minutes=5 if market_is_open else 30)
+    if normalized_window in {"1M", "3M"}:
+        return timedelta(minutes=30)
+    if normalized_window in {"6M", "YTD"}:
+        return timedelta(hours=2)
+    if normalized_window == "1Y":
+        return timedelta(hours=4)
+    if normalized_window in {"5Y", "MAX", "ALL"}:
+        return timedelta(days=1)
+    if is_realtime_window:
+        return timedelta(minutes=5 if market_is_open else 30)
     return timedelta(hours=1)
 
 
@@ -253,6 +273,30 @@ def stock_entity_key(
     )
 
 
+def with_group_meta(
+    payload: dict[str, Any],
+    *,
+    source: str,
+    group_name: str,
+    fetched_at: datetime,
+    expires_at: datetime,
+    stale: bool = False,
+) -> dict[str, Any]:
+    ttl_seconds = max(int((expires_at - fetched_at).total_seconds()), 0)
+    return {
+        **payload,
+        "_meta": {
+            **payload.get("_meta", {}),
+            "source": source,
+            "cache_group": group_name,
+            "fetched_at": fetched_at.isoformat(),
+            "expires_at": expires_at.isoformat(),
+            "ttl_seconds": ttl_seconds,
+            "stale": stale,
+        },
+    }
+
+
 async def fetch_with_group_store(
     *,
     store: DataGroupStore | None,
@@ -272,7 +316,14 @@ async def fetch_with_group_store(
         group_name=group_name,
     )
     if fresh is not None:
-        return fresh.payload
+        return with_group_meta(
+            fresh.payload,
+            source=fresh.source,
+            group_name=group_name,
+            fetched_at=fresh.fetched_at,
+            expires_at=fresh.expires_at,
+            stale=fresh.stale,
+        )
 
     try:
         payload = await fetcher()
@@ -285,17 +336,16 @@ async def fetch_with_group_store(
         )
         if stale is None:
             raise
-        payload = dict(stale.payload)
-        payload["_meta"] = {
-            **payload.get("_meta", {}),
-            "stale": True,
-            "source": stale.source,
-            "fetched_at": stale.fetched_at.isoformat(),
-            "expires_at": stale.expires_at.isoformat(),
-        }
-        return payload
+        return with_group_meta(
+            stale.payload,
+            source=stale.source,
+            group_name=group_name,
+            fetched_at=stale.fetched_at,
+            expires_at=stale.expires_at,
+            stale=True,
+        )
 
-    await store.upsert_record(
+    record = await store.upsert_record(
         entity_type=entity_type,
         entity_key=entity_key,
         group_name=group_name,
@@ -303,4 +353,11 @@ async def fetch_with_group_store(
         payload=payload,
         ttl=ttl,
     )
-    return payload
+    return with_group_meta(
+        payload,
+        source=record.source,
+        group_name=group_name,
+        fetched_at=record.fetched_at,
+        expires_at=record.expires_at,
+        stale=record.stale,
+    )

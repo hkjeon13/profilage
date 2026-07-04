@@ -23,6 +23,7 @@ from app.services.company_store import (
     CONS_SUBS_COMP_GROUP,
     CORP_OUTLINE_GROUP,
     KRX_LISTED_ITEM_GROUP,
+    STOCK_PRICE_GROUP,
     DataGroupRecord,
     is_krx_market_open,
     stock_price_ttl,
@@ -173,10 +174,10 @@ def test_profile_page_serves_company_profile_frontend():
     assert '<a href="/openapi.json">OpenAPI</a>' not in response.text
     assert '<a href="/docs">문서</a>' not in response.text
     assert '<a href="/">새 검색</a>' not in response.text
-    assert "/styles.css?v=company-profile-17" in response.text
+    assert "/styles.css?v=company-profile-20" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-17" in response.text
+    assert "/profile-page-5.js?v=company-profile-20" in response.text
 
 
 def test_profile_back_link_preserves_return_search_query():
@@ -227,7 +228,24 @@ def test_profile_overview_groups_company_information_without_relationship_card()
     assert 'class="homepage-icon-link"' in script_response.text
     assert 'aria-label="홈페이지"' in script_response.text
     assert 'target="_blank" rel="noreferrer">홈페이지</a>' not in script_response.text
+    assert "info.dart_company || {}" in script_response.text
+    assert "직원 수" in script_response.text
+    assert "전화번호" in script_response.text
+    assert "DART 고유번호" in script_response.text
+    assert "FSS 고유번호" in script_response.text
+    assert "최초 영업일" in script_response.text
+    assert "최종 영업일" in script_response.text
+    assert "outline.enpTlno || dartCompany.phn_no" in script_response.text
+    assert "outline.enpEmpeCnt" in script_response.text
+    assert "dartCompany.corp_code" in script_response.text
     assert ".homepage-icon-link" in style_response.text
+    assert ".block-heading .homepage-icon-link {\n  display: inline-flex;\n  width: auto;" in style_response.text
+    homepage_link_rule = style_response.text.split(
+        ".block-heading .homepage-icon-link {", 1
+    )[1].split("}", 1)[0]
+    assert "border:" not in homepage_link_rule
+    assert "background:" not in homepage_link_rule
+    assert ".block-heading .homepage-icon-link:hover {\n  color: #185abc;\n}" in style_response.text
     assert ".company-facts dd {\n  min-width: 0;\n  margin: 0;\n  color: #111827;\n  font-weight: 500;" in style_response.text
     assert "font-weight: 780;" not in style_response.text
 
@@ -358,6 +376,23 @@ def test_disclosures_page_loads_more_items_on_scroll():
     assert ".disclosure-load-status" in style_response.text
 
 
+def test_disclosures_page_exposes_disclosure_type_filters():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+        style_response = client.get("/styles.css")
+
+    assert script_response.status_code == 200
+    assert style_response.status_code == 200
+    assert "DISCLOSURE_FILTERS" in script_response.text
+    assert "정기공시" in script_response.text
+    assert "주요사항" in script_response.text
+    assert "지분공시" in script_response.text
+    assert "disclosure_type" in script_response.text
+    assert "selectedDisclosureType" in script_response.text
+    assert "setupDisclosureFilters" in script_response.text
+    assert ".disclosure-filter-tabs" in style_response.text
+
+
 def test_disclosures_page_uses_flat_list_layout():
     with TestClient(app) as client:
         script_response = client.get("/profile-page-5.js")
@@ -389,9 +424,52 @@ def test_stock_chart_matches_reference_style_structure():
 
     assert script_response.status_code == 200
     assert "stock-range-tabs" in script_response.text
+    assert 'STOCK_WINDOWS = ["1D", "5D", "1M", "6M", "YTD", "1Y", "5Y", "MAX"]' in script_response.text
+    assert 'data-stock-window="${rangeLabel}"' in script_response.text
+    assert "setupStockWindowTabs" in script_response.text
+    assert "fetchJson(stockUrl" in script_response.text
+    assert "window: nextWindow" in script_response.text
+    assert "stock_window" in script_response.text
     assert "stock-chart-axis-labels" in script_response.text
     assert "stock-chart-line-primary" in script_response.text
     assert "stock-chart-line-muted" not in script_response.text
+
+
+def test_stock_window_tabs_expose_loading_error_and_refresh_metadata():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+        style_response = client.get("/styles.css")
+        profile_response = client.get("/profile")
+
+    assert script_response.status_code == 200
+    assert style_response.status_code == 200
+    assert profile_response.status_code == 200
+    assert "is-loading-stock" in script_response.text
+    assert "stock-window-status" in script_response.text
+    assert "stockUpdatedLabel" in script_response.text
+    assert "stock?._meta?.fetched_at" in script_response.text
+    assert "stock?._meta?.expires_at" in script_response.text
+    assert "주가 정보를 불러오는 중입니다" in script_response.text
+    assert "주가 정보를 불러오지 못했습니다" in script_response.text
+    assert ".stock-window-status" in style_response.text
+    assert ".company-market-card.is-loading-stock" in style_response.text
+    assert "/profile-page-5.js?v=company-profile-20" in profile_response.text
+
+
+def test_profile_sections_render_source_and_basis_metadata():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+        style_response = client.get("/styles.css")
+
+    assert script_response.status_code == 200
+    assert style_response.status_code == 200
+    assert "renderSourceMeta" in script_response.text
+    assert "금융위원회 기업기본정보" in script_response.text
+    assert "DART" in script_response.text
+    assert "SearchAPI Google Finance" in script_response.text
+    assert "기준일" in script_response.text
+    assert "캐시 만료" in script_response.text
+    assert ".source-meta" in style_response.text
 
 
 def test_stock_chart_uses_date_axis_for_monthly_data():
@@ -434,6 +512,37 @@ def test_stock_chart_uses_wide_mobile_aspect_ratio():
     assert "@media (max-width: 820px)" in chart_style_response.text
     assert ".stock-chart svg {\n    height: 156px;" in chart_style_response.text
     assert ".stock-chart-axis-labels {\n    height: 156px;" in chart_style_response.text
+
+
+def test_financial_summary_renders_year_over_year_delta_badges():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+        style_response = client.get("/styles.css")
+
+    assert script_response.status_code == 200
+    assert style_response.status_code == 200
+    assert "financialDeltaText" in script_response.text
+    assert "frmtrm_amount" in script_response.text
+    assert "delta-badge" in script_response.text
+    assert "is-positive" in script_response.text
+    assert "is-negative" in script_response.text
+    assert ".delta-badge" in style_response.text
+
+
+def test_profile_renders_compact_relationship_summary_without_side_panel():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+        style_response = client.get("/styles.css")
+
+    assert script_response.status_code == 200
+    assert style_response.status_code == 200
+    assert "renderRelationshipSummary" in script_response.text
+    assert "계열회사" in script_response.text
+    assert "종속기업" in script_response.text
+    assert "상장 관계사" in script_response.text
+    assert "company-relationship-summary" in script_response.text
+    assert "company-side-panel" not in script_response.text
+    assert ".company-relationship-summary" in style_response.text
 
 
 def test_company_api_is_available_under_api_prefix(monkeypatch):
@@ -929,10 +1038,16 @@ def test_krx_stock_price_refresh_policy_uses_korea_market_hours():
     market_closed = datetime(2026, 7, 2, 8, 0, tzinfo=UTC)
 
     assert is_krx_market_open(market_open) is True
-    assert stock_price_ttl("KRX", market_open).total_seconds() == 300
+    assert stock_price_ttl("KRX", "1D", market_open).total_seconds() == 60
+    assert stock_price_ttl("KRX", "5D", market_open).total_seconds() == 300
     assert is_krx_market_open(market_closed) is False
-    assert stock_price_ttl("KRX", market_closed).total_seconds() == 3600
-    assert stock_price_ttl("NASDAQ", market_open).total_seconds() == 3600
+    assert stock_price_ttl("KRX", "1D", market_closed).total_seconds() == 600
+    assert stock_price_ttl("NASDAQ", "1D", market_open).total_seconds() == 600
+    assert stock_price_ttl("KRX", "1M", market_open).total_seconds() == 1800
+    assert stock_price_ttl("KRX", "6M", market_open).total_seconds() == 7200
+    assert stock_price_ttl("KRX", "1Y", market_open).total_seconds() == 14400
+    assert stock_price_ttl("KRX", "5Y", market_open).total_seconds() == 86400
+    assert stock_price_ttl("KRX", "MAX", market_open).total_seconds() == 86400
 
 
 @pytest.mark.asyncio
@@ -1026,6 +1141,44 @@ async def test_stock_price_service_reuses_cached_response(monkeypatch):
     assert second == first
     assert len(cache.set_calls) == 1
     assert cache.set_calls[0][0].startswith("profilage:api:")
+    assert cache.set_calls[0][2] == 1800
+
+
+@pytest.mark.asyncio
+async def test_stock_price_data_group_response_includes_cache_metadata(monkeypatch):
+    monkeypatch.setenv("SEARCHAPI_API_KEY", "searchapi-key")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "search_parameters": {"window": "1M"},
+                "summary": {"stock": "005930", "price": 1234.0},
+            },
+        )
+
+    store = FakeDataGroupStore()
+    service = CompanyStockPriceService(
+        transport=httpx.MockTransport(handler),
+        cache=FakeJsonCache(),
+        data_group_store=store,
+    )
+
+    payload = await service.fetch(
+        CompanyStockPriceQuery(
+            q=None,
+            stock_code="005930",
+            exchange="KRX",
+            language="ko",
+            window="1M",
+        )
+    )
+
+    assert payload["_meta"]["source"] == "searchapi:google_finance"
+    assert payload["_meta"]["cache_group"] == STOCK_PRICE_GROUP
+    assert payload["_meta"]["fetched_at"]
+    assert payload["_meta"]["expires_at"]
+    assert payload["_meta"]["ttl_seconds"] == 1800
 
 
 @pytest.mark.asyncio
