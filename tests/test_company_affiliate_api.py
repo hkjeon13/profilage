@@ -178,7 +178,7 @@ def test_profile_page_serves_company_profile_frontend():
     assert "/profile-chart-2.css?v=interactive-7" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-22" in response.text
+    assert "/profile-page-5.js?v=company-profile-23" in response.text
 
 
 def test_profile_back_link_preserves_return_search_query():
@@ -454,7 +454,7 @@ def test_stock_window_tabs_expose_loading_error_and_refresh_metadata():
     assert "주가 정보를 불러오지 못했습니다" in script_response.text
     assert ".stock-window-status" in style_response.text
     assert ".company-market-card.is-loading-stock" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-22" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-23" in profile_response.text
 
 
 def test_profile_sections_render_source_and_basis_metadata():
@@ -569,10 +569,10 @@ def test_financial_summary_renders_delta_badges_with_correct_comparison_basis():
     assert style_response.status_code == 200
     assert "financialDeltaText" in script_response.text
     assert "financialDeltaBasis" in script_response.text
-    assert "frmtrm_q_amount" in script_response.text
+    assert "yoy_amount" in script_response.text
     assert "frmtrm_amount" in script_response.text
     assert "전년 동기" in script_response.text
-    assert "전기 대비" in script_response.text
+    assert "전기 대비" not in script_response.text
     assert "YoY" not in script_response.text
     assert "delta-badge" in script_response.text
     assert "is-positive" in script_response.text
@@ -1517,8 +1517,20 @@ async def test_dart_latest_financial_reports_selects_latest_quarter_and_annual(
                     "bsns_year": "2026",
                     "reprt_code": "11013",
                     "fs_div": "CFS",
+                    "sj_div": "IS",
                     "account_nm": "매출액",
                     "thstrm_amount": "100000000",
+                }
+            ]
+        elif (year, report_code) == ("2025", "11013"):
+            items = [
+                {
+                    "bsns_year": "2025",
+                    "reprt_code": "11013",
+                    "fs_div": "CFS",
+                    "sj_div": "IS",
+                    "account_nm": "매출액",
+                    "thstrm_amount": "80000000",
                 }
             ]
         elif (year, report_code) == ("2025", "11011"):
@@ -1561,6 +1573,9 @@ async def test_dart_latest_financial_reports_selects_latest_quarter_and_annual(
         "report_name": "1분기보고서",
     }
     assert payload["quarter"]["accounts"]["list"][0]["thstrm_amount"] == "100000000"
+    assert payload["quarter"]["accounts"]["list"][0]["yoy_amount"] == "80000000"
+    assert payload["quarter"]["accounts"]["list"][0]["yoy_business_year"] == "2025"
+    assert payload["quarter"]["accounts"]["list"][0]["yoy_report_code"] == "11013"
     assert payload["annual"]["selected"] == {
         "business_year": "2025",
         "report_code": "11011",

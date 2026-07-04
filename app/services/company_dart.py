@@ -123,6 +123,14 @@ def _ensure_success(payload: dict[str, Any], *, allow_no_data: bool = False) -> 
     )
 
 
+def _financial_account_key(item: dict[str, Any]) -> tuple[str, str, str]:
+    return (
+        str(item.get("fs_div") or ""),
+        str(item.get("sj_div") or ""),
+        str(item.get("account_nm") or ""),
+    )
+
+
 class DartCompanyService:
     def __init__(
         self,
@@ -404,6 +412,52 @@ class DartCompanyService:
                     }
             return None
 
+        async def add_prior_year_comparison(
+            report: dict[str, Any] | None,
+        ) -> dict[str, Any] | None:
+            if not report or not report.get("selected"):
+                return report
+            selected = report["selected"]
+            report_code = selected["report_code"]
+            if report_code == "11011":
+                return report
+
+            previous_year = str(int(selected["business_year"]) - 1)
+            previous_accounts = await self.get_financial_accounts(
+                DartFinancialAccountsQuery(
+                    corp_code=corp_code,
+                    business_year=previous_year,
+                    report_code=report_code,
+                    fs_division=fs_division,
+                )
+            )
+            previous_items = {
+                _financial_account_key(item): item
+                for item in previous_accounts.get("list", [])
+            }
+            accounts = dict(report["accounts"])
+            accounts["list"] = [
+                {
+                    **item,
+                    **(
+                        {
+                            "yoy_amount": previous_item["thstrm_amount"],
+                            "yoy_business_year": previous_year,
+                            "yoy_report_code": report_code,
+                        }
+                        if (
+                            previous_item := previous_items.get(
+                                _financial_account_key(item)
+                            )
+                        )
+                        and previous_item.get("thstrm_amount")
+                        else {}
+                    ),
+                }
+                for item in accounts.get("list", [])
+            ]
+            return {**report, "accounts": accounts}
+
         empty_report = {
             "selected": None,
             "accounts": {
@@ -412,7 +466,10 @@ class DartCompanyService:
                 "list": [],
             },
         }
+        quarter_report = await add_prior_year_comparison(
+            await first_available(quarter_candidates)
+        )
         return {
-            "quarter": await first_available(quarter_candidates) or empty_report,
+            "quarter": quarter_report or empty_report,
             "annual": await first_available(annual_candidates) or empty_report,
         }

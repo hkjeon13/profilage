@@ -906,15 +906,13 @@ function numericFinancialAmount(value) {
 
 function financialDeltaBasis(item) {
   const current = numericFinancialAmount(item.thstrm_amount);
-  const previousQuarter = numericFinancialAmount(item.frmtrm_q_amount);
+  const previousSamePeriod = numericFinancialAmount(item.yoy_amount);
   const previous = numericFinancialAmount(item.frmtrm_amount);
-  const incomeAccounts = new Set(["매출액", "영업이익", "당기순이익"]);
-  const isIncomeAccount = incomeAccounts.has(item.account_nm) || ["IS", "CIS"].includes(item.sj_div);
 
-  if (isIncomeAccount && previousQuarter !== null) {
-    return { current, previous: previousQuarter, label: "전년 동기" };
+  if (item.reprt_code !== "11011") {
+    return { current, previous: previousSamePeriod, label: "전년 동기" };
   }
-  return { current, previous, label: item.reprt_code === "11011" ? "전년 대비" : "전기 대비" };
+  return { current, previous, label: "전년 대비" };
 }
 
 function financialDelta(item) {
