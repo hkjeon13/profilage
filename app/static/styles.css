@@ -2443,10 +2443,14 @@ a:hover {
     height: 118px;
   }
 
-  .profile-heading-actions,
   .compare-toolbar {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .profile-heading-actions {
+    align-items: center;
+    flex-direction: row;
   }
 
   .compare-toolbar-actions {
@@ -2459,6 +2463,11 @@ a:hover {
   .compare-share-button,
   .primary-link-button {
     width: 100%;
+  }
+
+  .profile-heading-actions .compare-add-button,
+  .profile-heading-actions .compare-link-button {
+    width: auto;
   }
 
   .compare-column-head {
