@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>기업 비교 | Profilage</title>
+    <link rel="stylesheet" href="/styles.css?v=company-profile-31" />
+  </head>
+  <body class="profile-page compare-page">
+    <div class="company-background" aria-hidden="true"></div>
+    <div class="company-canvas">
+      <header class="top-nav" aria-label="상단 메뉴">
+        <nav class="top-nav-left">
+          <a class="brand-mark" href="/">Profilage</a>
+          <a href="/">검색</a>
+          <a href="/compare">비교</a>
+        </nav>
+      </header>
+
+      <main class="profile-shell compare-shell" id="compare-root" data-info-url="/api/company/get_company_info" data-stock-url="/api/company/get_stock_price">
+        <section class="profile-hero company-profile-card compare-hero">
+          <a class="back-link" href="/">
+            <span class="back-link-icon" aria-hidden="true">←</span>
+            <span>검색으로 돌아가기</span>
+          </a>
+          <div class="profile-title-block">
+            <h1>기업 비교</h1>
+            <p>사용자가 선택한 기업을 같은 기준으로 나란히 비교합니다.</p>
+          </div>
+        </section>
+
+        <section class="detail-panel" id="compare-detail" aria-label="기업 비교">
+          <div class="empty-state">
+            <span class="empty-kicker">Loading</span>
+            <p>비교할 기업 정보를 불러오는 중입니다.</p>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/compare-page.js?v=company-compare-1" defer></script>
+  </body>
+</html>

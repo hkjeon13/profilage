@@ -1879,6 +1879,137 @@ a:hover {
   display: none;
 }
 
+.profile-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.compare-add-button,
+.compare-link-button,
+.primary-link-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  border: 1px solid #d8e5ff;
+  border-radius: 8px;
+  background: #f6f9ff;
+  color: #1a73e8;
+  padding: 0 11px;
+  font-size: 13px;
+  font-weight: 850;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.compare-add-button.is-added {
+  border-color: #d6f3e7;
+  background: #ecfdf5;
+  color: #08734f;
+}
+
+.compare-shell {
+  gap: 18px;
+}
+
+.compare-hero {
+  min-height: auto;
+}
+
+.compare-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.compare-toolbar p {
+  margin: 6px 0 0;
+  color: #667085;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.compare-company-chips {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.compare-company-chip {
+  display: block;
+  border: 1px solid #e8edf5;
+  border-radius: 8px;
+  background: #fff;
+  padding: 13px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.compare-company-chip strong,
+.compare-company-chip span {
+  display: block;
+}
+
+.compare-company-chip span {
+  margin-top: 5px;
+  color: #667085;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.compare-table-wrap {
+  overflow-x: auto;
+}
+
+.compare-table {
+  width: 100%;
+  min-width: 620px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+}
+
+.compare-table th,
+.compare-table td {
+  border-bottom: 1px solid #eef0f6;
+  padding: 12px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.compare-table thead th {
+  color: #667085;
+  font-weight: 850;
+}
+
+.compare-table tbody th {
+  width: 150px;
+  color: #344054;
+  font-weight: 850;
+}
+
+.compare-table td {
+  color: #101828;
+  font-weight: 750;
+}
+
+.compare-table td.compare-best {
+  background: #ecfdf5;
+  color: #08734f;
+}
+
+.compare-empty {
+  text-align: left;
+}
+
+.compare-empty p {
+  color: #667085;
+  line-height: 1.5;
+}
+
 .relationship-list-modal {
   position: fixed;
   inset: 0;

@@ -26,4 +26,9 @@ async def company_profile_page():
     return FileResponse("app/static/profile.html")
 
 
+@app.api_route("/compare", methods=["GET", "HEAD"], include_in_schema=False)
+async def company_compare_page():
+    return FileResponse("app/static/compare.html")
+
+
 app.mount("/", StaticFiles(directory="app/static", html=True), name="frontend")

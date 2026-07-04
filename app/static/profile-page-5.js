@@ -18,6 +18,8 @@ const financialStatementOptions = [
 ];
 const DISCLOSURE_PAGE_SIZE = 30;
 const OWNERSHIP_BAR_MAX_HOLDERS = 5;
+const COMPARE_STORAGE_KEY = "profilage.compareCompanies";
+const MAX_COMPARE_COMPANIES = 5;
 const STOCK_WINDOWS = ["1D", "5D", "1M", "6M", "YTD", "1Y", "5Y", "MAX"];
 const DISCLOSURE_FILTERS = [
   ["", "전체"],
@@ -63,6 +65,33 @@ function escapeHtml(value) {
 
 function attr(value, fallback = "") {
   return escapeHtml(text(value, fallback));
+}
+
+function compareItems() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(COMPARE_STORAGE_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCompareItems(items) {
+  localStorage.setItem(COMPARE_STORAGE_KEY, JSON.stringify(items.slice(0, MAX_COMPARE_COMPANIES)));
+}
+
+function addCompanyToCompare(company) {
+  if (!company.crno) return [];
+  const items = compareItems().filter((item) => item.crno !== company.crno);
+  const nextItems = [company, ...items].slice(0, MAX_COMPARE_COMPANIES);
+  saveCompareItems(nextItems);
+  return nextItems;
+}
+
+function compareUrl(items = compareItems()) {
+  const endpoint = new URL("/compare", window.location.origin);
+  items.slice(0, MAX_COMPARE_COMPANIES).forEach((item) => endpoint.searchParams.append("crno", item.crno));
+  return `${endpoint.pathname}${endpoint.search}`;
 }
 
 function setupReturnSearchLink(searchParams) {
@@ -1654,6 +1683,26 @@ function setupRelationshipSummaryCards() {
   });
 }
 
+function setupCompareActions() {
+  document.querySelectorAll("[data-compare-add]").forEach((button) => {
+    if (button.dataset.compareBound === "true") return;
+    button.dataset.compareBound = "true";
+    button.addEventListener("click", () => {
+      const nextItems = addCompanyToCompare({
+        crno: button.dataset.compareCrno,
+        name: button.dataset.compareName,
+      });
+      button.textContent = "비교함에 추가됨";
+      button.classList.add("is-added");
+      const link = document.querySelector("[data-compare-link]");
+      if (link) {
+        link.href = compareUrl(nextItems);
+        link.hidden = nextItems.length < 2;
+      }
+    });
+  });
+}
+
 function setupFinancialSummaryTabs() {
   document.querySelectorAll(".financial-summary").forEach((summary) => {
     const tabs = Array.from(summary.querySelectorAll("[data-financial-tab]"));
@@ -1825,6 +1874,8 @@ function renderCompanyDetail({ info, outline, listed, stock, stockWindow }) {
   const companySummary = companySummaryText({ info, outline, listed, market });
   const logo = document.querySelector(".company-logo-box");
   const corpCode = info.dart_corp_code?.match?.corp_code || dartCompany.corp_code || "";
+  const initialCompareItems = compareItems();
+  const isCompareAdded = initialCompareItems.some((item) => item.crno === crno);
 
   profileTitle.textContent = text(outline.corpNm, "기업명 정보 없음");
   profileSubtitle.textContent = text(outline.corpEnsnNm || dartCompany.corp_name_eng, "영문명 정보 없음");
@@ -1840,7 +1891,17 @@ function renderCompanyDetail({ info, outline, listed, stock, stockWindow }) {
         <article class="info-block company-about-card">
           <div class="block-heading">
             <h3>기업 개요</h3>
-            ${homepage ? `<a class="homepage-icon-link" href="${homepage}" target="_blank" rel="noreferrer" aria-label="홈페이지" title="홈페이지"><span aria-hidden="true">↗</span></a>` : ""}
+            <div class="profile-heading-actions">
+              <button
+                type="button"
+                class="compare-add-button ${isCompareAdded ? "is-added" : ""}"
+                data-compare-add
+                data-compare-crno="${attr(crno)}"
+                data-compare-name="${attr(outline.corpNm || listed.itmsNm)}"
+              >${isCompareAdded ? "비교함에 추가됨" : "비교에 추가"}</button>
+              <a class="compare-link-button" href="${attr(compareUrl(initialCompareItems))}" data-compare-link ${initialCompareItems.length >= 2 ? "" : "hidden"}>비교 보기</a>
+              ${homepage ? `<a class="homepage-icon-link" href="${homepage}" target="_blank" rel="noreferrer" aria-label="홈페이지" title="홈페이지"><span aria-hidden="true">↗</span></a>` : ""}
+            </div>
           </div>
           <p class="company-summary">
             ${escapeHtml(companySummary)}
@@ -1917,6 +1978,7 @@ function renderCompanyDetail({ info, outline, listed, stock, stockWindow }) {
   setupFinancialTrendCards();
   setupDartInsightDetailButtons();
   setupRelationshipSummaryCards();
+  setupCompareActions();
   setupDisclosureViewer();
 }
 
