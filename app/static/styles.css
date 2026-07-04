@@ -1791,7 +1791,7 @@ a:hover {
 .company-relationship-summary .relationship-summary-grid > div {
   border: 1px solid #eef0f6;
   border-radius: 8px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .relationship-summary-card {
@@ -1808,6 +1808,7 @@ a:hover {
 
 .relationship-summary-card:hover,
 .relationship-summary-card:focus-visible {
+  z-index: 2;
   background: #f8fbff;
 }
 

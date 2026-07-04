@@ -186,7 +186,7 @@ def test_profile_page_serves_company_profile_frontend():
     assert '<a href="/openapi.json">OpenAPI</a>' not in response.text
     assert '<a href="/docs">문서</a>' not in response.text
     assert '<a href="/">새 검색</a>' not in response.text
-    assert "/styles.css?v=company-profile-28" in response.text
+    assert "/styles.css?v=company-profile-29" in response.text
     assert "/profile-chart-2.css?v=interactive-7" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
@@ -648,7 +648,7 @@ def test_relationship_summary_cards_open_company_list_modal():
     assert "relationship-list-modal" in script_response.text
     assert ".relationship-list-modal" in style_response.text
     assert ".relationship-list-items" in style_response.text
-    assert "/styles.css?v=company-profile-28" in profile_response.text
+    assert "/styles.css?v=company-profile-29" in profile_response.text
     assert "/profile-page-5.js?v=company-profile-32" in profile_response.text
 
 
@@ -666,6 +666,15 @@ def test_relationship_summary_terms_have_tooltips():
     assert "relationship-summary-help" in script_response.text
     assert ".relationship-summary-help" in style_response.text
     assert ".relationship-summary-tooltip" in style_response.text
+    wrapper_rule = style_response.text.split(
+        ".company-relationship-summary .relationship-summary-grid > div {", 1
+    )[1].split("}", 1)[0]
+    assert "overflow: hidden" not in wrapper_rule
+    assert "overflow: visible;" in wrapper_rule
+    active_rule = style_response.text.split(
+        ".relationship-summary-card:hover,\n.relationship-summary-card:focus-visible {", 1
+    )[1].split("}", 1)[0]
+    assert "z-index: 2;" in active_rule
 
 
 def test_profile_frontend_renders_normalized_dart_insight_cards():
@@ -694,7 +703,7 @@ def test_profile_frontend_renders_normalized_dart_insight_cards():
     assert ".company-insight-cards" in style_response.text
     assert ".ownership-stacked-bar" in style_response.text
     assert ".ownership-bar-segment" in style_response.text
-    assert "/styles.css?v=company-profile-28" in profile_response.text
+    assert "/styles.css?v=company-profile-29" in profile_response.text
     assert "/profile-page-5.js?v=company-profile-32" in profile_response.text
 
 
