@@ -170,3 +170,27 @@
     height: 156px;
   }
 }
+
+@media (max-width: 560px) {
+  .stock-chart-tooltip {
+    min-width: 104px;
+    max-width: min(138px, calc(100% - 14px));
+    border-radius: 7px;
+    box-shadow: 0 8px 18px rgba(31, 36, 48, 0.2);
+    padding: 8px 9px;
+  }
+
+  .stock-chart-tooltip strong {
+    font-size: 13px;
+  }
+
+  .stock-chart-tooltip span {
+    margin-top: 3px;
+    font-size: 11px;
+  }
+
+  .stock-chart-tooltip small {
+    margin-top: 2px;
+    font-size: 10px;
+  }
+}

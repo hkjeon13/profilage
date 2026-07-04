@@ -175,7 +175,7 @@ def test_profile_page_serves_company_profile_frontend():
     assert '<a href="/docs">문서</a>' not in response.text
     assert '<a href="/">새 검색</a>' not in response.text
     assert "/styles.css?v=company-profile-21" in response.text
-    assert "/profile-chart-2.css?v=interactive-6" in response.text
+    assert "/profile-chart-2.css?v=interactive-7" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
     assert "/profile-page-5.js?v=company-profile-21" in response.text
@@ -527,6 +527,21 @@ def test_stock_chart_tooltip_stays_inside_mobile_chart_bounds():
     assert "chartPixelWidth - tooltipHalfWidth" in script_response.text
     assert "tooltip.style.left = `${tooltipPosition}%`;" in script_response.text
     assert "transform: translate(-50%, -50%);" in chart_style_response.text
+
+
+def test_stock_chart_tooltip_is_compact_on_mobile():
+    with TestClient(app) as client:
+        chart_style_response = client.get("/profile-chart-2.css")
+        profile_response = client.get("/profile")
+
+    assert chart_style_response.status_code == 200
+    assert profile_response.status_code == 200
+    assert "@media (max-width: 560px)" in chart_style_response.text
+    assert ".stock-chart-tooltip {\n    min-width: 104px;" in chart_style_response.text
+    assert "padding: 8px 9px;" in chart_style_response.text
+    assert ".stock-chart-tooltip strong {\n    font-size: 13px;" in chart_style_response.text
+    assert ".stock-chart-tooltip span {\n    margin-top: 3px;\n    font-size: 11px;" in chart_style_response.text
+    assert "/profile-chart-2.css?v=interactive-7" in profile_response.text
 
 
 def test_profile_mobile_layout_prevents_horizontal_overflow():
