@@ -178,7 +178,7 @@ def test_profile_page_serves_company_profile_frontend():
     assert "/profile-chart-2.css?v=interactive-7" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-21" in response.text
+    assert "/profile-page-5.js?v=company-profile-22" in response.text
 
 
 def test_profile_back_link_preserves_return_search_query():
@@ -454,7 +454,7 @@ def test_stock_window_tabs_expose_loading_error_and_refresh_metadata():
     assert "주가 정보를 불러오지 못했습니다" in script_response.text
     assert ".stock-window-status" in style_response.text
     assert ".company-market-card.is-loading-stock" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-21" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-22" in profile_response.text
 
 
 def test_profile_sections_render_source_and_basis_metadata():
@@ -560,7 +560,7 @@ def test_profile_mobile_layout_prevents_horizontal_overflow():
     assert "max-width: 100%;" in chart_style_response.text
 
 
-def test_financial_summary_renders_year_over_year_delta_badges():
+def test_financial_summary_renders_delta_badges_with_correct_comparison_basis():
     with TestClient(app) as client:
         script_response = client.get("/profile-page-5.js")
         style_response = client.get("/styles.css")
@@ -568,7 +568,12 @@ def test_financial_summary_renders_year_over_year_delta_badges():
     assert script_response.status_code == 200
     assert style_response.status_code == 200
     assert "financialDeltaText" in script_response.text
+    assert "financialDeltaBasis" in script_response.text
+    assert "frmtrm_q_amount" in script_response.text
     assert "frmtrm_amount" in script_response.text
+    assert "전년 동기" in script_response.text
+    assert "전기 대비" in script_response.text
+    assert "YoY" not in script_response.text
     assert "delta-badge" in script_response.text
     assert "is-positive" in script_response.text
     assert "is-negative" in script_response.text

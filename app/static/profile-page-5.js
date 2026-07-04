@@ -899,15 +899,33 @@ function financialSummaryItems(accounts) {
   ).slice(0, 6);
 }
 
+function numericFinancialAmount(value) {
+  const numeric = Number(String(value || "").replaceAll(",", ""));
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+function financialDeltaBasis(item) {
+  const current = numericFinancialAmount(item.thstrm_amount);
+  const previousQuarter = numericFinancialAmount(item.frmtrm_q_amount);
+  const previous = numericFinancialAmount(item.frmtrm_amount);
+  const incomeAccounts = new Set(["매출액", "영업이익", "당기순이익"]);
+  const isIncomeAccount = incomeAccounts.has(item.account_nm) || ["IS", "CIS"].includes(item.sj_div);
+
+  if (isIncomeAccount && previousQuarter !== null) {
+    return { current, previous: previousQuarter, label: "전년 동기" };
+  }
+  return { current, previous, label: item.reprt_code === "11011" ? "전년 대비" : "전기 대비" };
+}
+
 function financialDelta(item) {
-  const current = Number(String(item.thstrm_amount || "").replaceAll(",", ""));
-  const previous = Number(String(item.frmtrm_amount || "").replaceAll(",", ""));
-  if (!Number.isFinite(current) || !Number.isFinite(previous) || previous === 0) {
+  const { current, previous, label } = financialDeltaBasis(item);
+  if (current === null || previous === null || previous === 0) {
     return null;
   }
   const ratio = ((current - previous) / Math.abs(previous)) * 100;
   return {
     ratio,
+    label,
     className: ratio >= 0 ? "is-positive" : "is-negative",
   };
 }
@@ -916,7 +934,7 @@ function financialDeltaText(item) {
   const delta = financialDelta(item);
   if (!delta) return "";
   const sign = delta.ratio > 0 ? "+" : "";
-  return `${sign}${delta.ratio.toFixed(1)}% YoY`;
+  return `${sign}${delta.ratio.toFixed(1)}% ${delta.label}`;
 }
 
 function renderFinancialSummaryPanel({ report, key, isActive }) {
