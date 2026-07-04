@@ -1051,6 +1051,7 @@ a:hover {
 
 .profile-shell {
   width: min(1040px, calc(100% - 44px));
+  max-width: 100%;
   margin: 0 auto;
   padding: 28px 0 76px;
 }
@@ -1150,10 +1151,14 @@ a:hover {
 
 .profile-layout {
   display: grid;
+  min-width: 0;
+  max-width: 100%;
   grid-template-columns: minmax(0, 1fr);
 }
 
 .profile-page .detail-panel {
+  min-width: 0;
+  max-width: 100%;
   min-height: 420px;
   border: 0;
   background: transparent;
@@ -1163,6 +1168,8 @@ a:hover {
 
 .company-overview-grid {
   display: grid;
+  min-width: 0;
+  max-width: 100%;
   grid-template-columns: minmax(0, 1fr);
   gap: 22px;
   align-items: start;
@@ -1170,10 +1177,14 @@ a:hover {
 
 .company-main-column {
   display: grid;
+  min-width: 0;
+  max-width: 100%;
   gap: 18px;
 }
 
 .profile-page .info-block {
+  min-width: 0;
+  max-width: 100%;
   min-height: 0;
   border: 1px solid #eceef4;
   border-radius: 8px;
@@ -1194,6 +1205,7 @@ a:hover {
   padding-bottom: 18px;
   color: #3f4757;
   line-height: 1.75;
+  overflow-wrap: anywhere;
 }
 
 .company-profile-info-section {

@@ -174,7 +174,8 @@ def test_profile_page_serves_company_profile_frontend():
     assert '<a href="/openapi.json">OpenAPI</a>' not in response.text
     assert '<a href="/docs">문서</a>' not in response.text
     assert '<a href="/">새 검색</a>' not in response.text
-    assert "/styles.css?v=company-profile-20" in response.text
+    assert "/styles.css?v=company-profile-21" in response.text
+    assert "/profile-chart-2.css?v=interactive-6" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
     assert "/profile-page-5.js?v=company-profile-20" in response.text
@@ -512,6 +513,22 @@ def test_stock_chart_uses_wide_mobile_aspect_ratio():
     assert "@media (max-width: 820px)" in chart_style_response.text
     assert ".stock-chart svg {\n    height: 156px;" in chart_style_response.text
     assert ".stock-chart-axis-labels {\n    height: 156px;" in chart_style_response.text
+
+
+def test_profile_mobile_layout_prevents_horizontal_overflow():
+    with TestClient(app) as client:
+        style_response = client.get("/styles.css")
+        chart_style_response = client.get("/profile-chart-2.css")
+
+    assert style_response.status_code == 200
+    assert chart_style_response.status_code == 200
+    assert ".profile-layout {\n  display: grid;\n  min-width: 0;" in style_response.text
+    assert ".profile-page .detail-panel {\n  min-width: 0;" in style_response.text
+    assert ".company-main-column {\n  display: grid;\n  min-width: 0;" in style_response.text
+    assert ".profile-page .info-block {\n  min-width: 0;" in style_response.text
+    assert "overflow-wrap: anywhere;" in style_response.text
+    assert ".stock-range-tabs {\n  display: flex;\n  flex-wrap: wrap;" in chart_style_response.text
+    assert "max-width: 100%;" in chart_style_response.text
 
 
 def test_financial_summary_renders_year_over_year_delta_badges():

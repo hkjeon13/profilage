@@ -1,12 +1,16 @@
 .stock-chart {
   position: relative;
+  min-width: 0;
+  max-width: 100%;
   margin-top: 24px;
   padding-right: 42px;
+  overflow: hidden;
 }
 
 .stock-chart svg {
   display: block;
   width: 100%;
+  max-width: 100%;
   height: 236px;
   cursor: crosshair;
   touch-action: pan-y;
@@ -66,6 +70,7 @@
   top: 48%;
   left: 85%;
   z-index: 1;
+  max-width: min(180px, calc(100% - 18px));
   min-width: 124px;
   border: 0;
   border-radius: 8px;
@@ -106,6 +111,8 @@
 
 .stock-chart-meta {
   display: flex;
+  min-width: 0;
+  max-width: 100%;
   justify-content: space-between;
   gap: 16px;
   margin-top: 8px;
@@ -118,6 +125,7 @@
   position: absolute;
   top: 0;
   right: 0;
+  max-width: 42px;
   height: 236px;
   grid-template-rows: repeat(3, 1fr);
   align-items: center;
@@ -128,6 +136,8 @@
 
 .stock-range-tabs {
   display: flex;
+  flex-wrap: wrap;
+  max-width: 100%;
   gap: 12px;
   align-items: center;
   margin: 18px 0 0;
