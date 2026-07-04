@@ -78,6 +78,15 @@ class DartFinancialAccountsQuery:
     fs_division: str | None
 
 
+@dataclass(frozen=True)
+class DartFinancialTrendsQuery:
+    corp_code: str
+    end_year: str
+    report_code: str
+    fs_division: str | None
+    years: int = 5
+
+
 def _viewer_url(receipt_number: str | None) -> str | None:
     if not receipt_number:
         return None
@@ -363,6 +372,46 @@ class DartCompanyService:
             if item.get("fs_div") in (None, query.fs_division)
         ]
         return payload
+
+    async def get_financial_trends(
+        self,
+        query: DartFinancialTrendsQuery,
+    ) -> dict[str, Any]:
+        end_year = int(query.end_year)
+        years = max(1, min(query.years, 10))
+        periods: list[dict[str, Any]] = []
+        for business_year in range(end_year, end_year - years, -1):
+            accounts = await self.get_financial_accounts(
+                DartFinancialAccountsQuery(
+                    corp_code=query.corp_code,
+                    business_year=str(business_year),
+                    report_code=query.report_code,
+                    fs_division=query.fs_division,
+                )
+            )
+            if not accounts.get("list"):
+                continue
+            periods.append(
+                {
+                    "business_year": str(business_year),
+                    "report_code": query.report_code,
+                    "report_name": FINANCIAL_REPORT_NAMES.get(
+                        query.report_code,
+                        query.report_code,
+                    ),
+                    "accounts": accounts.get("list", []),
+                }
+            )
+
+        return {
+            "selected": {
+                "end_year": query.end_year,
+                "report_code": query.report_code,
+                "fs_division": query.fs_division,
+                "years": years,
+            },
+            "periods": list(reversed(periods)),
+        }
 
     async def get_latest_financial_reports(
         self,

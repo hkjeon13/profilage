@@ -22,6 +22,7 @@ from app.services.company_dart import (
     DartCorpCodeQuery,
     DartDisclosureQuery,
     DartFinancialAccountsQuery,
+    DartFinancialTrendsQuery,
 )
 
 router = APIRouter(prefix="/company", tags=["company"])
@@ -344,5 +345,32 @@ async def get_dart_financial_accounts(
             business_year=business_year,
             report_code=report_code,
             fs_division=fs_division,
+        )
+    )
+
+
+@router.get("/get_dart_financial_trends")
+async def get_dart_financial_trends(
+    request: Request,
+    corp_code: Annotated[str, Query(description="DART 고유번호")],
+    end_year: Annotated[str, Query(description="마지막 사업연도(YYYY)")],
+    report_code: Annotated[
+        str, Query(description="보고서 코드: 11011 사업보고서, 11012 반기, 11013 1분기, 11014 3분기")
+    ] = "11011",
+    fs_division: Annotated[
+        str | None, Query(description="CFS 연결재무제표, OFS 재무제표")
+    ] = "CFS",
+    years: Annotated[int, Query(ge=1, le=10)] = 5,
+):
+    service = DartCompanyService(
+        transport=getattr(request.app.state, "http_transport", None)
+    )
+    return await service.get_financial_trends(
+        DartFinancialTrendsQuery(
+            corp_code=corp_code,
+            end_year=end_year,
+            report_code=report_code,
+            fs_division=fs_division,
+            years=years,
         )
     )

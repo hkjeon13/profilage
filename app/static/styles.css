@@ -821,16 +821,27 @@ a:hover {
   border: 1px solid #edf0f6;
   border-radius: 8px;
   background: #f8fafc;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
   padding: 12px;
+  text-align: left;
 }
 
-.financial-metric-card dt {
+.financial-metric-card:hover {
+  border-color: #c9d7ee;
+  background: #ffffff;
+}
+
+.financial-metric-card dt,
+.financial-metric-label {
   color: #667085;
   font-size: 12px;
   font-weight: 800;
 }
 
-.financial-metric-card dd {
+.financial-metric-card dd,
+.financial-metric-value {
   min-width: 0;
   margin: 0;
   color: #111827;
@@ -1365,6 +1376,164 @@ a:hover {
   color: #b42318;
 }
 
+.financial-trend-modal[hidden] {
+  display: none;
+}
+
+.has-financial-trend-open {
+  overflow: hidden;
+}
+
+.financial-trend-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 42;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.financial-trend-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(15, 23, 42, 0.46);
+}
+
+.financial-trend-dialog {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: min(760px, 100%);
+  max-height: min(760px, calc(100vh - 40px));
+  gap: 16px;
+  overflow: auto;
+  border: 1px solid #e5e7ef;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.28);
+  padding: 18px;
+}
+
+.financial-trend-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.financial-trend-header p {
+  margin: 0 0 4px;
+  color: #667085;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.financial-trend-header h2 {
+  margin: 0;
+  color: #101828;
+  font-size: 20px;
+}
+
+.financial-trend-close,
+.financial-trend-toggle {
+  min-height: 34px;
+  border: 0;
+  border-radius: 8px;
+  background: #101828;
+  color: #ffffff;
+  cursor: pointer;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.financial-trend-controls {
+  position: relative;
+}
+
+.financial-trend-account-menu {
+  display: grid;
+  position: absolute;
+  z-index: 2;
+  top: 42px;
+  left: 0;
+  width: min(260px, 100%);
+  gap: 2px;
+  border: 1px solid #e5e7ef;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.16);
+  padding: 8px;
+}
+
+.financial-trend-account-menu[hidden] {
+  display: none;
+}
+
+.financial-trend-account-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 6px;
+  padding: 8px;
+  color: #344054;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.financial-trend-chart {
+  min-height: 300px;
+}
+
+.financial-trend-chart svg {
+  display: block;
+  width: 100%;
+  height: 260px;
+}
+
+.financial-trend-grid {
+  fill: none;
+  stroke: #e2e7f0;
+  stroke-dasharray: 2 5;
+}
+
+.financial-trend-line {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.financial-trend-axis,
+.financial-trend-legend {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: #667085;
+  font-size: 12px;
+}
+
+.financial-trend-legend {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  margin-top: 12px;
+  font-weight: 800;
+}
+
+.financial-trend-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.financial-trend-legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
 .disclosure-filter-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -1570,6 +1739,21 @@ a:hover {
   .disclosure-viewer-dialog {
     height: calc(100vh - 20px);
     border-radius: 8px;
+  }
+
+  .financial-trend-modal {
+    padding: 10px;
+  }
+
+  .financial-trend-dialog {
+    max-height: calc(100vh - 20px);
+    border-radius: 8px;
+  }
+
+  .financial-trend-account-menu {
+    position: static;
+    width: 100%;
+    margin-top: 8px;
   }
 
   .disclosure-viewer-header {

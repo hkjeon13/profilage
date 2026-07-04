@@ -151,6 +151,16 @@ function formatFinancialAmount(value, currency = "KRW") {
   return `${sign}${absolute.toLocaleString("ko-KR")}원`;
 }
 
+function shortFinancialAmount(value) {
+  const amount = Number(String(value || "").replaceAll(",", ""));
+  if (!Number.isFinite(amount)) return "-";
+  const absolute = Math.abs(amount);
+  const sign = amount < 0 ? "-" : "";
+  if (absolute >= 1_000_000_000_000) return `${sign}${(absolute / 1_000_000_000_000).toFixed(1)}조`;
+  if (absolute >= 100_000_000) return `${sign}${(absolute / 100_000_000).toFixed(0)}억`;
+  return `${sign}${absolute.toLocaleString("ko-KR")}`;
+}
+
 function companySummaryText({ info, outline, listed, market }) {
   const corpName = text(outline.corpNm, "이 기업");
   const industry = firstCompanyValue(info.corp_outline, ["enpMainBizNm", "sicNm"]);
@@ -941,33 +951,211 @@ function renderFinancialSummaryPanel({ report, key, isActive }) {
   const items = financialSummaryItems(accounts);
   if (!items.length) return "";
   const crno = new URLSearchParams(window.location.search).get("crno");
+  const corpCode = profileDetail.dataset.dartCorpCode || "";
   const subtitle = selected
     ? `${selected.business_year} · ${selected.report_name} · ${optionLabel(financialStatementOptions, selected.fs_division)}`
     : "재무정보";
+  const trendPayload = {
+    corpCode,
+    endYear: selected?.business_year || "",
+    reportCode: selected?.report_code || "",
+    fsDivision: selected?.fs_division || "CFS",
+    accounts: items.map((item) => item.account_nm),
+  };
 
   return `
-    <div class="financial-summary-panel ${isActive ? "is-active" : ""}" data-financial-panel="${key}" data-financial-detail-url="${financialDetailUrl(crno, selected)}" ${isActive ? "" : "hidden"}>
+    <div class="financial-summary-panel ${isActive ? "is-active" : ""}" data-financial-panel="${key}" data-financial-detail-url="${financialDetailUrl(crno, selected)}" data-financial-trend-payload="${attr(JSON.stringify(trendPayload))}" ${isActive ? "" : "hidden"}>
       <div class="financial-summary-panel-head">
         <p class="financial-summary-meta">${subtitle}</p>
       </div>
-      <dl class="financial-metrics">
+      <div class="financial-metrics">
         ${items
           .map(
             (item) => {
               const delta = financialDelta(item);
               return `
-                <div class="financial-metric-card">
-                  <dt>${text(item.account_nm)}</dt>
-                  <dd>${formatFinancialAmount(item.thstrm_amount, item.currency)}</dd>
+                <button type="button" class="financial-metric-card" data-financial-trend-account="${attr(item.account_nm)}">
+                  <span class="financial-metric-label">${text(item.account_nm)}</span>
+                  <span class="financial-metric-value">${formatFinancialAmount(item.thstrm_amount, item.currency)}</span>
                   ${financialDeltaText(item) ? `<span class="delta-badge ${delta.className}">${financialDeltaText(item)}</span>` : ""}
-                </div>
+                </button>
               `;
             },
           )
           .join("")}
-      </dl>
+      </div>
     </div>
   `;
+}
+
+function ensureFinancialTrendModal() {
+  const existing = document.querySelector(".financial-trend-modal");
+  if (existing) return existing;
+  document.body.insertAdjacentHTML(
+    "beforeend",
+    `
+      <div class="financial-trend-modal" hidden>
+        <button class="financial-trend-backdrop" type="button" data-financial-trend-close aria-label="닫기"></button>
+        <section class="financial-trend-dialog" role="dialog" aria-modal="true" aria-labelledby="financial-trend-title">
+          <header class="financial-trend-header">
+            <div>
+              <p id="financial-trend-meta">최근 5개년</p>
+              <h2 id="financial-trend-title">재무 추이</h2>
+            </div>
+            <button type="button" class="financial-trend-close" data-financial-trend-close>닫기</button>
+          </header>
+          <div class="financial-trend-controls">
+            <button type="button" class="financial-trend-toggle" data-financial-trend-toggle>계정 선택</button>
+            <div class="financial-trend-account-menu" data-financial-trend-menu hidden></div>
+          </div>
+          <div class="financial-trend-chart" data-financial-trend-chart role="img" aria-label="재무 항목 추이"></div>
+        </section>
+      </div>
+    `,
+  );
+  const modal = document.querySelector(".financial-trend-modal");
+  modal.querySelectorAll("[data-financial-trend-close]").forEach((control) => {
+    control.addEventListener("click", closeFinancialTrendModal);
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !modal.hidden) closeFinancialTrendModal();
+  });
+  modal.querySelector("[data-financial-trend-toggle]").addEventListener("click", () => {
+    const menu = modal.querySelector("[data-financial-trend-menu]");
+    menu.hidden = !menu.hidden;
+  });
+  return modal;
+}
+
+function closeFinancialTrendModal() {
+  const modal = document.querySelector(".financial-trend-modal");
+  if (!modal) return;
+  modal.hidden = true;
+  document.body.classList.remove("has-financial-trend-open");
+}
+
+function trendSeries(periods, accountName) {
+  return periods.map((period) => {
+    const account = (period.accounts || []).find((item) => item.account_nm === accountName);
+    return {
+      label: period.business_year,
+      value: numericFinancialAmount(account?.thstrm_amount),
+    };
+  });
+}
+
+function renderFinancialTrendChart(modal, trendPayload, selectedAccounts) {
+  const chart = modal.querySelector("[data-financial-trend-chart]");
+  const periods = trendPayload.periods || [];
+  const series = selectedAccounts.map((accountName, index) => ({
+    accountName,
+    color: ["#1d5faa", "#0f8b6d", "#d97706", "#7c3aed", "#dc2626", "#475569"][index % 6],
+    points: trendSeries(periods, accountName),
+  }));
+  const values = series.flatMap((item) => item.points.map((point) => point.value)).filter((value) => value !== null);
+  if (!periods.length || !series.length || !values.length) {
+    chart.innerHTML = `<p class="empty-copy">표시할 추이 데이터가 없습니다.</p>`;
+    return;
+  }
+  const width = 640;
+  const height = 260;
+  const paddingX = 42;
+  const paddingY = 28;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const plotWidth = width - paddingX * 2;
+  const plotHeight = height - paddingY * 2;
+  const xFor = (index) => paddingX + (index / Math.max(periods.length - 1, 1)) * plotWidth;
+  const yFor = (value) => paddingY + ((max - value) / range) * plotHeight;
+  chart.innerHTML = `
+    <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+      <path class="financial-trend-grid" d="M ${paddingX} ${paddingY} H ${width - paddingX} M ${paddingX} ${height / 2} H ${width - paddingX} M ${paddingX} ${height - paddingY} H ${width - paddingX}" />
+      ${series
+        .map((item) => {
+          const path = item.points
+            .map((point, index) => point.value === null ? "" : `${index === 0 ? "M" : "L"} ${xFor(index).toFixed(2)} ${yFor(point.value).toFixed(2)}`)
+            .filter(Boolean)
+            .join(" ");
+          return `<path class="financial-trend-line" d="${path}" stroke="${item.color}" />`;
+        })
+        .join("")}
+    </svg>
+    <div class="financial-trend-axis" aria-hidden="true">
+      ${periods.map((period) => `<span>${escapeHtml(period.business_year)}</span>`).join("")}
+    </div>
+    <div class="financial-trend-legend">
+      ${series
+        .map((item) => {
+          const latest = item.points.at(-1)?.value;
+          return `<span><i style="background:${item.color}"></i>${escapeHtml(item.accountName)} ${shortFinancialAmount(latest)}</span>`;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+function renderFinancialTrendAccounts(modal, accounts, trendPayload, selectedAccounts) {
+  const menu = modal.querySelector("[data-financial-trend-menu]");
+  menu.innerHTML = accounts
+    .map(
+      (accountName) => `
+        <label class="financial-trend-account-check">
+          <input type="checkbox" value="${attr(accountName)}" ${selectedAccounts.includes(accountName) ? "checked" : ""} />
+          <span>${escapeHtml(accountName)}</span>
+        </label>
+      `,
+    )
+    .join("");
+  menu.querySelectorAll("input").forEach((input) => {
+    input.addEventListener("change", () => {
+      const nextSelected = Array.from(menu.querySelectorAll("input:checked")).map((item) => item.value);
+      renderFinancialTrendChart(modal, trendPayload, nextSelected);
+    });
+  });
+}
+
+async function openFinancialTrendModal(button) {
+  const panel = button.closest("[data-financial-trend-payload]");
+  if (!panel) return;
+  const panelPayload = JSON.parse(panel.dataset.financialTrendPayload || "{}");
+  const accountName = button.dataset.financialTrendAccount;
+  const modal = ensureFinancialTrendModal();
+  modal.hidden = false;
+  document.body.classList.add("has-financial-trend-open");
+  modal.querySelector("#financial-trend-title").textContent = `${accountName} 추이`;
+  modal.querySelector("#financial-trend-meta").textContent = "최근 5개년";
+  modal.querySelector("[data-financial-trend-chart]").innerHTML = `<p class="empty-copy">재무 추이를 불러오는 중입니다.</p>`;
+  const trendPayload = await fetchJson("/api/company/get_dart_financial_trends", {
+    corp_code: panelPayload.corpCode,
+    end_year: panelPayload.endYear,
+    report_code: panelPayload.reportCode,
+    fs_division: panelPayload.fsDivision,
+    years: 5,
+  });
+  const accounts = Array.from(
+    new Set([
+      accountName,
+      ...(panelPayload.accounts || []),
+      ...(trendPayload.periods || []).flatMap((period) => (period.accounts || []).map((item) => item.account_nm)),
+    ]),
+  ).filter(Boolean);
+  const selectedAccounts = [accountName];
+  renderFinancialTrendAccounts(modal, accounts, trendPayload, selectedAccounts);
+  renderFinancialTrendChart(modal, trendPayload, selectedAccounts);
+}
+
+function setupFinancialTrendCards() {
+  document.querySelectorAll("[data-financial-trend-account]").forEach((button) => {
+    if (button.dataset.financialTrendBound === "true") return;
+    button.dataset.financialTrendBound = "true";
+    button.addEventListener("click", () => {
+      openFinancialTrendModal(button).catch((error) => {
+        const modal = ensureFinancialTrendModal();
+        modal.querySelector("[data-financial-trend-chart]").innerHTML = `<p class="empty-copy">${escapeHtml(error.message || "재무 추이를 불러오지 못했습니다.")}</p>`;
+      });
+    });
+  });
 }
 
 function renderDartFinancialAccounts(info) {
@@ -1057,6 +1245,7 @@ function setupFinancialSummaryTabs() {
             if (moreLink && panel.dataset.financialDetailUrl) {
               moreLink.href = panel.dataset.financialDetailUrl;
             }
+            setupFinancialTrendCards();
           }
         });
       });
@@ -1209,9 +1398,11 @@ function renderCompanyDetail({ info, outline, listed, stock, stockWindow }) {
   const market = text(listed.mrktCtg || outline.corpRegMrktDcdNm, "비상장/정보 없음");
   const companySummary = companySummaryText({ info, outline, listed, market });
   const logo = document.querySelector(".company-logo-box");
+  const corpCode = info.dart_corp_code?.match?.corp_code || dartCompany.corp_code || "";
 
   profileTitle.textContent = text(outline.corpNm, "기업명 정보 없음");
   profileSubtitle.textContent = text(outline.corpEnsnNm || dartCompany.corp_name_eng, "영문명 정보 없음");
+  profileDetail.dataset.dartCorpCode = corpCode;
   profileCard?.classList.remove("is-loading");
   if (logo) {
     logo.textContent = initials(outline.corpNm);
@@ -1295,6 +1486,7 @@ function renderCompanyDetail({ info, outline, listed, stock, stockWindow }) {
   setupStockChartInteractions();
   setupStockWindowTabs();
   setupFinancialSummaryTabs();
+  setupFinancialTrendCards();
   setupDisclosureViewer();
 }
 

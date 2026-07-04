@@ -174,11 +174,11 @@ def test_profile_page_serves_company_profile_frontend():
     assert '<a href="/openapi.json">OpenAPI</a>' not in response.text
     assert '<a href="/docs">문서</a>' not in response.text
     assert '<a href="/">새 검색</a>' not in response.text
-    assert "/styles.css?v=company-profile-21" in response.text
+    assert "/styles.css?v=company-profile-22" in response.text
     assert "/profile-chart-2.css?v=interactive-7" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-23" in response.text
+    assert "/profile-page-5.js?v=company-profile-24" in response.text
 
 
 def test_profile_back_link_preserves_return_search_query():
@@ -326,6 +326,27 @@ def test_financial_summary_uses_metric_card_grid():
     assert ".company-insight-row .financial-metric-card {\n    width: 100%;" in style_response.text
 
 
+def test_financial_summary_cards_open_trend_modal_with_account_checks():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+        style_response = client.get("/styles.css")
+        profile_response = client.get("/profile")
+
+    assert script_response.status_code == 200
+    assert style_response.status_code == 200
+    assert profile_response.status_code == 200
+    assert "ensureFinancialTrendModal" in script_response.text
+    assert "setupFinancialTrendCards" in script_response.text
+    assert "renderFinancialTrendChart" in script_response.text
+    assert "data-financial-trend-account" in script_response.text
+    assert "data-financial-trend-payload" in script_response.text
+    assert "/api/company/get_dart_financial_trends" in script_response.text
+    assert "financial-trend-account-check" in script_response.text
+    assert ".financial-trend-modal" in style_response.text
+    assert ".financial-trend-chart" in style_response.text
+    assert "/profile-page-5.js?v=company-profile-24" in profile_response.text
+
+
 def test_financial_summary_more_link_is_in_card_heading():
     with TestClient(app) as client:
         script_response = client.get("/profile-page-5.js")
@@ -454,7 +475,7 @@ def test_stock_window_tabs_expose_loading_error_and_refresh_metadata():
     assert "주가 정보를 불러오지 못했습니다" in script_response.text
     assert ".stock-window-status" in style_response.text
     assert ".company-market-card.is-loading-stock" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-23" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-24" in profile_response.text
 
 
 def test_profile_sections_render_source_and_basis_metadata():
@@ -1497,6 +1518,76 @@ def test_get_dart_financial_accounts_maps_query_to_dart_api(monkeypatch):
         "fs_div": "CFS",
     }
     assert response.json()["list"][0]["account_nm"] == "매출액"
+
+
+def test_get_dart_financial_trends_returns_last_five_years(monkeypatch):
+    monkeypatch.setenv("DART_API_KEY", "dart-key")
+    captured_requests = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        params = dict(request.url.params)
+        captured_requests.append(params)
+        year = int(params["bsns_year"])
+        return httpx.Response(
+            200,
+            json={
+                "status": "000",
+                "message": "정상",
+                "list": [
+                    {
+                        "bsns_year": str(year),
+                        "reprt_code": params["reprt_code"],
+                        "fs_div": params["fs_div"],
+                        "account_nm": "자산총계",
+                        "thstrm_amount": str(year * 1000),
+                    },
+                    {
+                        "bsns_year": str(year),
+                        "reprt_code": params["reprt_code"],
+                        "fs_div": params["fs_div"],
+                        "account_nm": "부채총계",
+                        "thstrm_amount": str(year * 500),
+                    },
+                ],
+            },
+        )
+
+    with TestClient(app) as client:
+        app.state.http_transport = httpx.MockTransport(handler)
+        response = client.get(
+            "/company/get_dart_financial_trends",
+            params={
+                "corp_code": "00126380",
+                "end_year": "2026",
+                "report_code": "11011",
+                "fs_division": "CFS",
+            },
+        )
+        del app.state.http_transport
+
+    assert response.status_code == 200
+    assert [request["bsns_year"] for request in captured_requests] == [
+        "2026",
+        "2025",
+        "2024",
+        "2023",
+        "2022",
+    ]
+    payload = response.json()
+    assert payload["selected"] == {
+        "end_year": "2026",
+        "report_code": "11011",
+        "fs_division": "CFS",
+        "years": 5,
+    }
+    assert [period["business_year"] for period in payload["periods"]] == [
+        "2022",
+        "2023",
+        "2024",
+        "2025",
+        "2026",
+    ]
+    assert payload["periods"][-1]["accounts"][0]["account_nm"] == "자산총계"
 
 
 @pytest.mark.asyncio
