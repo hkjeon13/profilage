@@ -1870,7 +1870,8 @@ a:hover {
 }
 
 .relationship-summary-card:hover .relationship-summary-tooltip,
-.relationship-summary-card:focus-visible .relationship-summary-tooltip {
+.relationship-summary-card:focus-visible .relationship-summary-tooltip,
+.relationship-summary-card.is-tooltip-open .relationship-summary-tooltip {
   display: block;
 }
 

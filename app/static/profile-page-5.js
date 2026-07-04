@@ -1522,7 +1522,7 @@ function relationshipSummaryButton({ type, label, count, items }) {
     >
       <span class="relationship-summary-label">
         ${label}
-        <span class="relationship-summary-help" title="${attr(description)}" aria-label="${attr(description)}">?</span>
+        <span class="relationship-summary-help" data-relationship-help title="${attr(description)}" aria-label="${attr(description)}">?</span>
       </span>
       <span class="relationship-summary-count">${count.toLocaleString("ko-KR")}</span>
       <span class="relationship-summary-tooltip" data-relationship-tooltip>${escapeHtml(description)}</span>
@@ -1623,11 +1623,34 @@ function openRelationshipListModal(button) {
   modal.querySelector("[data-relationship-list-body]").innerHTML = renderRelationshipListItems(items, type);
 }
 
+function closeRelationshipTooltips(exceptCard = null) {
+  document.querySelectorAll(".relationship-summary-card.is-tooltip-open").forEach((card) => {
+    if (card !== exceptCard) card.classList.remove("is-tooltip-open");
+  });
+}
+
+function toggleRelationshipTooltip(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  const card = event.currentTarget.closest(".relationship-summary-card");
+  if (!card) return;
+  const willOpen = !card.classList.contains("is-tooltip-open");
+  closeRelationshipTooltips(card);
+  card.classList.toggle("is-tooltip-open", willOpen);
+}
+
 function setupRelationshipSummaryCards() {
   document.querySelectorAll("[data-relationship-list-type]").forEach((button) => {
     if (button.dataset.relationshipListBound === "true") return;
     button.dataset.relationshipListBound = "true";
-    button.addEventListener("click", () => openRelationshipListModal(button));
+    button.querySelectorAll("[data-relationship-help]").forEach((help) => {
+      help.addEventListener("click", toggleRelationshipTooltip);
+    });
+    button.addEventListener("click", (event) => {
+      if (event.target.closest("[data-relationship-help]")) return;
+      closeRelationshipTooltips();
+      openRelationshipListModal(button);
+    });
   });
 }
 
