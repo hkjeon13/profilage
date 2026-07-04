@@ -245,23 +245,6 @@ function bestCompanyCrnos(companies, row) {
   return new Set(scored.filter((item) => item.value === best).map((item) => item.crno));
 }
 
-function renderCompanyChips(companies) {
-  return `
-    <div class="compare-company-chips">
-      ${companies
-        .map(
-          (company) => `
-            <a class="compare-company-chip" href="/profile?crno=${encodeURIComponent(company.crno)}">
-              <strong>${escapeHtml(company.name)}</strong>
-              <span>${escapeHtml(company.subtitle)}</span>
-            </a>
-          `,
-        )
-        .join("")}
-    </div>
-  `;
-}
-
 function renderCompareTable(companies) {
   return metricGroups
     .map(
@@ -326,7 +309,6 @@ function renderComparePage(companies) {
       </div>
       <a class="primary-link-button" href="/">기업 추가</a>
     </section>
-    ${renderCompanyChips(companies)}
     ${renderCompareTable(companies)}
   `;
 }
