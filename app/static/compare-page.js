@@ -126,11 +126,28 @@ function compareStorageItems() {
   }
 }
 
+function saveCompareStorageItems(items) {
+  localStorage.setItem(COMPARE_STORAGE_KEY, JSON.stringify(items.slice(0, MAX_COMPARE_COMPANIES)));
+}
+
 function requestedCrnos() {
   const params = new URLSearchParams(window.location.search);
   const fromUrl = params.getAll("crno").flatMap((value) => value.split(",")).map((value) => value.trim());
   const fromStorage = compareStorageItems().map((item) => item.crno);
   return Array.from(new Set([...fromUrl, ...fromStorage].filter(Boolean))).slice(0, MAX_COMPARE_COMPANIES);
+}
+
+function compareUrlForCrnos(crnos) {
+  const endpoint = new URL("/compare", window.location.origin);
+  crnos.slice(0, MAX_COMPARE_COMPANIES).forEach((crno) => endpoint.searchParams.append("crno", crno));
+  return `${endpoint.pathname}${endpoint.search}`;
+}
+
+function removeCompanyFromCompare(crno) {
+  const remainingCrnos = requestedCrnos().filter((item) => item !== crno);
+  saveCompareStorageItems(compareStorageItems().filter((item) => item.crno !== crno));
+  window.history.replaceState({}, "", compareUrlForCrnos(remainingCrnos));
+  loadComparePage();
 }
 
 function financialMap(info) {
@@ -258,7 +275,18 @@ function renderCompareTable(companies) {
               <thead>
                 <tr>
                   <th>항목</th>
-                  ${companies.map((company) => `<th>${escapeHtml(company.name)}</th>`).join("")}
+                  ${companies
+                    .map(
+                      (company) => `
+                        <th>
+                          <span class="compare-column-head">
+                            <span>${escapeHtml(company.name)}</span>
+                            <button type="button" class="compare-remove-button" data-compare-remove="${attr(company.crno)}" aria-label="${attr(company.name)} 비교에서 삭제">삭제</button>
+                          </span>
+                        </th>
+                      `,
+                    )
+                    .join("")}
                 </tr>
               </thead>
               <tbody>
@@ -311,6 +339,7 @@ function renderComparePage(companies) {
     </section>
     ${renderCompareTable(companies)}
   `;
+  setupCompareRemoveButtons();
 }
 
 async function loadComparePage() {
@@ -331,6 +360,14 @@ async function loadComparePage() {
   } catch (error) {
     compareDetail.innerHTML = `<article class="info-block compare-empty"><p>${escapeHtml(error.message || "비교 정보를 불러오지 못했습니다.")}</p></article>`;
   }
+}
+
+function setupCompareRemoveButtons() {
+  document.querySelectorAll("[data-compare-remove]").forEach((button) => {
+    if (button.dataset.compareRemoveBound === "true") return;
+    button.dataset.compareRemoveBound = "true";
+    button.addEventListener("click", () => removeCompanyFromCompare(button.dataset.compareRemove));
+  });
 }
 
 loadComparePage();
