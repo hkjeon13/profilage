@@ -182,11 +182,11 @@ def test_profile_page_serves_company_profile_frontend():
     assert '<a href="/openapi.json">OpenAPI</a>' not in response.text
     assert '<a href="/docs">문서</a>' not in response.text
     assert '<a href="/">새 검색</a>' not in response.text
-    assert "/styles.css?v=company-profile-22" in response.text
+    assert "/styles.css?v=company-profile-23" in response.text
     assert "/profile-chart-2.css?v=interactive-7" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-24" in response.text
+    assert "/profile-page-5.js?v=company-profile-25" in response.text
 
 
 def test_profile_back_link_preserves_return_search_query():
@@ -352,7 +352,7 @@ def test_financial_summary_cards_open_trend_modal_with_account_checks():
     assert "financial-trend-account-check" in script_response.text
     assert ".financial-trend-modal" in style_response.text
     assert ".financial-trend-chart" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-24" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-25" in profile_response.text
 
 
 def test_financial_summary_more_link_is_in_card_heading():
@@ -483,7 +483,7 @@ def test_stock_window_tabs_expose_loading_error_and_refresh_metadata():
     assert "주가 정보를 불러오지 못했습니다" in script_response.text
     assert ".stock-window-status" in style_response.text
     assert ".company-market-card.is-loading-stock" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-24" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-25" in profile_response.text
 
 
 def test_profile_sections_render_source_and_basis_metadata():
@@ -623,6 +623,29 @@ def test_profile_renders_compact_relationship_summary_without_side_panel():
     assert "company-relationship-summary" in script_response.text
     assert "company-side-panel" not in script_response.text
     assert ".company-relationship-summary" in style_response.text
+
+
+def test_relationship_summary_cards_open_company_list_modal():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+        style_response = client.get("/styles.css")
+        profile_response = client.get("/profile")
+
+    assert script_response.status_code == 200
+    assert style_response.status_code == 200
+    assert profile_response.status_code == 200
+    assert "ensureRelationshipListModal" in script_response.text
+    assert "setupRelationshipSummaryCards" in script_response.text
+    assert "renderRelationshipListItems" in script_response.text
+    assert "data-relationship-list-type" in script_response.text
+    assert "data-relationship-list-payload" in script_response.text
+    assert "afilCmpyNm" in script_response.text
+    assert "sbrdEnpNm" in script_response.text
+    assert "relationship-list-modal" in script_response.text
+    assert ".relationship-list-modal" in style_response.text
+    assert ".relationship-list-items" in style_response.text
+    assert "/styles.css?v=company-profile-23" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-25" in profile_response.text
 
 
 def test_company_api_is_available_under_api_prefix(monkeypatch):

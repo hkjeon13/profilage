@@ -1559,30 +1559,158 @@ a:hover {
   color: #185abc;
 }
 
-.company-relationship-summary dl {
+.company-relationship-summary .relationship-summary-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin: 0;
 }
 
-.company-relationship-summary dl div {
+.company-relationship-summary .relationship-summary-grid > div {
   border: 1px solid #eef0f6;
   border-radius: 8px;
-  padding: 12px;
+  overflow: hidden;
 }
 
-.company-relationship-summary dt {
+.relationship-summary-card {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #fff;
+  padding: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.relationship-summary-card:hover,
+.relationship-summary-card:focus-visible {
+  background: #f8fbff;
+}
+
+.relationship-summary-card:focus-visible {
+  outline: 2px solid #1a73e8;
+  outline-offset: -2px;
+}
+
+.relationship-summary-card:disabled {
+  cursor: default;
+  background: #fff;
+}
+
+.relationship-summary-label {
+  display: block;
   color: #667085;
   font-size: 12px;
   font-weight: 800;
 }
 
-.company-relationship-summary dd {
-  margin: 6px 0 0;
+.relationship-summary-count {
+  display: block;
+  margin-top: 6px;
   color: #101828;
   font-size: 20px;
   font-weight: 850;
+}
+
+.relationship-list-modal[hidden] {
+  display: none;
+}
+
+.relationship-list-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.relationship-list-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgb(15 23 42 / 42%);
+}
+
+.relationship-list-dialog {
+  position: relative;
+  width: min(620px, 100%);
+  max-height: min(720px, calc(100vh - 48px));
+  overflow: hidden;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 24px 80px rgb(15 23 42 / 22%);
+}
+
+.relationship-list-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid #eef0f6;
+  padding: 20px 22px 16px;
+}
+
+.relationship-list-header h3 {
+  margin: 0;
+  color: #101828;
+  font-size: 20px;
+  font-weight: 850;
+}
+
+.relationship-list-header p {
+  margin: 6px 0 0;
+  color: #667085;
+  font-size: 13px;
+}
+
+.relationship-list-close {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #e7ebf3;
+  border-radius: 8px;
+  background: #fff;
+  color: #344054;
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.relationship-list-body {
+  max-height: calc(min(720px, 100vh - 48px) - 78px);
+  overflow: auto;
+  padding: 18px 22px 22px;
+}
+
+.relationship-list-items {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.relationship-list-items li {
+  border: 1px solid #eef0f6;
+  border-radius: 8px;
+  background: #fbfcff;
+  padding: 13px 14px;
+}
+
+.relationship-list-items strong {
+  display: block;
+  color: #101828;
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.relationship-list-items span {
+  display: block;
+  margin-top: 7px;
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .visually-hidden {
@@ -1703,8 +1831,27 @@ a:hover {
   .company-overview-grid,
   .company-facts,
   .company-insight-row,
-  .company-relationship-summary dl {
+  .relationship-summary-grid {
     grid-template-columns: 1fr;
+  }
+
+  .relationship-list-modal {
+    align-items: end;
+    padding: 14px;
+  }
+
+  .relationship-list-dialog {
+    max-height: calc(100vh - 28px);
+    border-radius: 10px;
+  }
+
+  .relationship-list-header {
+    padding: 18px 18px 14px;
+  }
+
+  .relationship-list-body {
+    max-height: calc(100vh - 120px);
+    padding: 14px 18px 18px;
   }
 
   .profile-page .info-block {

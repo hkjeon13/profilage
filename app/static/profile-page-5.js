@@ -1209,23 +1209,145 @@ function countListedRelationships(items) {
   return items.filter((item) => item.lstgYn === "Y" || item.lstgYn === "상장").length;
 }
 
+function relationshipCompanyName(item, type) {
+  const keys = type === "subsidiaries"
+    ? ["sbrdEnpNm", "corpNm", "enpNm", "afilCmpyNm"]
+    : ["afilCmpyNm", "corpNm", "enpNm", "sbrdEnpNm"];
+  for (const key of keys) {
+    if (item?.[key]) return item[key];
+  }
+  return "회사명 정보 없음";
+}
+
+function relationshipMetaItems(item) {
+  return [
+    ["상장여부", item.lstgYn || item.lstgYnNm],
+    ["법인등록번호", item.crno],
+    ["사업자번호", item.bzno],
+    ["단축코드", item.srtnCd],
+    ["ISIN", item.isinCd],
+  ].filter(([, value]) => value !== undefined && value !== null && value !== "");
+}
+
+function relationshipPayload(items) {
+  return attr(JSON.stringify(items));
+}
+
+function relationshipSummaryButton({ type, label, count, items }) {
+  return `
+    <button
+      type="button"
+      class="relationship-summary-card"
+      data-relationship-list-type="${attr(type)}"
+      data-relationship-list-label="${attr(label)}"
+      data-relationship-list-payload="${relationshipPayload(items)}"
+      ${items.length ? "" : "disabled"}
+    >
+      <span class="relationship-summary-label">${label}</span>
+      <span class="relationship-summary-count">${count.toLocaleString("ko-KR")}</span>
+    </button>
+  `;
+}
+
 function renderRelationshipSummary(info) {
   const affiliates = normalizeItems(info.affiliate);
   const subsidiaries = normalizeItems(info.cons_subs_comp);
   if (!affiliates.length && !subsidiaries.length) return "";
-  const listedCount = countListedRelationships(affiliates);
+  const listedAffiliates = affiliates.filter((item) => item.lstgYn === "Y" || item.lstgYn === "상장");
   return `
     <article class="info-block company-relationship-summary">
       <div class="block-heading">
         <h3>관계회사 요약</h3>
       </div>
-      <dl>
-        <div><dt>계열회사</dt><dd>${affiliates.length.toLocaleString("ko-KR")}</dd></div>
-        <div><dt>종속기업</dt><dd>${subsidiaries.length.toLocaleString("ko-KR")}</dd></div>
-        <div><dt>상장 관계사</dt><dd>${listedCount.toLocaleString("ko-KR")}</dd></div>
-      </dl>
+      <div class="relationship-summary-grid">
+        <div>${relationshipSummaryButton({ type: "affiliates", label: "계열회사", count: affiliates.length, items: affiliates })}</div>
+        <div>${relationshipSummaryButton({ type: "subsidiaries", label: "종속기업", count: subsidiaries.length, items: subsidiaries })}</div>
+        <div>${relationshipSummaryButton({ type: "listed-affiliates", label: "상장 관계사", count: listedAffiliates.length, items: listedAffiliates })}</div>
+      </div>
     </article>
   `;
+}
+
+function renderRelationshipListItems(items, type) {
+  if (!items.length) {
+    return `<p class="empty-copy">표시할 회사 목록이 없습니다.</p>`;
+  }
+  return `
+    <ul class="relationship-list-items">
+      ${items
+        .map((item) => {
+          const meta = relationshipMetaItems(item);
+          return `
+            <li>
+              <strong>${escapeHtml(relationshipCompanyName(item, type))}</strong>
+              ${
+                meta.length
+                  ? `<span>${meta.map(([label, value]) => `${escapeHtml(label)} ${escapeHtml(value)}`).join(" · ")}</span>`
+                  : ""
+              }
+            </li>
+          `;
+        })
+        .join("")}
+    </ul>
+  `;
+}
+
+function ensureRelationshipListModal() {
+  const existing = document.querySelector(".relationship-list-modal");
+  if (existing) return existing;
+  const wrapper = document.createElement("div");
+  wrapper.innerHTML = `
+    <div class="relationship-list-modal" hidden>
+      <button type="button" class="relationship-list-backdrop" data-relationship-list-close aria-label="닫기"></button>
+      <section class="relationship-list-dialog" role="dialog" aria-modal="true" aria-labelledby="relationship-list-title">
+        <div class="relationship-list-header">
+          <div>
+            <h3 id="relationship-list-title">관계회사</h3>
+            <p id="relationship-list-meta"></p>
+          </div>
+          <button type="button" class="relationship-list-close" data-relationship-list-close aria-label="닫기">×</button>
+        </div>
+        <div class="relationship-list-body" data-relationship-list-body></div>
+      </section>
+    </div>
+  `;
+  const modal = wrapper.firstElementChild;
+  document.body.appendChild(modal);
+  modal.querySelectorAll("[data-relationship-list-close]").forEach((button) => {
+    button.addEventListener("click", closeRelationshipListModal);
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !modal.hidden) closeRelationshipListModal();
+  });
+  return modal;
+}
+
+function closeRelationshipListModal() {
+  const modal = document.querySelector(".relationship-list-modal");
+  if (!modal) return;
+  modal.hidden = true;
+  document.body.classList.remove("has-relationship-list-open");
+}
+
+function openRelationshipListModal(button) {
+  const items = JSON.parse(button.dataset.relationshipListPayload || "[]");
+  const type = button.dataset.relationshipListType || "affiliates";
+  const label = button.dataset.relationshipListLabel || "관계회사";
+  const modal = ensureRelationshipListModal();
+  modal.hidden = false;
+  document.body.classList.add("has-relationship-list-open");
+  modal.querySelector("#relationship-list-title").textContent = label;
+  modal.querySelector("#relationship-list-meta").textContent = `총 ${items.length.toLocaleString("ko-KR")}개 · 출처 금융위원회 기업기본정보`;
+  modal.querySelector("[data-relationship-list-body]").innerHTML = renderRelationshipListItems(items, type);
+}
+
+function setupRelationshipSummaryCards() {
+  document.querySelectorAll("[data-relationship-list-type]").forEach((button) => {
+    if (button.dataset.relationshipListBound === "true") return;
+    button.dataset.relationshipListBound = "true";
+    button.addEventListener("click", () => openRelationshipListModal(button));
+  });
 }
 
 function setupFinancialSummaryTabs() {
@@ -1487,6 +1609,7 @@ function renderCompanyDetail({ info, outline, listed, stock, stockWindow }) {
   setupStockWindowTabs();
   setupFinancialSummaryTabs();
   setupFinancialTrendCards();
+  setupRelationshipSummaryCards();
   setupDisclosureViewer();
 }
 
