@@ -1595,6 +1595,61 @@ a:hover {
   font-weight: 850;
 }
 
+.ownership-stacked-bar {
+  display: grid;
+  gap: 12px;
+}
+
+.ownership-bar-track {
+  display: flex;
+  width: 100%;
+  height: 18px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eef0f6;
+}
+
+.ownership-bar-segment {
+  display: block;
+  min-width: 2px;
+  height: 100%;
+}
+
+.ownership-bar-legend {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ownership-bar-legend li {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  color: #344054;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.ownership-bar-legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.ownership-bar-legend span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ownership-bar-legend strong {
+  color: #101828;
+  font-weight: 850;
+}
+
 .dart-insight-detail-actions {
   grid-column: 1 / -1;
   display: flex;

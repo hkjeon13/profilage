@@ -17,6 +17,7 @@ const financialStatementOptions = [
   ["OFS", "별도재무제표"],
 ];
 const DISCLOSURE_PAGE_SIZE = 30;
+const OWNERSHIP_BAR_MAX_HOLDERS = 5;
 const STOCK_WINDOWS = ["1D", "5D", "1M", "6M", "YTD", "1Y", "5Y", "MAX"];
 const DISCLOSURE_FILTERS = [
   ["", "전체"],
@@ -1210,6 +1211,71 @@ function renderInsightMetric(label, value) {
   return `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`;
 }
 
+function ownershipBarColor(index) {
+  return ["#1d5faa", "#0f8b6d", "#d97706", "#7c3aed", "#dc2626"][index % 5];
+}
+
+function renderOwnershipStackedBar(ownership) {
+  const holders = (ownership?.holders || [])
+    .filter((holder) => Number.isFinite(Number(holder.ratio_number)) && Number(holder.ratio_number) > 0)
+    .slice(0, OWNERSHIP_BAR_MAX_HOLDERS);
+  if (!holders.length) {
+    return `
+      <dl class="compact-metric-grid">
+        ${renderInsightMetric("이름", ownership?.largest_holder_name)}
+        ${renderInsightMetric("지분율", ownership?.largest_holder_ratio)}
+      </dl>
+    `;
+  }
+  const knownRatio = holders.reduce((sum, holder) => sum + Number(holder.ratio_number), 0);
+  const segments = [
+    ...holders.map((holder, index) => ({
+      name: holder.name || `주주 ${index + 1}`,
+      ratio: Math.max(0, Number(holder.ratio_number)),
+      ratioText: holder.ratio || `${Number(holder.ratio_number).toFixed(2)}%`,
+      color: ownershipBarColor(index),
+    })),
+    ...(knownRatio < 100
+      ? [{
+          name: "기타 주주",
+          ratio: 100 - knownRatio,
+          ratioText: `${(100 - knownRatio).toFixed(2)}%`,
+          color: "#e7ebf3",
+        }]
+      : []),
+  ];
+  return `
+    <div class="ownership-stacked-bar" aria-label="최대주주 지분 구성">
+      <div class="ownership-bar-track">
+        ${segments
+          .map(
+            (segment) => `
+              <span
+                class="ownership-bar-segment"
+                style="width: ${Math.min(segment.ratio, 100).toFixed(4)}%; background: ${segment.color};"
+                title="${attr(segment.name)} ${attr(segment.ratioText)}"
+              ></span>
+            `,
+          )
+          .join("")}
+      </div>
+      <ul class="ownership-bar-legend">
+        ${segments
+          .map(
+            (segment) => `
+              <li>
+                <i style="background: ${segment.color};"></i>
+                <span>${escapeHtml(segment.name)}</span>
+                <strong>${escapeHtml(segment.ratioText)}</strong>
+              </li>
+            `,
+          )
+          .join("")}
+      </ul>
+    </div>
+  `;
+}
+
 function renderDartInsightDetailButtons(insights) {
   if (!insights?.basis?.business_year || !insights?.basis?.report_code) return "";
   return `
@@ -1229,10 +1295,7 @@ function renderCompanyInsightCards(insights) {
       ? `
         <article class="info-block company-insight-card">
           <div class="block-heading"><h3>최대주주</h3></div>
-          <dl class="compact-metric-grid">
-            ${renderInsightMetric("이름", insights.ownership.largest_holder_name)}
-            ${renderInsightMetric("지분율", insights.ownership.largest_holder_ratio)}
-          </dl>
+          ${renderOwnershipStackedBar(insights.ownership)}
         </article>
       `
       : "",

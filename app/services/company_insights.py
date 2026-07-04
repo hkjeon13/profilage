@@ -16,11 +16,37 @@ def _first_value(row: dict[str, Any], keys: list[str]) -> str | None:
     return None
 
 
+def _number(value: str | None) -> float | None:
+    if value in (None, ""):
+        return None
+    try:
+        return float(str(value).replace(",", "").replace("%", "").strip())
+    except ValueError:
+        return None
+
+
 def normalize_ownership(payload: dict[str, Any] | None) -> dict[str, Any] | None:
     rows = _items(payload)
     if not rows:
         return None
     first = rows[0]
+    holders = []
+    for row in rows:
+        ratio = _first_value(
+            row,
+            ["bsis_posesn_stock_qota_rt", "posesn_stock_qota_rt", "stock_qota_rt"],
+        )
+        ratio_number = _number(ratio)
+        if ratio_number is None:
+            continue
+        holders.append(
+            {
+                "name": _first_value(row, ["nm", "holder_nm", "stockholdr_nm"]),
+                "relation": _first_value(row, ["relate", "relate_nm"]),
+                "ratio": ratio,
+                "ratio_number": ratio_number,
+            }
+        )
     return {
         "largest_holder_name": _first_value(first, ["nm", "holder_nm", "stockholdr_nm"]),
         "largest_holder_relation": _first_value(first, ["relate", "relate_nm"]),
@@ -28,6 +54,7 @@ def normalize_ownership(payload: dict[str, Any] | None) -> dict[str, Any] | None
             first,
             ["bsis_posesn_stock_qota_rt", "posesn_stock_qota_rt", "stock_qota_rt"],
         ),
+        "holders": holders,
         "rows": rows,
     }
 
