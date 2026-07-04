@@ -178,7 +178,7 @@ def test_profile_page_serves_company_profile_frontend():
     assert "/profile-chart-2.css?v=interactive-6" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-20" in response.text
+    assert "/profile-page-5.js?v=company-profile-21" in response.text
 
 
 def test_profile_back_link_preserves_return_search_query():
@@ -454,7 +454,7 @@ def test_stock_window_tabs_expose_loading_error_and_refresh_metadata():
     assert "주가 정보를 불러오지 못했습니다" in script_response.text
     assert ".stock-window-status" in style_response.text
     assert ".company-market-card.is-loading-stock" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-20" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-21" in profile_response.text
 
 
 def test_profile_sections_render_source_and_basis_metadata():
@@ -513,6 +513,20 @@ def test_stock_chart_uses_wide_mobile_aspect_ratio():
     assert "@media (max-width: 820px)" in chart_style_response.text
     assert ".stock-chart svg {\n    height: 156px;" in chart_style_response.text
     assert ".stock-chart-axis-labels {\n    height: 156px;" in chart_style_response.text
+
+
+def test_stock_chart_tooltip_stays_inside_mobile_chart_bounds():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+        chart_style_response = client.get("/profile-chart-2.css")
+
+    assert script_response.status_code == 200
+    assert chart_style_response.status_code == 200
+    assert "function getTooltipLeftPercent" in script_response.text
+    assert "tooltip.offsetWidth / 2 + 8" in script_response.text
+    assert "chartPixelWidth - tooltipHalfWidth" in script_response.text
+    assert "tooltip.style.left = `${tooltipPosition}%`;" in script_response.text
+    assert "transform: translate(-50%, -50%);" in chart_style_response.text
 
 
 def test_profile_mobile_layout_prevents_horizontal_overflow():

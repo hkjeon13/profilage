@@ -379,17 +379,17 @@ function updateStockChartSelection(chart, point) {
   if (!tooltip || !guide || !dot) return;
 
   const chartWidth = Number(chart.dataset.chartWidth || 640);
-  const tooltipPosition = Math.min(Math.max((point.x / chartWidth) * 100, 15), 85);
   const volumeText = Number.isFinite(point.volume)
     ? `<small>거래량 ${formatNumber(point.volume)}</small>`
     : "";
 
-  tooltip.style.left = `${tooltipPosition}%`;
   tooltip.innerHTML = `
     <strong>${formatTooltipDate(point.date)}</strong>
     <span>${formatNumber(point.price)} KRW</span>
     ${volumeText}
   `;
+  const tooltipPosition = getTooltipLeftPercent(chart, tooltip, point.x, chartWidth);
+  tooltip.style.left = `${tooltipPosition}%`;
   guide.setAttribute("x1", point.x);
   guide.setAttribute("x2", point.x);
   dot.setAttribute("cx", point.x);
@@ -400,6 +400,20 @@ function updateStockChartSelection(chart, point) {
     "is-end-selected",
     point.index === Number(chart.dataset.chartLastIndex),
   );
+}
+
+function getTooltipLeftPercent(chart, tooltip, pointX, chartWidth) {
+  const chartPixelWidth = chart.clientWidth;
+  if (!chartPixelWidth || !chartWidth) {
+    return Math.min(Math.max((pointX / chartWidth) * 100, 15), 85);
+  }
+
+  const pointPixelX = (pointX / chartWidth) * chartPixelWidth;
+  const tooltipHalfWidth = tooltip.offsetWidth / 2 + 8;
+  const minPixelX = Math.min(tooltipHalfWidth, chartPixelWidth / 2);
+  const maxPixelX = Math.max(minPixelX, chartPixelWidth - tooltipHalfWidth);
+  const clampedPixelX = Math.min(Math.max(pointPixelX, minPixelX), maxPixelX);
+  return (clampedPixelX / chartPixelWidth) * 100;
 }
 
 function setupStockChartInteractions() {
