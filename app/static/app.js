@@ -33,6 +33,7 @@ function syncSearchUrl(query) {
 }
 
 function normalizeItems(payload) {
+  if (Array.isArray(payload?.items)) return payload.items;
   const item = payload?.body?.items?.item;
   if (!item) return [];
   return Array.isArray(item) ? item : [item];

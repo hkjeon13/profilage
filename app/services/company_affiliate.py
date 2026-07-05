@@ -141,6 +141,263 @@ def _profile_availability(
     }
 
 
+def _compact_financial_account(row: dict[str, Any]) -> dict[str, Any]:
+    keys = [
+        "account_nm",
+        "thstrm_amount",
+        "frmtrm_amount",
+        "bfefrmtrm_amount",
+        "yoy_amount",
+        "thstrm_nm",
+        "frmtrm_nm",
+        "currency",
+        "reprt_code",
+        "fs_div",
+        "sj_div",
+    ]
+    return {key: row.get(key) for key in keys if row.get(key) not in (None, "")}
+
+
+def _compact_financial_accounts(payload: dict[str, Any] | None) -> dict[str, Any]:
+    rows = payload.get("list", []) if isinstance(payload, dict) else []
+    if not isinstance(rows, list):
+        rows = []
+    return {
+        "status": (payload or {}).get("status"),
+        "message": (payload or {}).get("message"),
+        "list": [
+            _compact_financial_account(row)
+            for row in rows
+            if isinstance(row, dict)
+        ],
+    }
+
+
+def _compact_financial_report(payload: dict[str, Any] | None) -> dict[str, Any]:
+    if not isinstance(payload, dict):
+        return {"selected": None, "accounts": {"list": []}}
+    return {
+        "selected": payload.get("selected"),
+        "accounts": _compact_financial_accounts(payload.get("accounts")),
+    }
+
+
+def _compact_disclosures(payload: dict[str, Any] | None) -> dict[str, Any]:
+    rows = payload.get("list", []) if isinstance(payload, dict) else []
+    if not isinstance(rows, list):
+        rows = []
+    keys = [
+        "corp_name",
+        "corp_code",
+        "stock_code",
+        "corp_cls",
+        "report_nm",
+        "rcept_no",
+        "rcept_dt",
+        "flr_nm",
+        "rm",
+        "viewer_url",
+    ]
+    return {
+        "status": (payload or {}).get("status"),
+        "message": (payload or {}).get("message"),
+        "page_no": (payload or {}).get("page_no"),
+        "page_count": (payload or {}).get("page_count"),
+        "total_count": (payload or {}).get("total_count"),
+        "total_page": (payload or {}).get("total_page"),
+        "list": [
+            {key: row.get(key) for key in keys if row.get(key) not in (None, "")}
+            for row in rows
+            if isinstance(row, dict)
+        ],
+    }
+
+
+def _without_raw_rows(value: Any) -> Any:
+    if isinstance(value, list):
+        return [_without_raw_rows(item) for item in value]
+    if isinstance(value, dict):
+        return {
+            key: _without_raw_rows(item)
+            for key, item in value.items()
+            if key != "rows"
+        }
+    return value
+
+
+def _compact_relationship_item(row: dict[str, Any], *, kind: str) -> dict[str, Any]:
+    name_key = "sbrdEnpNm" if kind == "subsidiary" else "afilCmpyNm"
+    name = row.get(name_key) or row.get("corpNm") or row.get("enpNm")
+    compact = {
+        name_key: name,
+        "name": name,
+        "crno": row.get("crno") or row.get("afilCmpyCrno") or row.get("sbrdEnpCrno"),
+        "bzno": row.get("bzno") or row.get("afilCmpyBzno") or row.get("sbrdEnpBzno"),
+        "lstgYn": row.get("lstgYn") or row.get("lstgYnNm"),
+        "srtnCd": row.get("srtnCd"),
+        "isinCd": row.get("isinCd"),
+        "natnNm": row.get("natnNm"),
+        "enpBsadr": row.get("enpBsadr") or row.get("sbrdEnpAdr"),
+    }
+    return {key: value for key, value in compact.items() if value not in (None, "")}
+
+
+def compact_company_info_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    outline = _first_openapi_item(payload.get("corp_outline") or {})
+    listed = _first_openapi_item(payload.get("krx_listed_item") or {})
+    dart_company = payload.get("dart_company") or {}
+    dart_corp_code = payload.get("dart_corp_code") or {}
+    corp_code = (dart_corp_code.get("match") or {}).get("corp_code") or dart_company.get("corp_code")
+    affiliates = [
+        _compact_relationship_item(row, kind="affiliate")
+        for row in _openapi_items(payload.get("affiliate"))
+    ]
+    subsidiaries = [
+        _compact_relationship_item(row, kind="subsidiary")
+        for row in _openapi_items(payload.get("cons_subs_comp"))
+    ]
+    listed_affiliates = [
+        item
+        for item in affiliates
+        if item.get("lstgYn") in ("Y", "상장")
+    ]
+    financial_latest = _compact_financial_accounts(
+        payload.get("dart_financial_accounts")
+    )
+    annual = _compact_financial_report(
+        payload.get("dart_latest_annual_financial_accounts")
+    )
+    quarter = _compact_financial_report(
+        payload.get("dart_latest_quarter_financial_accounts")
+    )
+
+    return {
+        "corporate_registration_number": payload.get("corporate_registration_number"),
+        "company": {
+            "name": outline.get("corpNm") or dart_company.get("corp_name"),
+            "english_name": outline.get("corpEnsnNm") or dart_company.get("corp_name_eng"),
+            "representative": outline.get("enpRprFnm") or dart_company.get("ceo_nm"),
+            "market": listed.get("mrktCtg") or outline.get("corpRegMrktDcdNm"),
+            "industry": outline.get("enpMainBizNm") or outline.get("sicNm") or listed.get("itmsNm"),
+            "established_on": outline.get("enpEstbDt") or dart_company.get("est_dt"),
+            "employee_count": outline.get("enpEmpeCnt"),
+            "phone": outline.get("enpTlno") or dart_company.get("phn_no"),
+            "business_number": outline.get("bzno") or dart_company.get("bizr_no"),
+            "corporate_registration_number": outline.get("crno")
+            or dart_company.get("jurir_no")
+            or payload.get("corporate_registration_number"),
+            "address": outline.get("enpBsadr") or dart_company.get("adres"),
+            "homepage": outline.get("enpHmpgUrl") or dart_company.get("hm_url"),
+            "first_operation_on": outline.get("fstOpegDt"),
+            "last_operation_on": outline.get("lastOpegDt"),
+            "basis_date": outline.get("basDt") or listed.get("basDt"),
+        },
+        "listing": {
+            "is_listed": bool(listed.get("srtnCd") or listed.get("mrktCtg")),
+            "name": listed.get("itmsNm") or outline.get("enpPbanCmpyNm"),
+            "stock_code": listed.get("srtnCd"),
+            "short_code": str(listed.get("srtnCd") or "").replace("A", "", 1),
+            "market": listed.get("mrktCtg") or outline.get("corpRegMrktDcdNm"),
+            "isin_code": listed.get("isinCd"),
+            "basis_date": listed.get("basDt") or outline.get("basDt"),
+        },
+        "dart": {
+            "corp_code": corp_code,
+            "company_name": dart_company.get("corp_name"),
+            "english_name": dart_company.get("corp_name_eng"),
+        },
+        "financials": {
+            "latest": financial_latest,
+            "quarter": quarter,
+            "annual": annual,
+        },
+        "insights": _without_raw_rows(payload.get("dart_insights")),
+        "relationships": {
+            "affiliate_count": len(affiliates),
+            "subsidiary_count": len(subsidiaries),
+            "listed_affiliate_count": len(listed_affiliates),
+            "affiliates": affiliates,
+            "subsidiaries": subsidiaries,
+            "listed_affiliates": listed_affiliates,
+        },
+        "disclosures": _compact_disclosures(payload.get("dart_disclosures")),
+        "disclosure_events": payload.get("disclosure_events") or [],
+        "risk_signals": payload.get("risk_signals") or {},
+        "availability": payload.get("availability") or {},
+    }
+
+
+def compact_openapi_payload(payload: dict[str, Any], *, kind: str) -> dict[str, Any]:
+    items = _openapi_items(payload)
+    if kind == "corp_outline":
+        keys = [
+            "crno",
+            "corpNm",
+            "corpEnsnNm",
+            "enpPbanCmpyNm",
+            "enpRprFnm",
+            "corpRegMrktDcdNm",
+            "bzno",
+            "sicNm",
+            "enpMainBizNm",
+            "enpEstbDt",
+            "enpEmpeCnt",
+            "enpHmpgUrl",
+            "enpTlno",
+            "enpBsadr",
+            "fstOpegDt",
+            "lastOpegDt",
+            "basDt",
+        ]
+        compact_items = [
+            {key: row.get(key) for key in keys if row.get(key) not in (None, "")}
+            for row in items
+        ]
+    elif kind == "krx_listed_item":
+        keys = ["crno", "corpNm", "itmsNm", "srtnCd", "isinCd", "mrktCtg", "basDt"]
+        compact_items = [
+            {key: row.get(key) for key in keys if row.get(key) not in (None, "")}
+            for row in items
+        ]
+    elif kind == "affiliate":
+        compact_items = [
+            _compact_relationship_item(row, kind="affiliate") for row in items
+        ]
+    elif kind == "subsidiary":
+        compact_items = [
+            _compact_relationship_item(row, kind="subsidiary") for row in items
+        ]
+    else:
+        compact_items = items
+
+    body = payload.get("body") if isinstance(payload.get("body"), dict) else {}
+    return {
+        "items": compact_items,
+        "page": body.get("pageNo"),
+        "per_page": body.get("numOfRows"),
+        "total_count": body.get("totalCount"),
+    }
+
+
+def compact_stock_price_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    graph = payload.get("graph", [])
+    if not isinstance(graph, list):
+        graph = []
+    return {
+        "summary": payload.get("summary") or {},
+        "graph": [
+            {
+                key: point.get(key)
+                for key in ("date", "price", "volume")
+                if isinstance(point, dict) and point.get(key) not in (None, "")
+            }
+            for point in graph
+            if isinstance(point, dict)
+        ],
+        "_meta": payload.get("_meta") or {},
+    }
+
+
 @dataclass(frozen=True)
 class CompanyAffiliateQuery:
     company_name: str | None

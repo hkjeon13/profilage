@@ -42,6 +42,7 @@ const DISCLOSURE_EVENT_LABELS = {
 const STOCK_MARKER_EVENT_CATEGORIES = new Set(["periodic", "ownership", "capital", "dividend", "audit"]);
 
 function normalizeItems(payload) {
+  if (Array.isArray(payload?.items)) return payload.items;
   const item = payload?.body?.items?.item;
   if (!item) return [];
   return Array.isArray(item) ? item : [item];
@@ -59,6 +60,97 @@ function firstCompanyValue(payload, keys) {
     }
   }
   return "";
+}
+
+function openApiPayloadFromItems(items = []) {
+  return {
+    body: {
+      numOfRows: items.length,
+      pageNo: 1,
+      totalCount: items.length,
+      items: items.length ? { item: items } : {},
+    },
+  };
+}
+
+function legacyRelationshipItems(items = [], type = "affiliate") {
+  return items.map((item) => {
+    const nameKey = type === "subsidiary" ? "sbrdEnpNm" : "afilCmpyNm";
+    return {
+      ...item,
+      [nameKey]: item[nameKey] || item.name,
+    };
+  });
+}
+
+function normalizeCompanyInfoPayload(info) {
+  if (!info?.company || info.corp_outline) return info;
+  const company = info.company || {};
+  const listing = info.listing || {};
+  const dart = info.dart || {};
+  const financials = info.financials || {};
+  const relationships = info.relationships || {};
+  const outline = {
+    crno: company.corporate_registration_number || info.corporate_registration_number,
+    corpNm: company.name,
+    corpEnsnNm: company.english_name,
+    enpRprFnm: company.representative,
+    corpRegMrktDcdNm: company.market,
+    enpMainBizNm: company.industry,
+    enpEstbDt: company.established_on,
+    enpEmpeCnt: company.employee_count,
+    enpTlno: company.phone,
+    bzno: company.business_number,
+    enpBsadr: company.address,
+    enpHmpgUrl: company.homepage,
+    fstOpegDt: company.first_operation_on,
+    lastOpegDt: company.last_operation_on,
+    basDt: company.basis_date,
+  };
+  const listed = listing.is_listed || listing.stock_code || listing.name
+    ? {
+        crno: company.corporate_registration_number || info.corporate_registration_number,
+        corpNm: company.name,
+        itmsNm: listing.name || company.name,
+        srtnCd: listing.stock_code || listing.short_code,
+        isinCd: listing.isin_code,
+        mrktCtg: listing.market,
+        basDt: listing.basis_date,
+      }
+    : null;
+
+  return {
+    ...info,
+    corp_outline: openApiPayloadFromItems([outline]),
+    krx_listed_item: openApiPayloadFromItems(listed ? [listed] : []),
+    affiliate: openApiPayloadFromItems(
+      legacyRelationshipItems(relationships.affiliates || [], "affiliate"),
+    ),
+    cons_subs_comp: openApiPayloadFromItems(
+      legacyRelationshipItems(relationships.subsidiaries || [], "subsidiary"),
+    ),
+    dart_corp_code: {
+      status: dart.corp_code ? "000" : "013",
+      match: dart.corp_code ? { corp_code: dart.corp_code } : null,
+    },
+    dart_company: {
+      corp_code: dart.corp_code,
+      corp_name: dart.company_name || company.name,
+      corp_name_eng: dart.english_name || company.english_name,
+      ceo_nm: company.representative,
+      jurir_no: company.corporate_registration_number,
+      bizr_no: company.business_number,
+      adres: company.address,
+      hm_url: company.homepage,
+      phn_no: company.phone,
+      est_dt: company.established_on,
+    },
+    dart_disclosures: info.disclosures || { list: [] },
+    dart_financial_accounts: financials.latest || financials.quarter?.accounts || financials.annual?.accounts || { list: [] },
+    dart_latest_quarter_financial_accounts: financials.quarter,
+    dart_latest_annual_financial_accounts: financials.annual,
+    dart_insights: info.insights,
+  };
 }
 
 function text(value, fallback = "-") {
@@ -2569,11 +2661,11 @@ async function loadProfile() {
   renderProfileSkeleton();
 
   try {
-    const info = await fetchJson(infoUrl, {
+    const info = normalizeCompanyInfoPayload(await fetchJson(infoUrl, {
       corporate_registration_number: crno,
       page: 1,
       per_page: 10,
-    });
+    }));
     const outline = firstItem(info.corp_outline);
     const listed = firstItem(info.krx_listed_item);
 

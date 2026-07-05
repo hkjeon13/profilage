@@ -43,6 +43,11 @@ class OpenAiSettings:
     max_chars: int
 
 
+@dataclass(frozen=True)
+class JwtSettings:
+    secret: str | None
+
+
 def get_open_api_settings() -> OpenApiSettings:
     load_dotenv()
 
@@ -98,6 +103,14 @@ def get_openai_settings(*, required: bool = True) -> OpenAiSettings:
         api_key=api_key,
         model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
         max_chars=int(os.getenv("OPENAI_SUMMARY_MAX_CHARS", "18000")),
+    )
+
+
+def get_jwt_settings() -> JwtSettings:
+    load_dotenv()
+
+    return JwtSettings(
+        secret=os.getenv("PROFILAGE_JWT_SECRET") or os.getenv("JWT_SECRET")
     )
 
 

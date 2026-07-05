@@ -58,6 +58,7 @@ const metricGroups = [
 ];
 
 function normalizeItems(payload) {
+  if (Array.isArray(payload?.items)) return payload.items;
   const item = payload?.body?.items?.item;
   if (!item) return [];
   return Array.isArray(item) ? item : [item];
@@ -65,6 +66,53 @@ function normalizeItems(payload) {
 
 function firstItem(payload) {
   return normalizeItems(payload)[0] || {};
+}
+
+function openApiPayloadFromItems(items = []) {
+  return {
+    body: {
+      numOfRows: items.length,
+      pageNo: 1,
+      totalCount: items.length,
+      items: items.length ? { item: items } : {},
+    },
+  };
+}
+
+function normalizeCompanyInfoPayload(info) {
+  if (!info?.company || info.corp_outline) return info;
+  const company = info.company || {};
+  const listing = info.listing || {};
+  const financials = info.financials || {};
+  const outline = {
+    crno: company.corporate_registration_number || info.corporate_registration_number,
+    corpNm: company.name,
+    corpEnsnNm: company.english_name,
+    enpRprFnm: company.representative,
+    corpRegMrktDcdNm: company.market,
+    enpMainBizNm: company.industry,
+    enpEstbDt: company.established_on,
+    enpEmpeCnt: company.employee_count,
+  };
+  const listed = listing.is_listed || listing.stock_code || listing.name
+    ? {
+        crno: company.corporate_registration_number || info.corporate_registration_number,
+        corpNm: company.name,
+        itmsNm: listing.name || company.name,
+        srtnCd: listing.stock_code || listing.short_code,
+        isinCd: listing.isin_code,
+        mrktCtg: listing.market,
+      }
+    : null;
+  return {
+    ...info,
+    corp_outline: openApiPayloadFromItems([outline]),
+    krx_listed_item: openApiPayloadFromItems(listed ? [listed] : []),
+    dart_financial_accounts: financials.latest || financials.quarter?.accounts || financials.annual?.accounts || { list: [] },
+    dart_latest_annual_financial_accounts: financials.annual,
+    dart_latest_quarter_financial_accounts: financials.quarter,
+    dart_insights: info.insights,
+  };
 }
 
 function escapeHtml(value) {
@@ -226,11 +274,11 @@ async function loadStock(listed, crno, windowName) {
 }
 
 async function loadCompany(crno) {
-  const info = await fetchJson(infoUrl, {
+  const info = normalizeCompanyInfoPayload(await fetchJson(infoUrl, {
     corporate_registration_number: crno,
     page: 1,
     per_page: 10,
-  });
+  }));
   const outline = firstItem(info.corp_outline);
   const listed = firstItem(info.krx_listed_item);
   const [stock1M, stock6M] = await Promise.all([

@@ -1,4 +1,8 @@
 import os
+import base64
+import hashlib
+import hmac
+import json
 from datetime import UTC, datetime, timedelta
 from io import BytesIO
 from zipfile import ZipFile
@@ -142,6 +146,19 @@ def fresh_record(payload):
     )
 
 
+def hs256_jwt(payload, secret="test-secret"):
+    def encode_part(value):
+        raw = json.dumps(value, separators=(",", ":"), ensure_ascii=False).encode()
+        return base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
+
+    header = encode_part({"alg": "HS256", "typ": "JWT"})
+    body = encode_part(payload)
+    signing_input = f"{header}.{body}".encode()
+    signature = hmac.new(secret.encode(), signing_input, hashlib.sha256).digest()
+    encoded_signature = base64.urlsafe_b64encode(signature).rstrip(b"=").decode()
+    return f"{header}.{body}.{encoded_signature}"
+
+
 def test_root_serves_company_search_frontend():
     with TestClient(app) as client:
         response = client.get("/")
@@ -155,7 +172,7 @@ def test_root_serves_company_search_frontend():
     assert "/api/company/get_corp_outline" in response.text
     assert "/profile?crno=" in response.text
     assert "/styles.css?v=google-home-9" in response.text
-    assert "/app.js?v=google-home-10" in response.text
+    assert "/app.js?v=google-home-11" in response.text
 
 
 def test_search_results_status_has_breathing_room():
@@ -240,7 +257,7 @@ def test_profile_page_serves_company_profile_frontend():
     assert "/profile-chart-2.css?v=interactive-7" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-37" in response.text
+    assert "/profile-page-5.js?v=company-profile-38" in response.text
 
 
 def test_compare_page_serves_company_compare_frontend():
@@ -253,7 +270,7 @@ def test_compare_page_serves_company_compare_frontend():
     assert "text/html" in response.headers["content-type"]
     assert 'id="compare-root"' in response.text
     assert "/styles.css?v=company-profile-40" in response.text
-    assert "/compare-page.js?v=company-compare-5" in response.text
+    assert "/compare-page.js?v=company-compare-6" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "COMPARE_STORAGE_KEY" in script_response.text
     assert "renderCompareTable" in script_response.text
@@ -387,7 +404,7 @@ def test_profile_frontend_can_add_company_to_compare_list():
     assert "setupCompareActions" in script_response.text
     assert "data-compare-add" in script_response.text
     assert "비교에 추가" in script_response.text
-    assert "/profile-page-5.js?v=company-profile-37" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-38" in profile_response.text
     assert ".block-heading .homepage-icon-link:hover {\n  color: #185abc;\n}" in style_response.text
     assert ".company-facts dd {\n  min-width: 0;\n  margin: 0;\n  color: #111827;\n  font-weight: 500;" in style_response.text
     assert ".profile-heading-actions {\n    align-items: center;\n    flex-direction: row;" in style_response.text
@@ -534,7 +551,7 @@ def test_financial_summary_cards_open_trend_modal_with_account_checks():
     assert "financial-trend-account-check" in script_response.text
     assert ".financial-trend-modal" in style_response.text
     assert ".financial-trend-chart" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-37" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-38" in profile_response.text
 
 
 def test_financial_summary_more_link_is_in_card_heading():
@@ -670,7 +687,7 @@ def test_stock_window_tabs_expose_loading_error_and_refresh_metadata():
     assert "주가 정보를 불러오지 못했습니다" in script_response.text
     assert ".stock-window-status" in style_response.text
     assert ".company-market-card.is-loading-stock" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-37" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-38" in profile_response.text
 
 
 def test_profile_sections_render_source_and_basis_metadata():
@@ -832,7 +849,7 @@ def test_relationship_summary_cards_open_company_list_modal():
     assert ".relationship-list-modal" in style_response.text
     assert ".relationship-list-items" in style_response.text
     assert "/styles.css?v=company-profile-40" in profile_response.text
-    assert "/profile-page-5.js?v=company-profile-37" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-38" in profile_response.text
 
 
 def test_relationship_summary_terms_have_tooltips():
@@ -892,7 +909,7 @@ def test_profile_frontend_renders_normalized_dart_insight_cards():
     assert ".ownership-stacked-bar" in style_response.text
     assert ".ownership-bar-segment" in style_response.text
     assert "/styles.css?v=company-profile-40" in profile_response.text
-    assert "/profile-page-5.js?v=company-profile-37" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-38" in profile_response.text
 
 
 def test_profile_frontend_exposes_lazy_dart_detail_modal():
@@ -1665,7 +1682,7 @@ def test_company_api_is_available_under_api_prefix(monkeypatch):
 
     assert response.status_code == 200
     assert captured_request["params"]["corpNm"] == "삼성"
-    assert response.json()["body"]["items"]["item"]["corpNm"] == "삼성전자(주)"
+    assert response.json()["items"][0]["corpNm"] == "삼성전자(주)"
 
 
 def test_get_affiliate_maps_snake_case_query_to_open_api_parameters(monkeypatch):
@@ -1729,7 +1746,10 @@ def test_get_affiliate_maps_snake_case_query_to_open_api_parameters(monkeypatch)
         "crno": "1101111234567",
         "afilCmpyNm": "테스트회사",
     }
-    assert response.json()["body"]["items"]["item"]["afilCmpyNm"] == "테스트회사"
+    payload = response.json()
+    assert payload["items"][0]["afilCmpyNm"] == "테스트회사"
+    assert payload["items"][0]["name"] == "테스트회사"
+    assert "body" not in payload
 
 
 def test_get_affiliate_requires_company_name_or_corporate_registration_number():
@@ -1803,7 +1823,10 @@ def test_get_cons_subs_comp_maps_snake_case_query_to_open_api_parameters(monkeyp
         "crno": "1101111234567",
         "sbrdEnpNm": "테스트종속기업",
     }
-    assert response.json()["body"]["items"]["item"]["sbrdEnpNm"] == "테스트종속기업"
+    payload = response.json()
+    assert payload["items"][0]["sbrdEnpNm"] == "테스트종속기업"
+    assert payload["items"][0]["name"] == "테스트종속기업"
+    assert "body" not in payload
 
 
 def test_get_cons_subs_comp_requires_subsidiary_name_or_corporate_registration_number():
@@ -1875,7 +1898,54 @@ def test_get_corp_outline_maps_snake_case_query_to_open_api_parameters(monkeypat
         "crno": "1301110006246",
         "corpNm": "삼성전자",
     }
-    assert response.json()["body"]["items"]["item"]["corpNm"] == "삼성전자(주)"
+    payload = response.json()
+    assert payload["items"][0]["corpNm"] == "삼성전자(주)"
+    assert payload["items"][0]["enpRprFnm"] == "테스트대표"
+    assert "body" not in payload
+
+
+def test_get_corp_outline_returns_raw_payload_with_valid_jwt(monkeypatch):
+    monkeypatch.setenv("OPEN_API_DECODING_KEY", "decoded-service-key")
+    monkeypatch.setenv("PROFILAGE_JWT_SECRET", "test-secret")
+    monkeypatch.delenv("OPEN_API_ENCODING_KEY", raising=False)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "response": {
+                    "header": {"resultCode": "00", "resultMsg": "NORMAL SERVICE."},
+                    "body": {
+                        "items": {
+                            "item": {
+                                "crno": "1301110006246",
+                                "corpNm": "삼성전자(주)",
+                                "enpFxno": "031-000-0000",
+                            }
+                        },
+                    },
+                }
+            },
+        )
+
+    with TestClient(app) as client:
+        app.state.http_transport = httpx.MockTransport(handler)
+        response = client.get(
+            "/company/get_corp_outline",
+            params={"company_name": "삼성전자", "page": 1, "per_page": 10},
+            headers={
+                "Authorization": (
+                    "Bearer "
+                    + hs256_jwt({"sub": "tester", "exp": 4102444800})
+                )
+            },
+        )
+        del app.state.http_transport
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["body"]["items"]["item"]["corpNm"] == "삼성전자(주)"
+    assert payload["body"]["items"]["item"]["enpFxno"] == "031-000-0000"
 
 
 def test_get_corp_outline_retries_company_name_without_case_sensitivity(monkeypatch):
@@ -1924,7 +1994,7 @@ def test_get_corp_outline_retries_company_name_without_case_sensitivity(monkeypa
 
     assert response.status_code == 200
     assert [params["corpNm"] for params in captured_params] == ["lg전자", "LG전자"]
-    assert response.json()["body"]["items"]["item"]["corpNm"] == "LG전자(주)"
+    assert response.json()["items"][0]["corpNm"] == "LG전자(주)"
 
 
 def test_get_corp_outline_requires_company_name_or_corporate_registration_number():
@@ -2002,7 +2072,10 @@ def test_get_krx_listed_item_maps_snake_case_query_to_open_api_parameters(monkey
         "corpNm": "삼성전자(주)",
         "itmsNm": "삼성전자",
     }
-    assert response.json()["body"]["items"]["item"]["srtnCd"] == "005930"
+    payload = response.json()
+    assert payload["items"][0]["srtnCd"] == "005930"
+    assert payload["items"][0]["itmsNm"] == "삼성전자"
+    assert "body" not in payload
 
 
 def test_get_krx_listed_item_retries_item_name_without_case_sensitivity(monkeypatch):
@@ -2053,7 +2126,7 @@ def test_get_krx_listed_item_retries_item_name_without_case_sensitivity(monkeypa
 
     assert response.status_code == 200
     assert [params["itmsNm"] for params in captured_params] == ["lg전자", "LG전자"]
-    assert response.json()["body"]["items"]["item"]["itmsNm"] == "LG전자"
+    assert response.json()["items"][0]["itmsNm"] == "LG전자"
 
 
 def test_get_krx_listed_item_requires_a_search_condition():
@@ -2066,11 +2139,114 @@ def test_get_krx_listed_item_requires_a_search_condition():
     )
 
 
-def test_get_company_info_combines_company_sources_by_corporate_registration_number(
+def test_get_company_info_returns_compact_frontend_payload_without_jwt(monkeypatch):
+    monkeypatch.setenv("OPEN_API_DECODING_KEY", "decoded-service-key")
+    monkeypatch.delenv("OPEN_API_ENCODING_KEY", raising=False)
+    monkeypatch.delenv("DART_API_KEY", raising=False)
+
+    crno = "1301110006246"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/getCorpOutline_V2"):
+            body = {
+                "items": {
+                    "item": {
+                        "crno": crno,
+                        "corpNm": "삼성전자(주)",
+                        "corpEnsnNm": "SAMSUNG ELECTRONICS CO.,LTD",
+                        "enpRprFnm": "전영현, 노태문",
+                        "corpRegMrktDcdNm": "KOSPI",
+                        "enpMainBizNm": "이동전화기 제조업",
+                        "enpEstbDt": "19690113",
+                        "enpEmpeCnt": "128881",
+                        "enpTlno": "02-2255-0114",
+                        "bzno": "1248100998",
+                        "enpBsadr": "경기도 수원시 영통구 삼성로 129",
+                        "enpHmpgUrl": "https://www.samsung.com/sec/",
+                        "basDt": "20260701",
+                    }
+                }
+            }
+        elif request.url.path.endswith("/getItemInfo"):
+            body = {
+                "items": {
+                    "item": {
+                        "srtnCd": "005930",
+                        "crno": crno,
+                        "itmsNm": "삼성전자",
+                        "mrktCtg": "KOSPI",
+                    }
+                }
+            }
+        elif request.url.path.endswith("/getAffiliate_V2"):
+            body = {
+                "items": {
+                    "item": [
+                        {"afilCmpyNm": "삼성디스플레이", "lstgYn": "N"},
+                        {"afilCmpyNm": "삼성물산", "lstgYn": "Y"},
+                    ]
+                }
+            }
+        elif request.url.path.endswith("/getConsSubsComp_V2"):
+            body = {"items": {"item": {"sbrdEnpNm": "Samsung Electronics America Inc."}}}
+        else:
+            body = {}
+        body.update({"numOfRows": 10, "pageNo": 1, "totalCount": 1})
+        return httpx.Response(
+            200,
+            json={
+                "response": {
+                    "header": {"resultCode": "00", "resultMsg": "NORMAL SERVICE."},
+                    "body": body,
+                }
+            },
+        )
+
+    with TestClient(app) as client:
+        app.state.http_transport = httpx.MockTransport(handler)
+        response = client.get(
+            "/company/get_company_info",
+            params={"corporate_registration_number": crno},
+        )
+        del app.state.http_transport
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["corporate_registration_number"] == crno
+    assert payload["company"]["name"] == "삼성전자(주)"
+    assert payload["company"]["employee_count"] == "128881"
+    assert payload["listing"]["short_code"] == "005930"
+    assert payload["listing"]["is_listed"] is True
+    assert payload["relationships"]["affiliate_count"] == 2
+    assert payload["relationships"]["subsidiary_count"] == 1
+    assert payload["relationships"]["listed_affiliate_count"] == 1
+    assert payload["relationships"]["affiliates"][0]["name"] == "삼성디스플레이"
+    assert payload["availability"]["sections"]["basic"] == "available"
+    assert "corp_outline" not in payload
+    assert "krx_listed_item" not in payload
+    assert "dart_insights" not in payload
+
+
+def test_get_company_info_rejects_invalid_jwt(monkeypatch):
+    monkeypatch.setenv("PROFILAGE_JWT_SECRET", "test-secret")
+
+    with TestClient(app) as client:
+        response = client.get(
+            "/company/get_company_info",
+            params={"corporate_registration_number": "1301110006246"},
+            headers={"Authorization": "Bearer invalid-token"},
+        )
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid authorization token"
+
+
+def test_get_company_info_combines_company_sources_by_corporate_registration_number_with_valid_jwt(
     monkeypatch,
 ):
     monkeypatch.setenv("OPEN_API_DECODING_KEY", "decoded-service-key")
     monkeypatch.delenv("OPEN_API_ENCODING_KEY", raising=False)
+    monkeypatch.setenv("PROFILAGE_JWT_SECRET", "test-secret")
 
     captured_paths = []
 
@@ -2104,6 +2280,12 @@ def test_get_company_info_combines_company_sources_by_corporate_registration_num
         response = client.get(
             "/company/get_company_info",
             params={"corporate_registration_number": "1301110006246"},
+            headers={
+                "Authorization": (
+                    "Bearer "
+                    + hs256_jwt({"sub": "tester", "exp": 4102444800})
+                )
+            },
         )
         del app.state.http_transport
 
@@ -2163,13 +2345,14 @@ def test_get_company_info_keeps_outline_when_optional_sources_fail(monkeypatch):
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["corp_outline"]["body"]["items"]["item"]["corpNm"] == "비상장테스트(주)"
-    assert payload["krx_listed_item"]["body"]["totalCount"] == 0
-    assert payload["krx_listed_item"]["_meta"]["status"] == "unavailable"
-    assert payload["affiliate"]["_meta"]["status"] == "unavailable"
-    assert payload["cons_subs_comp"]["_meta"]["status"] == "unavailable"
-    assert payload["dart_corp_code"]["status"] == "013"
-    assert payload["dart_corp_code"]["match"] is None
+    assert payload["company"]["name"] == "비상장테스트(주)"
+    assert payload["company"]["english_name"] == "PRIVATE TEST CO.,LTD."
+    assert payload["listing"]["is_listed"] is False
+    assert payload["relationships"]["affiliate_count"] == 0
+    assert payload["relationships"]["subsidiary_count"] == 0
+    assert payload["availability"]["sections"]["listed"] == "missing"
+    assert payload["dart"]["corp_code"] is None
+    assert "corp_outline" not in payload
 
 
 @pytest.mark.asyncio
@@ -2484,6 +2667,11 @@ def test_get_stock_price_maps_query_to_searchapi_google_finance(monkeypatch):
                     "price": 1234.0,
                     "currency": "KRW",
                 },
+                "graph": [
+                    {"date": "2026-07-01", "price": 1200, "volume": 100},
+                    {"date": "2026-07-02", "price": 1234, "volume": 200},
+                ],
+                "compare_to": [{"name": "Other"}],
             },
         )
 
@@ -2513,7 +2701,56 @@ def test_get_stock_price_maps_query_to_searchapi_google_finance(monkeypatch):
         "hl": "ko",
         "window": "1M",
     }
-    assert response.json()["summary"]["stock"] == "005930"
+    payload = response.json()
+    assert payload["summary"]["stock"] == "005930"
+    assert payload["graph"][0] == {
+        "date": "2026-07-01",
+        "price": 1200,
+        "volume": 100,
+    }
+    assert "compare_to" not in payload
+    assert "search_parameters" not in payload
+
+
+def test_get_stock_price_returns_full_payload_with_valid_jwt(monkeypatch):
+    monkeypatch.setenv("SEARCHAPI_API_KEY", "searchapi-key")
+    monkeypatch.setenv("PROFILAGE_JWT_SECRET", "test-secret")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "search_parameters": {"engine": "google_finance"},
+                "summary": {"stock": "005930", "price": 1234.0},
+                "graph": [{"date": "2026-07-01", "price": 1200}],
+                "compare_to": [{"name": "Other"}],
+            },
+        )
+
+    with TestClient(app) as client:
+        app.state.http_transport = httpx.MockTransport(handler)
+        response = client.get(
+            "/company/get_stock_price",
+            params={
+                "stock_code": "005930",
+                "exchange": "KRX",
+                "language": "ko",
+                "window": "1M",
+            },
+            headers={
+                "Authorization": (
+                    "Bearer "
+                    + hs256_jwt({"sub": "tester", "exp": 4102444800})
+                )
+            },
+        )
+        del app.state.http_transport
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["summary"]["stock"] == "005930"
+    assert payload["compare_to"] == [{"name": "Other"}]
+    assert payload["search_parameters"] == {"engine": "google_finance"}
 
 
 def test_get_stock_price_requires_q_or_stock_code():

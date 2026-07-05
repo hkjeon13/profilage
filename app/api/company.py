@@ -1,7 +1,8 @@
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Header, HTTPException, Query, Request
 
+from app.api.auth import has_valid_full_response_jwt
 from app.services.company_affiliate import (
     CompanyAffiliateQuery,
     CompanyAffiliateService,
@@ -15,6 +16,9 @@ from app.services.company_affiliate import (
     CompanyKrxListedItemService,
     CompanyStockPriceQuery,
     CompanyStockPriceService,
+    compact_company_info_payload,
+    compact_openapi_payload,
+    compact_stock_price_payload,
 )
 from app.services.company_dart import (
     DartCompanyQuery,
@@ -44,6 +48,7 @@ router = APIRouter(prefix="/company", tags=["company"])
 @router.get("/get_affiliate")
 async def get_affiliate(
     request: Request,
+    authorization: Annotated[str | None, Header()] = None,
     company_name: Annotated[
         str | None, Query(description="계열 회사명")
     ] = None,
@@ -62,10 +67,11 @@ async def get_affiliate(
             detail="company_name or corporate_registration_number is required",
         )
 
+    wants_full_response = has_valid_full_response_jwt(authorization)
     service = CompanyAffiliateService(
         transport=getattr(request.app.state, "http_transport", None)
     )
-    return await service.fetch(
+    payload = await service.fetch(
         CompanyAffiliateQuery(
             company_name=company_name,
             corporate_registration_number=corporate_registration_number,
@@ -74,11 +80,15 @@ async def get_affiliate(
             per_page=per_page,
         )
     )
+    if wants_full_response:
+        return payload
+    return compact_openapi_payload(payload, kind="affiliate")
 
 
 @router.get("/get_cons_subs_comp")
 async def get_cons_subs_comp(
     request: Request,
+    authorization: Annotated[str | None, Header()] = None,
     subsidiary_name: Annotated[
         str | None, Query(description="종속기업명")
     ] = None,
@@ -97,10 +107,11 @@ async def get_cons_subs_comp(
             detail="subsidiary_name or corporate_registration_number is required",
         )
 
+    wants_full_response = has_valid_full_response_jwt(authorization)
     service = CompanyConsSubsCompService(
         transport=getattr(request.app.state, "http_transport", None)
     )
-    return await service.fetch(
+    payload = await service.fetch(
         CompanyConsSubsCompQuery(
             subsidiary_name=subsidiary_name,
             corporate_registration_number=corporate_registration_number,
@@ -109,11 +120,15 @@ async def get_cons_subs_comp(
             per_page=per_page,
         )
     )
+    if wants_full_response:
+        return payload
+    return compact_openapi_payload(payload, kind="subsidiary")
 
 
 @router.get("/get_corp_outline")
 async def get_corp_outline(
     request: Request,
+    authorization: Annotated[str | None, Header()] = None,
     company_name: Annotated[
         str | None, Query(description="법인명")
     ] = None,
@@ -129,10 +144,11 @@ async def get_corp_outline(
             detail="company_name or corporate_registration_number is required",
         )
 
+    wants_full_response = has_valid_full_response_jwt(authorization)
     service = CompanyCorpOutlineService(
         transport=getattr(request.app.state, "http_transport", None)
     )
-    return await service.fetch(
+    payload = await service.fetch(
         CompanyCorpOutlineQuery(
             company_name=company_name,
             corporate_registration_number=corporate_registration_number,
@@ -140,11 +156,15 @@ async def get_corp_outline(
             per_page=per_page,
         )
     )
+    if wants_full_response:
+        return payload
+    return compact_openapi_payload(payload, kind="corp_outline")
 
 
 @router.get("/get_krx_listed_item")
 async def get_krx_listed_item(
     request: Request,
+    authorization: Annotated[str | None, Header()] = None,
     corporate_registration_number: Annotated[
         str | None, Query(description="법인등록번호")
     ] = None,
@@ -174,10 +194,11 @@ async def get_krx_listed_item(
             ),
         )
 
+    wants_full_response = has_valid_full_response_jwt(authorization)
     service = CompanyKrxListedItemService(
         transport=getattr(request.app.state, "http_transport", None)
     )
-    return await service.fetch(
+    payload = await service.fetch(
         CompanyKrxListedItemQuery(
             corporate_registration_number=corporate_registration_number,
             company_name=company_name,
@@ -188,6 +209,9 @@ async def get_krx_listed_item(
             per_page=per_page,
         )
     )
+    if wants_full_response:
+        return payload
+    return compact_openapi_payload(payload, kind="krx_listed_item")
 
 
 @router.get("/get_company_info")
@@ -196,24 +220,30 @@ async def get_company_info(
     corporate_registration_number: Annotated[
         str, Query(description="법인등록번호")
     ],
+    authorization: Annotated[str | None, Header()] = None,
     page: Annotated[int, Query(ge=1)] = 1,
     per_page: Annotated[int, Query(ge=1, le=1000)] = 10,
 ):
+    wants_full_response = has_valid_full_response_jwt(authorization)
     service = CompanyInfoService(
         transport=getattr(request.app.state, "http_transport", None)
     )
-    return await service.fetch(
+    payload = await service.fetch(
         CompanyInfoQuery(
             corporate_registration_number=corporate_registration_number,
             page=page,
             per_page=per_page,
         )
     )
+    if wants_full_response:
+        return payload
+    return compact_company_info_payload(payload)
 
 
 @router.get("/get_stock_price")
 async def get_stock_price(
     request: Request,
+    authorization: Annotated[str | None, Header()] = None,
     q: Annotated[
         str | None, Query(description="Google Finance query, e.g. 005930:KRX")
     ] = None,
@@ -239,10 +269,11 @@ async def get_stock_price(
             detail="q or stock_code is required",
         )
 
+    wants_full_response = has_valid_full_response_jwt(authorization)
     service = CompanyStockPriceService(
         transport=getattr(request.app.state, "http_transport", None)
     )
-    return await service.fetch(
+    payload = await service.fetch(
         CompanyStockPriceQuery(
             q=q,
             stock_code=stock_code,
@@ -252,6 +283,9 @@ async def get_stock_price(
             corporate_registration_number=corporate_registration_number,
         )
     )
+    if wants_full_response:
+        return payload
+    return compact_stock_price_payload(payload)
 
 
 @router.get("/get_dart_corp_code")
