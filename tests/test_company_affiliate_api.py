@@ -193,7 +193,7 @@ def test_profile_page_serves_company_profile_frontend():
     assert "/profile-chart-2.css?v=interactive-7" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-34" in response.text
+    assert "/profile-page-5.js?v=company-profile-35" in response.text
 
 
 def test_compare_page_serves_company_compare_frontend():
@@ -331,7 +331,7 @@ def test_profile_frontend_can_add_company_to_compare_list():
     assert "setupCompareActions" in script_response.text
     assert "data-compare-add" in script_response.text
     assert "비교에 추가" in script_response.text
-    assert "/profile-page-5.js?v=company-profile-34" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-35" in profile_response.text
     assert ".block-heading .homepage-icon-link:hover {\n  color: #185abc;\n}" in style_response.text
     assert ".company-facts dd {\n  min-width: 0;\n  margin: 0;\n  color: #111827;\n  font-weight: 500;" in style_response.text
     assert ".profile-heading-actions {\n    align-items: center;\n    flex-direction: row;" in style_response.text
@@ -432,7 +432,7 @@ def test_financial_summary_cards_open_trend_modal_with_account_checks():
     assert "financial-trend-account-check" in script_response.text
     assert ".financial-trend-modal" in style_response.text
     assert ".financial-trend-chart" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-34" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-35" in profile_response.text
 
 
 def test_financial_summary_more_link_is_in_card_heading():
@@ -543,6 +543,11 @@ def test_stock_chart_matches_reference_style_structure():
     assert "stock-chart-axis-labels" in script_response.text
     assert "stock-chart-line-primary" in script_response.text
     assert "stock-chart-line-muted" not in script_response.text
+    assert "renderCompanyStockCard" in script_response.text
+    assert "refreshCompanyStockCard" in script_response.text
+    assert "stockLoading" in script_response.text
+    assert "renderCompanyDetail({" in script_response.text
+    assert "refreshCompanyStockCard({" in script_response.text
 
 
 def test_stock_window_tabs_expose_loading_error_and_refresh_metadata():
@@ -563,7 +568,7 @@ def test_stock_window_tabs_expose_loading_error_and_refresh_metadata():
     assert "주가 정보를 불러오지 못했습니다" in script_response.text
     assert ".stock-window-status" in style_response.text
     assert ".company-market-card.is-loading-stock" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-34" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-35" in profile_response.text
 
 
 def test_profile_sections_render_source_and_basis_metadata():
@@ -725,7 +730,7 @@ def test_relationship_summary_cards_open_company_list_modal():
     assert ".relationship-list-modal" in style_response.text
     assert ".relationship-list-items" in style_response.text
     assert "/styles.css?v=company-profile-39" in profile_response.text
-    assert "/profile-page-5.js?v=company-profile-34" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-35" in profile_response.text
 
 
 def test_relationship_summary_terms_have_tooltips():
@@ -785,7 +790,7 @@ def test_profile_frontend_renders_normalized_dart_insight_cards():
     assert ".ownership-stacked-bar" in style_response.text
     assert ".ownership-bar-segment" in style_response.text
     assert "/styles.css?v=company-profile-39" in profile_response.text
-    assert "/profile-page-5.js?v=company-profile-34" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-35" in profile_response.text
 
 
 def test_profile_frontend_exposes_lazy_dart_detail_modal():

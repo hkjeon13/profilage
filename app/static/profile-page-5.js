@@ -327,7 +327,7 @@ function stockUpdatedLabel(stock) {
   return "갱신 시각 정보 없음";
 }
 
-function renderStockChart(stock, activeWindow = "1D") {
+function renderStockChart(stock, activeWindow = "1D", statusText = stockUpdatedLabel(stock)) {
   const tabs = `
     <div class="stock-range-tabs" role="tablist" aria-label="주가 기간">
       ${STOCK_WINDOWS
@@ -335,7 +335,7 @@ function renderStockChart(stock, activeWindow = "1D") {
         .join("")}
     </div>
     <p class="stock-window-status" role="status">
-      ${escapeHtml(stockUpdatedLabel(stock))}
+      ${escapeHtml(statusText)}
     </p>
   `;
   const points = (stock?.graph || [])
@@ -1863,10 +1863,57 @@ function renderDisclosuresPage({ disclosures, outline, crno, activeDisclosureTyp
   setupDisclosureViewer();
 }
 
-function renderCompanyDetail({ info, outline, listed, stock, stockWindow }) {
+function renderCompanyStockCard({ outline, listed, stock, stockWindow, market, crno, stockLoading = false }) {
   const summary = stock?.summary || {};
   const price = summary.price || summary.extracted_price;
   const change = summary.price_movement?.percentage || summary.price_movement?.value;
+  const statusText = stockLoading ? "주가 정보를 불러오는 중입니다." : stockUpdatedLabel(stock);
+  return `
+    <article
+      class="info-block company-market-card ${stockLoading ? "is-loading-stock" : ""}"
+      data-stock-code="${attr(String(listed.srtnCd || "").replace(/^A/, ""))}"
+      data-stock-exchange="KRX"
+      data-stock-language="ko"
+      data-crno="${attr(crno)}"
+    >
+      <div class="block-heading">
+        <h3>상장 및 주가</h3>
+        <span class="market-pill">${market}</span>
+      </div>
+      <div class="price-row">
+        <div>
+          <span class="price-label">${text(listed.itmsNm || outline.corpNm, "종목")}</span>
+          <div class="price">${formatNumber(price)}</div>
+        </div>
+        ${change ? `<div class="price-meta">${text(change)}</div>` : ""}
+      </div>
+      <div class="stock-chart-shell">
+        ${renderStockChart(stock, stockWindow, statusText)}
+      </div>
+      ${renderSourceMeta([
+        { label: "출처", value: "SearchAPI Google Finance" },
+        { label: "캐시 만료", value: formatDateTime(stock?._meta?.expires_at) },
+      ])}
+    </article>
+  `;
+}
+
+function refreshCompanyStockCard({ outline, listed, stock, stockWindow, market, crno }) {
+  const card = document.querySelector(".company-market-card");
+  if (!card) return;
+  card.outerHTML = renderCompanyStockCard({
+    outline,
+    listed,
+    stock,
+    stockWindow,
+    market,
+    crno,
+  });
+  setupStockChartInteractions();
+  setupStockWindowTabs();
+}
+
+function renderCompanyDetail({ info, outline, listed, stock, stockWindow, stockLoading = false }) {
   const crno = new URLSearchParams(window.location.search).get("crno");
   const dartCompany = info.dart_company || {};
   const homepage = homepageUrl(outline.enpHmpgUrl || dartCompany.hm_url);
@@ -1931,32 +1978,7 @@ function renderCompanyDetail({ info, outline, listed, stock, stockWindow }) {
           </section>
         </article>
 
-        <article
-          class="info-block company-market-card"
-          data-stock-code="${attr(String(listed.srtnCd || "").replace(/^A/, ""))}"
-          data-stock-exchange="KRX"
-          data-stock-language="ko"
-          data-crno="${attr(crno)}"
-        >
-          <div class="block-heading">
-            <h3>상장 및 주가</h3>
-            <span class="market-pill">${market}</span>
-          </div>
-          <div class="price-row">
-            <div>
-              <span class="price-label">${text(listed.itmsNm || outline.corpNm, "종목")}</span>
-              <div class="price">${formatNumber(price)}</div>
-            </div>
-            ${change ? `<div class="price-meta">${text(change)}</div>` : ""}
-          </div>
-          <div class="stock-chart-shell">
-            ${renderStockChart(stock, stockWindow)}
-          </div>
-          ${renderSourceMeta([
-            { label: "출처", value: "SearchAPI Google Finance" },
-            { label: "캐시 만료", value: formatDateTime(stock?._meta?.expires_at) },
-          ])}
-        </article>
+        ${renderCompanyStockCard({ outline, listed, stock, stockWindow, market, crno, stockLoading })}
 
         ${renderCompanyInsightRow(info)}
 
@@ -2004,7 +2026,6 @@ async function loadProfile() {
     });
     const outline = firstItem(info.corp_outline);
     const listed = firstItem(info.krx_listed_item);
-    let stock = null;
 
     if (view === "financials") {
       const selected = getSelectedFinancialQuery(searchParams);
@@ -2044,23 +2065,34 @@ async function loadProfile() {
       return;
     }
 
+    const market = text(listed.mrktCtg || outline.corpRegMrktDcdNm, "비상장/정보 없음");
+    const shouldLoadStock = Boolean(listed.srtnCd);
+    renderCompanyDetail({
+      info,
+      outline,
+      listed,
+      stock: null,
+      stockWindow,
+      stockLoading: shouldLoadStock,
+    });
+
     if (listed.srtnCd) {
-      stock = await fetchJson(stockUrl, {
+      const stock = await fetchJson(stockUrl, {
         stock_code: listed.srtnCd.replace(/^A/, ""),
         exchange: "KRX",
         language: "ko",
         window: stockWindow,
         corporate_registration_number: crno,
       }).catch(() => null);
+      refreshCompanyStockCard({
+        outline,
+        listed,
+        stock,
+        stockWindow,
+        market,
+        crno,
+      });
     }
-
-    renderCompanyDetail({
-      info,
-      outline,
-      listed,
-      stock,
-      stockWindow,
-    });
   } catch (error) {
     renderError(error.message);
   }
