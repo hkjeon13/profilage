@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import hashlib
 import json
 import random
-from typing import Any
+from typing import Any, Awaitable, Callable
 
 from fastapi import HTTPException
 import httpx
@@ -75,6 +75,28 @@ def _case_relaxed_candidates(value: str) -> list[str]:
             if item.strip()
         )
     )
+
+
+def _empty_openapi_payload(*, source: str, detail: str | None = None) -> dict[str, Any]:
+    meta: dict[str, Any] = {"source": source, "status": "unavailable"}
+    if detail:
+        meta["detail"] = detail
+    return {
+        "body": {
+            "numOfRows": 0,
+            "pageNo": 1,
+            "totalCount": 0,
+            "items": {},
+        },
+        "_meta": meta,
+    }
+
+
+def _unavailable_payload(*, source: str, detail: str | None = None) -> dict[str, Any]:
+    meta: dict[str, Any] = {"source": source, "status": "unavailable"}
+    if detail:
+        meta["detail"] = detail
+    return {"_meta": meta}
 
 
 @dataclass(frozen=True)
@@ -345,6 +367,27 @@ class CompanyKrxListedItemService(OpenApiCompanyService):
 
 
 class CompanyInfoService(OpenApiCompanyService):
+    async def _fetch_optional_company_group(
+        self,
+        *,
+        crno: str,
+        group_name: str,
+        source: str,
+        fetcher: Callable[[], Awaitable[dict[str, Any]]],
+    ) -> dict[str, Any]:
+        try:
+            return await fetch_with_group_store(
+                store=self._data_group_store,
+                entity_type=COMPANY_ENTITY_TYPE,
+                entity_key=crno,
+                group_name=group_name,
+                source=source,
+                ttl=company_group_ttl(group_name),
+                fetcher=fetcher,
+            )
+        except HTTPException as exc:
+            return _empty_openapi_payload(source=source, detail=str(exc.detail))
+
     async def fetch(self, query: CompanyInfoQuery) -> dict[str, Any]:
         corp_outline_service = CompanyCorpOutlineService(
             transport=self._transport,
@@ -384,13 +427,10 @@ class CompanyInfoService(OpenApiCompanyService):
                 )
             ),
         )
-        krx_listed_item = await fetch_with_group_store(
-            store=self._data_group_store,
-            entity_type=COMPANY_ENTITY_TYPE,
-            entity_key=crno,
+        krx_listed_item = await self._fetch_optional_company_group(
+            crno=crno,
             group_name=KRX_LISTED_ITEM_GROUP,
             source="openapi:getItemInfo",
-            ttl=company_group_ttl(KRX_LISTED_ITEM_GROUP),
             fetcher=lambda: krx_listed_item_service.fetch(
                 CompanyKrxListedItemQuery(
                     corporate_registration_number=crno,
@@ -403,13 +443,10 @@ class CompanyInfoService(OpenApiCompanyService):
                 )
             ),
         )
-        affiliate = await fetch_with_group_store(
-            store=self._data_group_store,
-            entity_type=COMPANY_ENTITY_TYPE,
-            entity_key=crno,
+        affiliate = await self._fetch_optional_company_group(
+            crno=crno,
             group_name=AFFILIATE_GROUP,
             source="openapi:getAffiliate_V2",
-            ttl=company_group_ttl(AFFILIATE_GROUP),
             fetcher=lambda: affiliate_service.fetch(
                 CompanyAffiliateQuery(
                     company_name=None,
@@ -420,13 +457,10 @@ class CompanyInfoService(OpenApiCompanyService):
                 )
             ),
         )
-        cons_subs_comp = await fetch_with_group_store(
-            store=self._data_group_store,
-            entity_type=COMPANY_ENTITY_TYPE,
-            entity_key=crno,
+        cons_subs_comp = await self._fetch_optional_company_group(
+            crno=crno,
             group_name=CONS_SUBS_COMP_GROUP,
             source="openapi:getConsSubsComp_V2",
-            ttl=company_group_ttl(CONS_SUBS_COMP_GROUP),
             fetcher=lambda: cons_subs_comp_service.fetch(
                 CompanyConsSubsCompQuery(
                     subsidiary_name=None,
@@ -444,8 +478,24 @@ class CompanyInfoService(OpenApiCompanyService):
             "krx_listed_item": krx_listed_item,
             "affiliate": affiliate,
             "cons_subs_comp": cons_subs_comp,
-            **await self._fetch_dart_profile(crno, corp_outline, krx_listed_item),
+            **await self._fetch_optional_dart_profile(crno, corp_outline, krx_listed_item),
         }
+
+    async def _fetch_optional_dart_profile(
+        self,
+        crno: str,
+        corp_outline: dict[str, Any],
+        krx_listed_item: dict[str, Any],
+    ) -> dict[str, Any]:
+        try:
+            return await self._fetch_dart_profile(crno, corp_outline, krx_listed_item)
+        except HTTPException as exc:
+            return {
+                "dart_corp_code": _unavailable_payload(
+                    source="dart",
+                    detail=str(exc.detail),
+                )
+            }
 
     async def _fetch_dart_profile(
         self,

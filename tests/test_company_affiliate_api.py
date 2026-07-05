@@ -1620,6 +1620,56 @@ def test_get_company_info_combines_company_sources_by_corporate_registration_num
     assert payload["krx_listed_item"]["body"]["items"]["item"]["srtnCd"] == "005930"
 
 
+def test_get_company_info_keeps_outline_when_optional_sources_fail(monkeypatch):
+    monkeypatch.setenv("OPEN_API_DECODING_KEY", "decoded-service-key")
+    monkeypatch.delenv("OPEN_API_ENCODING_KEY", raising=False)
+    monkeypatch.setenv("DART_API_KEY", "dart-key")
+    crno = "2147140003011"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/getCorpOutline_V2"):
+            body = {
+                "numOfRows": 10,
+                "pageNo": 1,
+                "totalCount": 1,
+                "items": {
+                    "item": {
+                        "crno": crno,
+                        "corpNm": "비상장테스트(주)",
+                        "corpEnsnNm": "PRIVATE TEST CO.,LTD.",
+                        "enpRprFnm": "테스트대표",
+                    }
+                },
+            }
+            return httpx.Response(200, json={"response": {"body": body}})
+        if request.url.path.endswith("/getItemInfo"):
+            return httpx.Response(502, json={"detail": "KRX unavailable"})
+        if request.url.path.endswith("/getAffiliate_V2"):
+            return httpx.Response(502, json={"detail": "Affiliate unavailable"})
+        if request.url.path.endswith("/getConsSubsComp_V2"):
+            return httpx.Response(502, json={"detail": "Subsidiary unavailable"})
+        if request.url.path.endswith("/corpCode.xml"):
+            return httpx.Response(502, text="DART unavailable")
+        return httpx.Response(404, json={})
+
+    with TestClient(app) as client:
+        app.state.http_transport = httpx.MockTransport(handler)
+        response = client.get(
+            "/company/get_company_info",
+            params={"corporate_registration_number": crno},
+        )
+        del app.state.http_transport
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["corp_outline"]["body"]["items"]["item"]["corpNm"] == "비상장테스트(주)"
+    assert payload["krx_listed_item"]["body"]["totalCount"] == 0
+    assert payload["krx_listed_item"]["_meta"]["status"] == "unavailable"
+    assert payload["affiliate"]["_meta"]["status"] == "unavailable"
+    assert payload["cons_subs_comp"]["_meta"]["status"] == "unavailable"
+    assert payload["dart_corp_code"]["_meta"]["status"] == "unavailable"
+
+
 @pytest.mark.asyncio
 async def test_company_info_service_reuses_fresh_postgres_groups(monkeypatch):
     monkeypatch.setenv("OPEN_API_DECODING_KEY", "decoded-service-key")
