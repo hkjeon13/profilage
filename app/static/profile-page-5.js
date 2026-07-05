@@ -2518,7 +2518,7 @@ async function loadCompanyProfileSummary(crno) {
     });
     body.classList.remove("company-ai-summary-skeleton");
     body.innerHTML = renderCompanyProfileSummaryPayload(payload);
-    if (status) status.textContent = payload.cached ? "저장됨" : "생성됨";
+    if (status) status.textContent = "완료";
     setupCompanyAiSummaryMore();
   } catch (error) {
     body.classList.remove("company-ai-summary-skeleton");

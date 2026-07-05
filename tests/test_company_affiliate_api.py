@@ -1540,9 +1540,37 @@ def test_get_dart_company_insight_detail_returns_capital_detail(monkeypatch):
 
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path.endswith("/stockTotqySttus.json"):
-            return httpx.Response(200, json={"status": "000", "list": [{"se": "보통주", "istc_totqy": "5,969,782,550"}]})
+            return httpx.Response(
+                200,
+                json={
+                    "status": "000",
+                    "list": [
+                        {
+                            "corp_code": "00126380",
+                            "rcept_no": "20260331000001",
+                            "stock_code": "005930",
+                            "se": "보통주",
+                            "istc_totqy": "5,969,782,550",
+                        }
+                    ],
+                },
+            )
         if request.url.path.endswith("/tesstkAcqsDspsSttus.json"):
-            return httpx.Response(200, json={"status": "000", "list": [{"stock_knd": "보통주", "trmend_qy": "100"}]})
+            return httpx.Response(
+                200,
+                json={
+                    "status": "000",
+                    "list": [
+                        {
+                            "corp_code": "00126380",
+                            "rcept_no": "20260331000001",
+                            "stock_code": "005930",
+                            "stock_knd": "보통주",
+                            "trmend_qy": "100",
+                        }
+                    ],
+                },
+            )
         raise AssertionError(request.url.path)
 
     with TestClient(app) as client:
@@ -1562,7 +1590,11 @@ def test_get_dart_company_insight_detail_returns_capital_detail(monkeypatch):
     payload = response.json()
     assert payload["kind"] == "capital"
     assert payload["total_stock"][0]["istc_totqy"] == "5,969,782,550"
+    assert "corp_code" not in payload["total_stock"][0]
+    assert "rcept_no" not in payload["total_stock"][0]
+    assert "stock_code" not in payload["total_stock"][0]
     assert payload["treasury_stock"][0]["trmend_qy"] == "100"
+    assert "corp_code" not in payload["treasury_stock"][0]
 
 
 def test_get_dart_company_insight_detail_rejects_unknown_kind():
@@ -1623,6 +1655,9 @@ def test_get_dart_disclosure_summary_endpoint_uses_service_cache(monkeypatch):
     payload = response.json()
     assert payload["receipt_no"] == "20260701000000"
     assert payload["summary"]["bullets"] == ["매출 증가"]
+    assert "model" not in payload
+    assert "prompt_version" not in payload
+    assert "cached" not in payload
 
 
 def test_get_dart_disclosure_summary_requires_openai_key(monkeypatch):
@@ -2708,6 +2743,7 @@ def test_get_stock_price_maps_query_to_searchapi_google_finance(monkeypatch):
         "price": 1200,
         "volume": 100,
     }
+    assert "_meta" not in payload
     assert "compare_to" not in payload
     assert "search_parameters" not in payload
 
@@ -2870,6 +2906,7 @@ def test_get_dart_disclosures_adds_viewer_url(monkeypatch):
     assert response.json()["list"][0]["viewer_url"] == (
         "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260331000001"
     )
+    assert "_meta" not in response.json()
 
 
 def test_get_dart_financial_accounts_maps_query_to_dart_api(monkeypatch):
@@ -2885,7 +2922,12 @@ def test_get_dart_financial_accounts_maps_query_to_dart_api(monkeypatch):
                 "message": "정상",
                 "list": [
                     {
+                        "corp_code": "00126380",
+                        "rcept_no": "20260331000001",
+                        "stock_code": "005930",
                         "account_nm": "매출액",
+                        "sj_nm": "손익계산서",
+                        "currency": "KRW",
                         "thstrm_amount": "300000000",
                     }
                 ],
@@ -2913,7 +2955,14 @@ def test_get_dart_financial_accounts_maps_query_to_dart_api(monkeypatch):
         "reprt_code": "11011",
         "fs_div": "CFS",
     }
-    assert response.json()["list"][0]["account_nm"] == "매출액"
+    row = response.json()["list"][0]
+    assert row["account_nm"] == "매출액"
+    assert row["sj_nm"] == "손익계산서"
+    assert row["currency"] == "KRW"
+    assert "corp_code" not in row
+    assert "rcept_no" not in row
+    assert "stock_code" not in row
+    assert "_meta" not in response.json()
 
 
 def test_get_dart_financial_trends_returns_last_five_years(monkeypatch):
@@ -2932,6 +2981,9 @@ def test_get_dart_financial_trends_returns_last_five_years(monkeypatch):
                 "list": [
                     {
                         "bsns_year": str(year),
+                        "corp_code": "00126380",
+                        "rcept_no": f"{year}0331000001",
+                        "stock_code": "005930",
                         "reprt_code": params["reprt_code"],
                         "fs_div": params["fs_div"],
                         "account_nm": "자산총계",
@@ -2984,6 +3036,9 @@ def test_get_dart_financial_trends_returns_last_five_years(monkeypatch):
         "2026",
     ]
     assert payload["periods"][-1]["accounts"][0]["account_nm"] == "자산총계"
+    assert "corp_code" not in payload["periods"][-1]["accounts"][0]
+    assert "rcept_no" not in payload["periods"][-1]["accounts"][0]
+    assert "stock_code" not in payload["periods"][-1]["accounts"][0]
 
 
 def test_dart_financial_accounts_ttl_expires_only_recent_periods():

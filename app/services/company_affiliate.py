@@ -144,6 +144,7 @@ def _profile_availability(
 def _compact_financial_account(row: dict[str, Any]) -> dict[str, Any]:
     keys = [
         "account_nm",
+        "sj_nm",
         "thstrm_amount",
         "frmtrm_amount",
         "bfefrmtrm_amount",
@@ -182,6 +183,45 @@ def _compact_financial_report(payload: dict[str, Any] | None) -> dict[str, Any]:
     }
 
 
+def compact_dart_financial_accounts_payload(
+    payload: dict[str, Any] | None,
+) -> dict[str, Any]:
+    return _compact_financial_accounts(payload)
+
+
+def compact_dart_financial_trends_payload(
+    payload: dict[str, Any] | None,
+) -> dict[str, Any]:
+    if not isinstance(payload, dict):
+        return {"selected": {}, "periods": []}
+    periods = payload.get("periods", [])
+    if not isinstance(periods, list):
+        periods = []
+    compact_periods = []
+    for period in periods:
+        if not isinstance(period, dict):
+            continue
+        accounts = period.get("accounts", [])
+        if not isinstance(accounts, list):
+            accounts = []
+        compact_periods.append(
+            {
+                "business_year": period.get("business_year"),
+                "report_code": period.get("report_code"),
+                "report_name": period.get("report_name"),
+                "accounts": [
+                    _compact_financial_account(row)
+                    for row in accounts
+                    if isinstance(row, dict)
+                ],
+            }
+        )
+    return {
+        "selected": payload.get("selected") or {},
+        "periods": compact_periods,
+    }
+
+
 def _compact_disclosures(payload: dict[str, Any] | None) -> dict[str, Any]:
     rows = payload.get("list", []) if isinstance(payload, dict) else []
     if not isinstance(rows, list):
@@ -211,6 +251,10 @@ def _compact_disclosures(payload: dict[str, Any] | None) -> dict[str, Any]:
             if isinstance(row, dict)
         ],
     }
+
+
+def compact_dart_disclosures_payload(payload: dict[str, Any] | None) -> dict[str, Any]:
+    return _compact_disclosures(payload)
 
 
 def _without_raw_rows(value: Any) -> Any:
@@ -394,7 +438,6 @@ def compact_stock_price_payload(payload: dict[str, Any]) -> dict[str, Any]:
             for point in graph
             if isinstance(point, dict)
         ],
-        "_meta": payload.get("_meta") or {},
     }
 
 
