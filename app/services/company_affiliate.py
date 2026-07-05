@@ -20,7 +20,11 @@ from app.services.company_dart import (
     DartCorpCodeQuery,
     DartDisclosureQuery,
 )
-from app.services.company_insights import normalize_dart_insights
+from app.services.company_disclosure_events import normalize_disclosure_events
+from app.services.company_insights import (
+    normalize_company_risk_signals,
+    normalize_dart_insights,
+)
 from app.services.company_store import (
     AFFILIATE_GROUP,
     COMPANY_ENTITY_TYPE,
@@ -97,6 +101,44 @@ def _unavailable_payload(*, source: str, detail: str | None = None) -> dict[str,
     if detail:
         meta["detail"] = detail
     return {"_meta": meta}
+
+
+def _openapi_items(payload: dict[str, Any] | None) -> list[dict[str, Any]]:
+    item = ((payload or {}).get("body") or {}).get("items", {}).get("item")
+    if isinstance(item, list):
+        return [row for row in item if isinstance(row, dict)]
+    return [item] if isinstance(item, dict) else []
+
+
+def _profile_availability(
+    *,
+    corp_outline: dict[str, Any],
+    krx_listed_item: dict[str, Any],
+    dart_profile: dict[str, Any],
+) -> dict[str, Any]:
+    dart_match = ((dart_profile.get("dart_corp_code") or {}).get("match") or {}).get(
+        "corp_code"
+    )
+    financial_accounts = dart_profile.get("dart_financial_accounts") or {}
+    sections = {
+        "basic": "available" if _has_openapi_items(corp_outline) else "missing",
+        "listed": "available" if _has_openapi_items(krx_listed_item) else "missing",
+        "stock": "available" if _has_openapi_items(krx_listed_item) else "missing",
+        "dart": "available" if dart_match else "missing",
+        "financial": "available" if financial_accounts.get("list") else "missing",
+    }
+    warnings = []
+    if sections["listed"] == "missing":
+        warnings.append("상장 정보를 찾을 수 없습니다.")
+    if sections["dart"] == "missing":
+        warnings.append("DART 기업 정보를 찾을 수 없습니다.")
+    if sections["financial"] == "missing":
+        warnings.append("DART 재무제표를 찾을 수 없습니다.")
+    return {
+        "sections": sections,
+        "warnings": warnings,
+        "is_partial": any(value == "missing" for value in sections.values()),
+    }
 
 
 @dataclass(frozen=True)
@@ -472,13 +514,32 @@ class CompanyInfoService(OpenApiCompanyService):
             ),
         )
 
+        dart_profile = await self._fetch_optional_dart_profile(
+            crno, corp_outline, krx_listed_item
+        )
+        disclosure_events = normalize_disclosure_events(
+            dart_profile.get("dart_disclosures")
+        )
+        risk_signals = normalize_company_risk_signals(
+            insights=dart_profile.get("dart_insights"),
+            affiliate_count=len(_openapi_items(affiliate)),
+            subsidiary_count=len(_openapi_items(cons_subs_comp)),
+        )
+
         return {
             "corporate_registration_number": crno,
             "corp_outline": corp_outline,
             "krx_listed_item": krx_listed_item,
             "affiliate": affiliate,
             "cons_subs_comp": cons_subs_comp,
-            **await self._fetch_optional_dart_profile(crno, corp_outline, krx_listed_item),
+            "availability": _profile_availability(
+                corp_outline=corp_outline,
+                krx_listed_item=krx_listed_item,
+                dart_profile=dart_profile,
+            ),
+            "disclosure_events": disclosure_events,
+            "risk_signals": risk_signals,
+            **dart_profile,
         }
 
     async def _fetch_optional_dart_profile(

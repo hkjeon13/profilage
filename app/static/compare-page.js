@@ -313,6 +313,76 @@ function bestCompanyCrnos(companies, row) {
   return new Set(scored.filter((item) => item.value === best).map((item) => item.crno));
 }
 
+function bestCompanyForKey(companies, key, { source, higherIsBetter = true } = {}) {
+  const row = { key, source, numeric: true, higherIsBetter };
+  const scored = companies
+    .map((company) => ({ company, value: numeric(metricValue(company, row)) }))
+    .filter((item) => item.value !== null);
+  if (!scored.length) return null;
+  return scored.reduce((best, item) => {
+    if (higherIsBetter === false) {
+      return item.value < best.value ? item : best;
+    }
+    return item.value > best.value ? item : best;
+  });
+}
+
+function compareSummaryItem(label, best, formatter = formatNumber) {
+  if (!best) return "";
+  return `
+    <li>
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(best.company.name)}</strong>
+      <em>${escapeHtml(formatter(best.value))}</em>
+    </li>
+  `;
+}
+
+function buildCompareSummary(companies) {
+  return [
+    compareSummaryItem(
+      "규모",
+      bestCompanyForKey(companies, "자산총계", { source: "financial" }),
+      (value) => formatFinancialAmount(value, "KRW"),
+    ),
+    compareSummaryItem(
+      "매출",
+      bestCompanyForKey(companies, "매출액", { source: "financial" }),
+      (value) => formatFinancialAmount(value, "KRW"),
+    ),
+    compareSummaryItem(
+      "수익성",
+      bestCompanyForKey(companies, "영업이익률", { source: "ratio" }),
+      (value) => `${Number(value).toFixed(1)}%`,
+    ),
+    compareSummaryItem(
+      "안정성",
+      bestCompanyForKey(companies, "부채비율", { source: "ratio", higherIsBetter: false }),
+      (value) => `${Number(value).toFixed(1)}%`,
+    ),
+    compareSummaryItem(
+      "주가 흐름",
+      bestCompanyForKey(companies, "stockReturn6M"),
+      (value) => `${Number(value) > 0 ? "+" : ""}${Number(value).toFixed(1)}%`,
+    ),
+  ].filter(Boolean);
+}
+
+function renderCompareSummary(companies) {
+  const items = buildCompareSummary(companies);
+  if (!items.length) return "";
+  return `
+    <article class="info-block compare-summary-block">
+      <div class="block-heading">
+        <h3>종합 요약</h3>
+      </div>
+      <ul class="compare-summary-list">
+        ${items.join("")}
+      </ul>
+    </article>
+  `;
+}
+
 function renderCompareTable(companies) {
   return metricGroups
     .map(
@@ -395,6 +465,7 @@ function renderComparePage(companies) {
         <a class="primary-link-button" href="/">기업 추가</a>
       </div>
     </section>
+    ${renderCompareSummary(companies)}
     ${renderCompareTable(companies)}
   `;
   setupCompareRemoveButtons();

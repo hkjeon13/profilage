@@ -6,6 +6,7 @@ const backLink = document.querySelector(".back-link");
 
 const infoUrl = "/api/company/get_company_info";
 const stockUrl = "/api/company/get_stock_price";
+const summaryUrl = "/api/company/get_dart_disclosure_summary";
 const financialReportOptions = [
   ["11011", "사업보고서"],
   ["11012", "반기보고서"],
@@ -29,6 +30,16 @@ const DISCLOSURE_FILTERS = [
   ["D", "지분공시"],
   ["E", "기타공시"],
 ];
+const DISCLOSURE_EVENT_LABELS = {
+  periodic: "정기보고서",
+  ownership: "지분/최대주주",
+  executive: "임원",
+  capital: "자본",
+  dividend: "배당",
+  audit: "감사/회계",
+  other: "기타",
+};
+const STOCK_MARKER_EVENT_CATEGORIES = new Set(["periodic", "ownership", "capital", "dividend", "audit"]);
 
 function normalizeItems(payload) {
   const item = payload?.body?.items?.item;
@@ -197,6 +208,14 @@ function companySummaryText({ info, outline, listed, market }) {
   const listedName = text(listed.itmsNm || outline.enpPbanCmpyNm, "상장 종목");
   const ticker = listed.srtnCd ? `(${text(listed.srtnCd)})` : "";
   const representative = outline.enpRprFnm ? ` 대표자는 ${text(outline.enpRprFnm)}입니다.` : "";
+  const isListed = Boolean(listed.srtnCd || listed.mrktCtg);
+
+  if (!isListed) {
+    if (industry) {
+      return `${corpName}은 ${text(industry)}을 중심으로 하는 기업입니다.${representative}`;
+    }
+    return `${corpName}의 상장 정보는 확인되지 않았습니다.${representative}`;
+  }
 
   if (industry) {
     return `${corpName}은 ${text(industry)}을 중심으로 하는 ${market} 상장 기업입니다. ${listedName}${ticker} 종목으로 거래됩니다.${representative}`;
@@ -247,6 +266,61 @@ function formatChartTime(value) {
     });
   }
   return formatChartDate(value);
+}
+
+function dateKey(value) {
+  if (!value) return null;
+  const raw = String(value).trim();
+  const compact = raw.replaceAll("-", "");
+  if (/^\d{8}$/.test(compact)) return Number(compact);
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return null;
+  const year = parsed.getFullYear();
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const day = String(parsed.getDate()).padStart(2, "0");
+  return Number(`${year}${month}${day}`);
+}
+
+function disclosureEventLabel(category) {
+  return DISCLOSURE_EVENT_LABELS[category] || DISCLOSURE_EVENT_LABELS.other;
+}
+
+function disclosureEventMeta(event) {
+  return [compactDate(event.date), disclosureEventLabel(event.category), event.corp_name]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+function disclosureEventToViewerItem(event) {
+  return {
+    report_nm: event.title,
+    rcept_dt: event.date,
+    corp_name: event.corp_name,
+    rcept_no: event.receipt_no,
+    viewer_url: event.viewer_url,
+  };
+}
+
+function findSameOrNextTradingPoint(eventDate, pricePoints) {
+  const eventKey = dateKey(eventDate);
+  if (!eventKey) return null;
+  return (
+    pricePoints.find((point) => {
+      const pointKey = dateKey(point.date);
+      return pointKey !== null && pointKey >= eventKey;
+    }) || null
+  );
+}
+
+function mapDisclosureEventsToPricePoints(events, pricePoints) {
+  return (events || [])
+    .filter((event) => STOCK_MARKER_EVENT_CATEGORIES.has(event.category))
+    .map((event) => {
+      const point = findSameOrNextTradingPoint(event.date, pricePoints);
+      if (!point) return null;
+      return { ...event, x: point.x, y: point.y, price: point.price };
+    })
+    .filter(Boolean);
 }
 
 function latestBusinessYear() {
@@ -327,7 +401,7 @@ function stockUpdatedLabel(stock) {
   return "갱신 시각 정보 없음";
 }
 
-function renderStockChart(stock, activeWindow = "1D", statusText = stockUpdatedLabel(stock)) {
+function renderStockChart(stock, activeWindow = "1D", statusText = stockUpdatedLabel(stock), disclosureEvents = []) {
   const tabs = `
     <div class="stock-range-tabs" role="tablist" aria-label="주가 기간">
       ${STOCK_WINDOWS
@@ -373,6 +447,7 @@ function renderStockChart(stock, activeWindow = "1D", statusText = stockUpdatedL
     date: point.date,
     volume: points[index].volume,
   }));
+  const eventMarkers = mapDisclosureEventsToPricePoints(disclosureEvents, interactionPoints);
   const linePath = coordinates
     .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
     .join(" ");
@@ -396,9 +471,28 @@ function renderStockChart(stock, activeWindow = "1D", statusText = stockUpdatedL
         <path class="stock-chart-grid" d="M ${paddingX} ${paddingY} H ${width - paddingX} M ${paddingX} ${height / 2} H ${width - paddingX} M ${paddingX} ${height - paddingY} H ${width - paddingX}" />
         <path class="stock-chart-area" d="${areaPath}" />
         <path class="stock-chart-line stock-chart-line-primary" d="${linePath}" />
-        <line class="stock-chart-guide" x1="${coordinates.at(-1).x.toFixed(2)}" y1="${paddingY}" x2="${coordinates.at(-1).x.toFixed(2)}" y2="${height - paddingY}" />
-        <circle class="stock-chart-dot" cx="${coordinates.at(-1).x.toFixed(2)}" cy="${coordinates.at(-1).y.toFixed(2)}" r="4" />
         <rect class="stock-chart-hit-area" x="0" y="0" width="${width}" height="${height}" />
+        <line class="stock-chart-guide" x1="${coordinates.at(-1).x.toFixed(2)}" y1="${paddingY}" x2="${coordinates.at(-1).x.toFixed(2)}" y2="${height - paddingY}" />
+        ${eventMarkers
+          .map(
+            (event) => `
+              <circle
+                class="stock-chart-event-marker stock-chart-event-marker-${attr(event.category)}"
+                cx="${Number(event.x).toFixed(2)}"
+                cy="${Math.max(paddingY + 7, Number(event.y) - 10).toFixed(2)}"
+                r="5"
+                tabindex="0"
+                role="button"
+                aria-label="${attr(`${disclosureEventLabel(event.category)} ${event.title}`)}"
+                data-disclosure-event-marker
+                data-disclosure-viewer="${attr(event.viewer_url || "")}"
+                data-disclosure-title="${attr(event.title)}"
+                data-disclosure-meta="${attr(disclosureEventMeta(event))}"
+              ></circle>
+            `,
+          )
+          .join("")}
+        <circle class="stock-chart-dot" cx="${coordinates.at(-1).x.toFixed(2)}" cy="${coordinates.at(-1).y.toFixed(2)}" r="4" />
       </svg>
       <div class="stock-chart-axis-labels" aria-hidden="true">
         ${axisLabels.map((label) => `<span>${label}</span>`).join("")}
@@ -569,10 +663,12 @@ function setupStockWindowTabs() {
           corporate_registration_number: card.dataset.crno,
         });
         updateStockSummary(card, stock);
-        chartShell.innerHTML = renderStockChart(stock, nextWindow);
+        const disclosureEvents = JSON.parse(card.dataset.disclosureEvents || "[]");
+        chartShell.innerHTML = renderStockChart(stock, nextWindow, stockUpdatedLabel(stock), disclosureEvents);
         updateStockWindowUrl(nextWindow);
         setupStockChartInteractions();
         setupStockWindowTabs();
+        setupDisclosureViewer();
       } catch (error) {
         if (status) {
           status.textContent = error.message || "주가 정보를 불러오지 못했습니다.";
@@ -668,6 +764,113 @@ function renderDisclosureViewerTrigger(item) {
   `;
 }
 
+function renderDisclosureSummaryButton(item) {
+  const viewerUrl = text(item.viewer_url, "");
+  const receiptNo = text(item.rcept_no || item.receipt_no, "");
+  const title = text(item.report_nm || item.title, "");
+  if (!viewerUrl || viewerUrl === "#" || !receiptNo) return "";
+  return `
+    <button
+      type="button"
+      class="disclosure-summary-button"
+      data-disclosure-summary
+      data-disclosure-receipt-no="${attr(receiptNo)}"
+      data-disclosure-viewer-url="${attr(viewerUrl)}"
+      data-disclosure-title="${attr(title)}"
+    >요약</button>
+  `;
+}
+
+function ensureDisclosureSummaryModal() {
+  const existing = document.querySelector(".disclosure-summary-modal");
+  if (existing) return existing;
+  document.body.insertAdjacentHTML(
+    "beforeend",
+    `
+      <div class="disclosure-summary-modal" hidden>
+        <button type="button" class="disclosure-summary-backdrop" data-disclosure-summary-close aria-label="닫기"></button>
+        <section class="disclosure-summary-dialog" role="dialog" aria-modal="true" aria-labelledby="disclosure-summary-title">
+          <header class="disclosure-summary-header">
+            <div>
+              <p id="disclosure-summary-meta">DART 공시</p>
+              <h2 id="disclosure-summary-title">공시 요약</h2>
+            </div>
+            <button type="button" class="disclosure-summary-close" data-disclosure-summary-close>닫기</button>
+          </header>
+          <div class="disclosure-summary-body" data-disclosure-summary-body></div>
+        </section>
+      </div>
+    `,
+  );
+  const modal = document.querySelector(".disclosure-summary-modal");
+  modal.querySelectorAll("[data-disclosure-summary-close]").forEach((button) => {
+    button.addEventListener("click", closeDisclosureSummaryModal);
+  });
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !modal.hidden) closeDisclosureSummaryModal();
+  });
+  return modal;
+}
+
+function closeDisclosureSummaryModal() {
+  const modal = document.querySelector(".disclosure-summary-modal");
+  if (!modal) return;
+  modal.hidden = true;
+  document.body.classList.remove("has-disclosure-summary-open");
+}
+
+function renderDisclosureSummaryPayload(payload) {
+  const summary = payload?.summary || {};
+  const section = (title, items) => `
+    <section>
+      <h3>${escapeHtml(title)}</h3>
+      ${
+        items?.length
+          ? `<ul>${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
+          : `<p class="empty-copy">표시할 내용이 없습니다.</p>`
+      }
+    </section>
+  `;
+  return `
+    ${section("핵심 요약", summary.bullets || [])}
+    ${section("리스크/확인사항", summary.risks || [])}
+    ${section("변동사항", summary.changes || [])}
+    ${section("한계", summary.limitations || [])}
+    <p class="disclosure-summary-source">OpenAI 요약 · 원문에 없는 내용은 포함하지 않도록 생성됩니다.</p>
+  `;
+}
+
+async function openDisclosureSummary(button) {
+  const modal = ensureDisclosureSummaryModal();
+  modal.hidden = false;
+  document.body.classList.add("has-disclosure-summary-open");
+  modal.querySelector("#disclosure-summary-title").textContent =
+    button.dataset.disclosureTitle || "공시 요약";
+  modal.querySelector("[data-disclosure-summary-body]").innerHTML =
+    `<p class="empty-copy">요약을 생성하는 중입니다.</p>`;
+  try {
+    const payload = await fetchJson(summaryUrl, {
+      receipt_no: button.dataset.disclosureReceiptNo,
+      viewer_url: button.dataset.disclosureViewerUrl,
+      title: button.dataset.disclosureTitle,
+    });
+    modal.querySelector("[data-disclosure-summary-body]").innerHTML =
+      renderDisclosureSummaryPayload(payload);
+  } catch (error) {
+    modal.querySelector("[data-disclosure-summary-body]").innerHTML =
+      `<p class="empty-copy">${escapeHtml(error.message || "요약을 생성하지 못했습니다.")}</p>`;
+  }
+}
+
+function setupDisclosureSummaryButtons() {
+  ensureDisclosureSummaryModal();
+  document.querySelectorAll("[data-disclosure-summary]").forEach((button) => {
+    if (button.dataset.disclosureSummaryBound === "true") return;
+    button.dataset.disclosureSummaryBound = "true";
+    button.addEventListener("click", () => openDisclosureSummary(button));
+  });
+}
+
 function ensureDisclosureViewerModal() {
   const existing = document.querySelector(".disclosure-viewer-modal");
   if (existing) return existing;
@@ -747,7 +950,10 @@ function disclosureListItemsHtml(items, includeReceiptNo = false) {
       .map(
         (item) => `
           <li>
-            ${renderDisclosureViewerTrigger(item)}
+            <span class="disclosure-action-row">
+              ${renderDisclosureViewerTrigger(item)}
+              ${renderDisclosureSummaryButton(item)}
+            </span>
             <span>${escapeHtml(disclosureMeta(item, includeReceiptNo))}</span>
           </li>
         `,
@@ -780,6 +986,7 @@ function appendDisclosureItems(items) {
   if (!list || !items.length) return;
   list.insertAdjacentHTML("beforeend", disclosureListItemsHtml(items, true));
   setupDisclosureViewer();
+  setupDisclosureSummaryButtons();
 }
 
 function setupInfiniteDisclosureScroll({ corpCode, disclosureType, initialPage, perPage, loadedCount, totalCount }) {
@@ -893,6 +1100,7 @@ function setupDisclosureFilters({ corpCode, outline, crno }) {
         totalCount: disclosureTotalCount(payload),
       });
       setupDisclosureFilters({ corpCode, outline, crno });
+      setupDisclosureSummaryButtons();
     });
   });
 }
@@ -913,13 +1121,45 @@ function renderDartDisclosures(disclosures) {
           .map(
             (item) => `
               <li>
-                ${renderDisclosureViewerTrigger(item)}
+                <span class="disclosure-action-row">
+                  ${renderDisclosureViewerTrigger(item)}
+                  ${renderDisclosureSummaryButton(item)}
+                </span>
                 <span>${escapeHtml(disclosureMeta(item))}</span>
               </li>
             `,
           )
           .join("")}
       </ul>
+    </article>
+  `;
+}
+
+function renderDisclosureEventTimeline(events) {
+  const items = (events || []).slice(0, 8);
+  if (!items.length) return "";
+  return `
+    <article class="info-block company-event-timeline-card">
+      <div class="block-heading">
+        <h3>공시 이벤트</h3>
+      </div>
+      <ol class="disclosure-event-timeline">
+        ${items
+          .map((event) => {
+            const viewerItem = disclosureEventToViewerItem(event);
+            return `
+              <li>
+                <span class="disclosure-event-date">${escapeHtml(compactDate(event.date))}</span>
+                <span class="disclosure-event-badge disclosure-event-${attr(event.category)}">${escapeHtml(disclosureEventLabel(event.category))}</span>
+                <span class="disclosure-action-row">
+                  ${renderDisclosureViewerTrigger(viewerItem)}
+                  ${renderDisclosureSummaryButton(viewerItem)}
+                </span>
+              </li>
+            `;
+          })
+          .join("")}
+      </ol>
     </article>
   `;
 }
@@ -1382,6 +1622,43 @@ function renderCompanyInsightCards(insights) {
   `;
 }
 
+function renderRiskSignalCards(riskSignals) {
+  const signals = riskSignals?.signals || [];
+  const historySignals = riskSignals?.requires_history || [];
+  if (!signals.length && !historySignals.length) return "";
+  return `
+    <article class="info-block company-risk-card">
+      <div class="block-heading">
+        <h3>주의 신호</h3>
+      </div>
+      ${
+        signals.length
+          ? `<ul class="risk-signal-list">
+              ${signals
+                .map(
+                  (signal) => `
+                    <li class="risk-signal-item risk-signal-${attr(signal.severity || "info")}">
+                      <strong>${escapeHtml(signal.label)}</strong>
+                      <span>${escapeHtml(signal.detail)}</span>
+                    </li>
+                  `,
+                )
+                .join("")}
+            </ul>`
+          : `<p class="empty-copy">현재 데이터 기준으로 표시할 주의 신호가 없습니다.</p>`
+      }
+      ${
+        historySignals.length
+          ? `<p class="risk-history-note">과거 보고서 비교가 쌓이면 ${historySignals
+              .slice(0, 3)
+              .map((signal) => signal.label)
+              .join(", ")} 같은 변화 신호도 표시할 수 있습니다.</p>`
+          : ""
+      }
+    </article>
+  `;
+}
+
 function renderDartInsightDetailRows(payload) {
   const rows = payload.kind === "capital"
     ? [...(payload.total_stock || []), ...(payload.treasury_stock || [])]
@@ -1528,6 +1805,53 @@ function relationshipPayload(items) {
   return attr(JSON.stringify(items));
 }
 
+function isListedRelationship(item) {
+  return item.lstgYn === "Y" || item.lstgYn === "상장";
+}
+
+function relationshipCountryText(item) {
+  return String(item.natnNm || item.country || item.cntryNm || item.enpBsadr || item.addr || "");
+}
+
+function filterRelationshipItems(items, filter) {
+  if (filter === "listed") return items.filter(isListedRelationship);
+  if (filter === "unlisted") return items.filter((item) => !isListedRelationship(item));
+  if (filter === "domestic") {
+    return items.filter((item) => {
+      const country = relationshipCountryText(item);
+      return !country || /대한민국|한국|Korea|KR|서울|경기|부산|대구|인천|광주|대전|울산|세종|제주/.test(country);
+    });
+  }
+  if (filter === "foreign") {
+    return items.filter((item) => {
+      const country = relationshipCountryText(item);
+      return country && !/대한민국|한국|Korea|KR|서울|경기|부산|대구|인천|광주|대전|울산|세종|제주/.test(country);
+    });
+  }
+  return items;
+}
+
+function renderRelationshipFilters(activeFilter = "all") {
+  const filters = [
+    ["all", "전체"],
+    ["listed", "상장"],
+    ["unlisted", "비상장"],
+    ["domestic", "국내"],
+    ["foreign", "해외"],
+  ];
+  return `
+    <div class="relationship-list-filters" role="tablist" aria-label="관계회사 필터">
+      ${filters
+        .map(
+          ([value, label]) => `
+            <button type="button" class="${value === activeFilter ? "is-active" : ""}" data-relationship-filter="${value}" aria-selected="${value === activeFilter ? "true" : "false"}">${label}</button>
+          `,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
 function relationshipTermDescription(type) {
   if (type === "subsidiaries") {
     return "현재 회사가 지배하는 회사입니다. 연결재무제표에 포함되는 자회사 성격의 회사로 보면 됩니다.";
@@ -1603,6 +1927,24 @@ function renderRelationshipListItems(items, type) {
   `;
 }
 
+function renderRelationshipListBody(items, type, activeFilter = "all") {
+  const filteredItems = filterRelationshipItems(items, activeFilter);
+  return `
+    ${renderRelationshipFilters(activeFilter)}
+    ${renderRelationshipListItems(filteredItems, type)}
+  `;
+}
+
+function bindRelationshipFilterButtons(modal, items, type) {
+  modal.querySelectorAll("[data-relationship-filter]").forEach((filterButton) => {
+    filterButton.addEventListener("click", () => {
+      const activeFilter = filterButton.dataset.relationshipFilter || "all";
+      modal.querySelector("[data-relationship-list-body]").innerHTML = renderRelationshipListBody(items, type, activeFilter);
+      bindRelationshipFilterButtons(modal, items, type);
+    });
+  });
+}
+
 function ensureRelationshipListModal() {
   const existing = document.querySelector(".relationship-list-modal");
   if (existing) return existing;
@@ -1649,7 +1991,8 @@ function openRelationshipListModal(button) {
   document.body.classList.add("has-relationship-list-open");
   modal.querySelector("#relationship-list-title").textContent = label;
   modal.querySelector("#relationship-list-meta").textContent = `총 ${items.length.toLocaleString("ko-KR")}개 · 출처 금융위원회 기업기본정보`;
-  modal.querySelector("[data-relationship-list-body]").innerHTML = renderRelationshipListItems(items, type);
+  modal.querySelector("[data-relationship-list-body]").innerHTML = renderRelationshipListBody(items, type);
+  bindRelationshipFilterButtons(modal, items, type);
 }
 
 function closeRelationshipTooltips(exceptCard = null) {
@@ -1861,13 +2204,15 @@ function renderDisclosuresPage({ disclosures, outline, crno, activeDisclosureTyp
     </div>
   `;
   setupDisclosureViewer();
+  setupDisclosureSummaryButtons();
 }
 
-function renderCompanyStockCard({ outline, listed, stock, stockWindow, market, crno, stockLoading = false }) {
+function renderCompanyStockCard({ outline, listed, stock, stockWindow, market, crno, stockLoading = false, disclosureEvents = [] }) {
   const summary = stock?.summary || {};
   const price = summary.price || summary.extracted_price;
   const change = summary.price_movement?.percentage || summary.price_movement?.value;
   const statusText = stockLoading ? "주가 정보를 불러오는 중입니다." : stockUpdatedLabel(stock);
+  const hasListedStock = Boolean(listed.srtnCd);
   return `
     <article
       class="info-block company-market-card ${stockLoading ? "is-loading-stock" : ""}"
@@ -1875,6 +2220,7 @@ function renderCompanyStockCard({ outline, listed, stock, stockWindow, market, c
       data-stock-exchange="KRX"
       data-stock-language="ko"
       data-crno="${attr(crno)}"
+      data-disclosure-events="${attr(JSON.stringify(disclosureEvents || []))}"
     >
       <div class="block-heading">
         <h3>상장 및 주가</h3>
@@ -1888,17 +2234,25 @@ function renderCompanyStockCard({ outline, listed, stock, stockWindow, market, c
         ${change ? `<div class="price-meta">${text(change)}</div>` : ""}
       </div>
       <div class="stock-chart-shell">
-        ${renderStockChart(stock, stockWindow, statusText)}
+        ${
+          hasListedStock
+            ? renderStockChart(stock, stockWindow, statusText, disclosureEvents)
+            : `<p class="stock-chart-empty">상장/주가 정보를 찾을 수 없습니다.</p>`
+        }
       </div>
-      ${renderSourceMeta([
-        { label: "출처", value: "SearchAPI Google Finance" },
-        { label: "캐시 만료", value: formatDateTime(stock?._meta?.expires_at) },
-      ])}
+      ${
+        hasListedStock
+          ? renderSourceMeta([
+              { label: "출처", value: "SearchAPI Google Finance" },
+              { label: "캐시 만료", value: formatDateTime(stock?._meta?.expires_at) },
+            ])
+          : renderSourceMeta([{ label: "상태", value: "금융위원회 기본정보 기준 상장 종목을 찾지 못했습니다." }])
+      }
     </article>
   `;
 }
 
-function refreshCompanyStockCard({ outline, listed, stock, stockWindow, market, crno }) {
+function refreshCompanyStockCard({ outline, listed, stock, stockWindow, market, crno, disclosureEvents = [] }) {
   const card = document.querySelector(".company-market-card");
   if (!card) return;
   card.outerHTML = renderCompanyStockCard({
@@ -1908,9 +2262,12 @@ function refreshCompanyStockCard({ outline, listed, stock, stockWindow, market, 
     stockWindow,
     market,
     crno,
+    disclosureEvents,
   });
   setupStockChartInteractions();
   setupStockWindowTabs();
+  setupDisclosureViewer();
+  setupDisclosureSummaryButtons();
 }
 
 function renderCompanyDetail({ info, outline, listed, stock, stockWindow, stockLoading = false }) {
@@ -1978,11 +2335,15 @@ function renderCompanyDetail({ info, outline, listed, stock, stockWindow, stockL
           </section>
         </article>
 
-        ${renderCompanyStockCard({ outline, listed, stock, stockWindow, market, crno, stockLoading })}
+        ${renderCompanyStockCard({ outline, listed, stock, stockWindow, market, crno, stockLoading, disclosureEvents: info.disclosure_events })}
 
         ${renderCompanyInsightRow(info)}
 
+        ${renderDisclosureEventTimeline(info.disclosure_events)}
+
         ${renderCompanyInsightCards(info.dart_insights)}
+
+        ${renderRiskSignalCards(info.risk_signals)}
 
         ${renderRelationshipSummary(info)}
 
@@ -2002,6 +2363,7 @@ function renderCompanyDetail({ info, outline, listed, stock, stockWindow, stockL
   setupRelationshipSummaryCards();
   setupCompareActions();
   setupDisclosureViewer();
+  setupDisclosureSummaryButtons();
 }
 
 async function loadProfile() {
@@ -2091,6 +2453,7 @@ async function loadProfile() {
         stockWindow,
         market,
         crno,
+        disclosureEvents: info.disclosure_events,
       });
     }
   } catch (error) {

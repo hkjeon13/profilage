@@ -24,10 +24,15 @@ from app.services.company_dart import (
     DartFinancialAccountsQuery,
     DartFinancialTrendsQuery,
 )
+from app.services.company_disclosure_summary import (
+    DisclosureSummaryQuery,
+    DisclosureSummaryService,
+)
 from app.services.company_insights import (
     normalize_capital_detail,
     normalize_people_detail,
 )
+from app.services.company_store import get_default_data_group_store
 
 router = APIRouter(prefix="/company", tags=["company"])
 
@@ -324,6 +329,26 @@ async def get_dart_disclosures(
             corporation_class=corporation_class,
             page=page,
             per_page=per_page,
+        )
+    )
+
+
+@router.get("/get_dart_disclosure_summary")
+async def get_dart_disclosure_summary(
+    request: Request,
+    receipt_no: Annotated[str, Query(description="DART 접수번호")],
+    viewer_url: Annotated[str, Query(description="DART viewer URL")],
+    title: Annotated[str | None, Query(description="공시 제목")] = None,
+):
+    service = DisclosureSummaryService(
+        transport=getattr(request.app.state, "http_transport", None),
+        data_group_store=get_default_data_group_store(),
+    )
+    return await service.fetch(
+        DisclosureSummaryQuery(
+            receipt_no=receipt_no,
+            viewer_url=viewer_url,
+            title=title,
         )
     )
 

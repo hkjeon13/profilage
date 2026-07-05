@@ -25,6 +25,16 @@ def _number(value: str | None) -> float | None:
         return None
 
 
+def _ratio_value(insights: dict[str, Any] | None, names: list[str]) -> float | None:
+    for item in ((insights or {}).get("ratios") or {}).get("items", []):
+        item_name = str(item.get("name") or "")
+        if any(name in item_name for name in names):
+            value = _number(_first_value(item, ["value", "idx_val", "thstrm_amount"]))
+            if value is not None:
+                return value
+    return None
+
+
 def _is_ownership_total_row(row: dict[str, Any]) -> bool:
     name = _first_value(row, ["nm", "holder_nm", "stockholdr_nm"])
     return str(name or "").strip() in {"계", "합계", "소계", "총계"}
@@ -148,4 +158,111 @@ def normalize_people_detail(raw: dict[str, Any]) -> dict[str, Any]:
         "kind": "people",
         "executives": _items(raw.get("executives")),
         "employees": _items(raw.get("employees")),
+    }
+
+
+def normalize_company_risk_signals(
+    *,
+    insights: dict[str, Any] | None,
+    affiliate_count: int,
+    subsidiary_count: int,
+) -> dict[str, Any]:
+    signals: list[dict[str, Any]] = []
+    requires_history = [
+        {
+            "code": "debt_ratio_surge",
+            "label": "부채비율 급증",
+            "reason": "과거 보고서와 비교할 히스토리가 필요합니다.",
+        },
+        {
+            "code": "operating_loss_turnaround",
+            "label": "영업이익 적자 전환",
+            "reason": "과거 보고서와 비교할 히스토리가 필요합니다.",
+        },
+        {
+            "code": "net_loss_turnaround",
+            "label": "당기순이익 적자 전환",
+            "reason": "과거 보고서와 비교할 히스토리가 필요합니다.",
+        },
+        {
+            "code": "major_shareholder_changed",
+            "label": "최대주주 변동",
+            "reason": "주요주주 보고서의 과거 스냅샷이 필요합니다.",
+        },
+        {
+            "code": "executive_changed",
+            "label": "주요 임원 변동",
+            "reason": "임원 현황의 과거 스냅샷이 필요합니다.",
+        },
+        {
+            "code": "dividend_cut_or_stopped",
+            "label": "배당 중단 또는 급감",
+            "reason": "다년도 배당 내역 비교가 필요합니다.",
+        },
+        {
+            "code": "affiliate_count_changed",
+            "label": "관계회사 수 변화",
+            "reason": "계열회사/종속기업 목록의 조회일별 스냅샷이 필요합니다.",
+        },
+    ]
+
+    debt_ratio = _ratio_value(insights, ["부채비율"])
+    if debt_ratio is not None and debt_ratio >= 200:
+        signals.append(
+            {
+                "code": "debt_high",
+                "severity": "warning",
+                "label": "부채비율 높음",
+                "detail": f"최근 정기보고서 기준 부채비율이 {debt_ratio:g}%입니다.",
+            }
+        )
+
+    operating_margin = _ratio_value(insights, ["영업이익률"])
+    if operating_margin is not None and operating_margin < 0:
+        signals.append(
+            {
+                "code": "operating_margin_negative",
+                "severity": "warning",
+                "label": "영업이익률 음수",
+                "detail": f"최근 정기보고서 기준 영업이익률이 {operating_margin:g}%입니다.",
+            }
+        )
+
+    roe = _ratio_value(insights, ["ROE", "자기자본이익률"])
+    if roe is not None and roe < 0:
+        signals.append(
+            {
+                "code": "roe_negative",
+                "severity": "warning",
+                "label": "ROE 음수",
+                "detail": f"최근 정기보고서 기준 ROE가 {roe:g}%입니다.",
+            }
+        )
+
+    opinion = ((insights or {}).get("audit") or {}).get("opinion")
+    normalized_opinion = str(opinion or "").replace(" ", "")
+    if opinion and normalized_opinion not in {"적정", "적정의견"}:
+        signals.append(
+            {
+                "code": "audit_opinion_warning",
+                "severity": "danger",
+                "label": "감사의견 확인 필요",
+                "detail": f"감사의견이 {opinion}입니다.",
+            }
+        )
+
+    relationship_count = affiliate_count + subsidiary_count
+    if relationship_count >= 50:
+        signals.append(
+            {
+                "code": "complex_group_structure",
+                "severity": "info",
+                "label": "관계회사 구조 복잡",
+                "detail": f"계열회사와 종속기업 합계가 {relationship_count:,}개입니다.",
+            }
+        )
+
+    return {
+        "signals": signals,
+        "requires_history": requires_history,
     }

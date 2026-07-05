@@ -36,6 +36,13 @@ class DatabaseSettings:
     database_url: str | None
 
 
+@dataclass(frozen=True)
+class OpenAiSettings:
+    api_key: str | None
+    model: str
+    max_chars: int
+
+
 def get_open_api_settings() -> OpenApiSettings:
     load_dotenv()
 
@@ -78,6 +85,20 @@ def get_dart_api_key(*, required: bool = True) -> str | None:
         return None
 
     raise RuntimeError("DART_API_KEY must be configured")
+
+
+def get_openai_settings(*, required: bool = True) -> OpenAiSettings:
+    load_dotenv()
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    if required and not api_key:
+        raise RuntimeError("OPENAI_API_KEY must be configured")
+
+    return OpenAiSettings(
+        api_key=api_key,
+        model=os.getenv("OPENAI_MODEL", "gpt-4.1-mini"),
+        max_chars=int(os.getenv("OPENAI_SUMMARY_MAX_CHARS", "18000")),
+    )
 
 
 def get_cache_settings() -> CacheSettings:

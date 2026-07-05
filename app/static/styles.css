@@ -900,6 +900,181 @@ a:hover {
   padding-bottom: 0;
 }
 
+.disclosure-action-row {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.disclosure-summary-button {
+  border: 0;
+  background: transparent;
+  color: #1a73e8;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.disclosure-summary-button:hover,
+.disclosure-summary-button:focus-visible {
+  color: #185abc;
+  text-decoration: underline;
+}
+
+.disclosure-summary-modal[hidden] {
+  display: none;
+}
+
+.has-disclosure-summary-open {
+  overflow: hidden;
+}
+
+.disclosure-summary-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.disclosure-summary-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgb(15 23 42 / 42%);
+}
+
+.disclosure-summary-dialog {
+  position: relative;
+  width: min(720px, 100%);
+  max-height: min(760px, calc(100vh - 40px));
+  overflow: auto;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 24px 80px rgb(15 23 42 / 22%);
+}
+
+.disclosure-summary-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid #eef0f6;
+  padding: 18px 20px;
+}
+
+.disclosure-summary-header p {
+  margin: 0 0 4px;
+  color: #667085;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.disclosure-summary-header h2 {
+  margin: 0;
+  color: #101828;
+  font-size: 20px;
+}
+
+.disclosure-summary-close {
+  min-height: 34px;
+  border: 1px solid #e7ebf3;
+  border-radius: 8px;
+  background: #fff;
+  color: #344054;
+  cursor: pointer;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.disclosure-summary-body {
+  display: grid;
+  gap: 16px;
+  padding: 18px 20px 22px;
+}
+
+.disclosure-summary-body h3 {
+  margin: 0 0 8px;
+  color: #101828;
+  font-size: 15px;
+}
+
+.disclosure-summary-body ul {
+  margin: 0;
+  padding-left: 18px;
+  color: #344054;
+  line-height: 1.55;
+}
+
+.disclosure-summary-source {
+  margin: 0;
+  color: #667085;
+  font-size: 12px;
+}
+
+.disclosure-event-timeline {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.disclosure-event-timeline li {
+  display: grid;
+  grid-template-columns: 76px max-content minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #eef0f6;
+  padding: 11px 0;
+}
+
+.disclosure-event-timeline li:first-child {
+  padding-top: 0;
+}
+
+.disclosure-event-timeline li:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.disclosure-event-date {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.disclosure-event-badge {
+  border-radius: 999px;
+  background: #eef4ff;
+  color: #185abc;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.disclosure-event-ownership,
+.disclosure-event-capital {
+  background: #f4ebff;
+  color: #6941c6;
+}
+
+.disclosure-event-dividend {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.disclosure-event-audit {
+  background: #fef3f2;
+  color: #b42318;
+}
+
 .empty-copy {
   margin: 0;
   color: var(--muted);
@@ -954,6 +1129,31 @@ a:hover {
 
 .stock-chart-dot.is-down {
   fill: #c5221f;
+}
+
+.stock-chart-event-marker {
+  fill: #ffffff;
+  stroke: #1a73e8;
+  stroke-width: 3;
+  cursor: pointer;
+  filter: drop-shadow(0 2px 4px rgb(15 23 42 / 18%));
+}
+
+.stock-chart-event-marker-periodic {
+  stroke: #1d5faa;
+}
+
+.stock-chart-event-marker-ownership,
+.stock-chart-event-marker-capital {
+  stroke: #7c3aed;
+}
+
+.stock-chart-event-marker-dividend {
+  stroke: #0f8b6d;
+}
+
+.stock-chart-event-marker-audit {
+  stroke: #dc2626;
 }
 
 .stock-chart-meta {
@@ -1333,6 +1533,17 @@ a:hover {
   font-size: 12px;
 }
 
+.stock-chart-empty {
+  margin: 16px 0 0;
+  border: 1px dashed #d8dee9;
+  border-radius: 8px;
+  background: #fbfcff;
+  color: #667085;
+  padding: 18px;
+  font-size: 13px;
+  font-weight: 750;
+}
+
 .source-meta {
   display: flex;
   flex-wrap: wrap;
@@ -1668,6 +1879,54 @@ a:hover {
   padding: 18px;
 }
 
+.company-risk-card {
+  display: grid;
+  gap: 12px;
+}
+
+.risk-signal-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.risk-signal-item {
+  display: grid;
+  gap: 4px;
+  border: 1px solid #e7ebf3;
+  border-radius: 8px;
+  background: #fbfcff;
+  padding: 12px;
+}
+
+.risk-signal-item strong {
+  color: #101828;
+  font-size: 14px;
+}
+
+.risk-signal-item span,
+.risk-history-note {
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.risk-signal-warning {
+  border-color: #fedf89;
+  background: #fffbeb;
+}
+
+.risk-signal-danger {
+  border-color: #fecdca;
+  background: #fffbfa;
+}
+
+.risk-history-note {
+  margin: 0;
+}
+
 .dart-insight-detail-actions button {
   border: 1px solid #d8e4f5;
   border-radius: 8px;
@@ -1963,6 +2222,43 @@ a:hover {
   overflow-wrap: anywhere;
 }
 
+.compare-summary-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.compare-summary-list li {
+  display: grid;
+  gap: 4px;
+  border: 1px solid #eef0f6;
+  border-radius: 8px;
+  background: #fbfcff;
+  padding: 12px;
+}
+
+.compare-summary-list span {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.compare-summary-list strong {
+  color: #101828;
+  font-size: 14px;
+  font-weight: 850;
+}
+
+.compare-summary-list em {
+  color: #08734f;
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 850;
+}
+
 .compare-table-wrap {
   overflow-x: auto;
 }
@@ -2131,6 +2427,30 @@ a:hover {
   padding: 18px 22px 22px;
 }
 
+.relationship-list-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.relationship-list-filters button {
+  border: 1px solid #e7ebf3;
+  border-radius: 999px;
+  background: #fff;
+  color: #344054;
+  cursor: pointer;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.relationship-list-filters button.is-active {
+  border-color: #1a73e8;
+  background: #eef4ff;
+  color: #185abc;
+}
+
 .relationship-list-items {
   display: grid;
   gap: 10px;
@@ -2285,6 +2605,12 @@ a:hover {
     grid-template-columns: 1fr;
   }
 
+  .disclosure-event-timeline li {
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 6px;
+  }
+
   .relationship-list-modal {
     align-items: end;
     padding: 14px;
@@ -2310,6 +2636,16 @@ a:hover {
   }
 
   .dart-insight-detail-dialog {
+    max-height: calc(100vh - 28px);
+    border-radius: 10px;
+  }
+
+  .disclosure-summary-modal {
+    align-items: end;
+    padding: 14px;
+  }
+
+  .disclosure-summary-dialog {
     max-height: calc(100vh - 28px);
     border-radius: 10px;
   }

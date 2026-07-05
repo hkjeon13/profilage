@@ -24,7 +24,14 @@ from app.services.company_dart import (
     dart_financial_accounts_ttl,
     dart_periodic_report_ttl,
 )
-from app.services.company_insights import normalize_dart_insights
+from app.services.company_disclosure_events import (
+    classify_disclosure_event,
+    normalize_disclosure_events,
+)
+from app.services.company_insights import (
+    normalize_company_risk_signals,
+    normalize_dart_insights,
+)
 from app.services.company_store import (
     AFFILIATE_GROUP,
     COMPANY_ENTITY_TYPE,
@@ -231,6 +238,10 @@ def test_compare_page_serves_company_compare_frontend():
     assert "compareUrlForCrnos" in script_response.text
     assert ">×</button>" in script_response.text
     assert "compare-best" in script_response.text
+    assert "renderCompareSummary" in script_response.text
+    assert "buildCompareSummary" in script_response.text
+    assert "종합 요약" in script_response.text
+    assert ".compare-summary-list" in style_response.text
     assert "renderCompanyChips" not in script_response.text
     assert "compare-company-chips" not in script_response.text
     assert "최소 2개 기업을 선택하면 비교표가 표시됩니다" in script_response.text
@@ -843,6 +854,41 @@ def test_dart_insight_cards_include_source_and_empty_state_copy():
     assert "@media (max-width: 820px)" in style_response.text
 
 
+def test_profile_frontend_exposes_disclosure_events_and_risk_signals():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+        style_response = client.get("/styles.css")
+
+    assert script_response.status_code == 200
+    assert style_response.status_code == 200
+    assert "renderDisclosureEventTimeline" in script_response.text
+    assert "mapDisclosureEventsToPricePoints" in script_response.text
+    assert "data-disclosure-event-marker" in script_response.text
+    assert "renderRiskSignalCards" in script_response.text
+    assert "상장/주가 정보를 찾을 수 없습니다" in script_response.text
+    assert "renderRelationshipFilters" in script_response.text
+    assert "data-relationship-filter" in script_response.text
+    assert ".disclosure-event-timeline" in style_response.text
+    assert ".stock-chart-event-marker" in style_response.text
+    assert ".company-risk-card" in style_response.text
+    assert ".relationship-list-filters" in style_response.text
+
+
+def test_profile_frontend_exposes_disclosure_summary_modal():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+        style_response = client.get("/styles.css")
+
+    assert script_response.status_code == 200
+    assert style_response.status_code == 200
+    assert "summaryUrl" in script_response.text
+    assert "data-disclosure-summary" in script_response.text
+    assert "ensureDisclosureSummaryModal" in script_response.text
+    assert "공시 요약" in script_response.text
+    assert ".disclosure-summary-modal" in style_response.text
+    assert ".disclosure-summary-button" in style_response.text
+
+
 def test_dart_periodic_endpoint_registry_contains_phase_one_sources():
     assert DART_PERIODIC_ENDPOINTS["major_shareholders"]["group_name"] == "dart_major_shareholders"
     assert DART_PERIODIC_ENDPOINTS["dividends"]["group_name"] == "dart_dividends"
@@ -937,6 +983,210 @@ def test_company_insight_normalizer_returns_stable_phase_one_shape():
     assert payload["audit"]["auditor"] == "삼일회계법인"
     assert payload["audit"]["opinion"] == "적정"
     assert payload["ratios"]["items"][0] == {"name": "부채비율", "value": "30.0"}
+
+
+def test_disclosure_event_normalizer_classifies_common_dart_titles():
+    assert classify_disclosure_event("분기보고서 (2026.03)") == "periodic"
+    assert classify_disclosure_event("임원ㆍ주요주주특정증권등소유상황보고서") == "ownership"
+    assert classify_disclosure_event("대표이사변경") == "executive"
+    assert classify_disclosure_event("유상증자결정") == "capital"
+    assert classify_disclosure_event("현금ㆍ현물배당결정") == "dividend"
+    assert classify_disclosure_event("감사보고서제출") == "audit"
+
+    events = normalize_disclosure_events(
+        {
+            "list": [
+                {
+                    "rcept_dt": "20260701",
+                    "report_nm": "임원ㆍ주요주주특정증권등소유상황보고서",
+                    "corp_name": "삼성전자",
+                    "rcept_no": "20260701000000",
+                    "viewer_url": "https://dart.fss.or.kr/dsaf001/main.do",
+                }
+            ]
+        }
+    )
+
+    assert events[0] == {
+        "date": "20260701",
+        "title": "임원ㆍ주요주주특정증권등소유상황보고서",
+        "category": "ownership",
+        "category_label": "지분/최대주주",
+        "corp_name": "삼성전자",
+        "receipt_no": "20260701000000",
+        "viewer_url": "https://dart.fss.or.kr/dsaf001/main.do",
+    }
+
+
+def test_company_risk_signal_normalizer_separates_current_and_history_signals():
+    payload = normalize_company_risk_signals(
+        insights={
+            "ratios": {
+                "items": [
+                    {"name": "부채비율", "value": "230.5"},
+                    {"name": "영업이익률", "value": "-2.1"},
+                    {"name": "ROE", "value": "-1.2"},
+                ]
+            },
+            "audit": {"opinion": "한정"},
+        },
+        affiliate_count=40,
+        subsidiary_count=12,
+    )
+
+    codes = {signal["code"] for signal in payload["signals"]}
+    history_codes = {signal["code"] for signal in payload["requires_history"]}
+    assert {"debt_high", "operating_margin_negative", "roe_negative", "audit_opinion_warning", "complex_group_structure"} <= codes
+    assert {"major_shareholder_changed", "dividend_cut_or_stopped", "affiliate_count_changed"} <= history_codes
+
+
+def test_openai_settings_are_optional_until_summary_request(monkeypatch):
+    from app.core.config import get_openai_settings
+
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_MODEL", raising=False)
+    monkeypatch.delenv("OPENAI_SUMMARY_MAX_CHARS", raising=False)
+
+    settings = get_openai_settings(required=False)
+
+    assert settings.api_key is None
+    assert settings.model == "gpt-4.1-mini"
+    assert settings.max_chars == 18000
+
+
+def test_disclosure_text_extractor_accepts_only_dart_viewer_urls():
+    from app.services.company_disclosure_summary import (
+        disclosure_text_entity_key,
+        validate_dart_viewer_url,
+    )
+
+    assert validate_dart_viewer_url(
+        "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260701000000"
+    )
+    assert disclosure_text_entity_key("20260701000000") == "20260701000000"
+    assert not validate_dart_viewer_url(
+        "https://example.com/dsaf001/main.do?rcpNo=20260701000000"
+    )
+
+
+def test_disclosure_html_to_text_removes_scripts_and_compacts_text():
+    from app.services.company_disclosure_summary import extract_disclosure_text
+
+    html = """
+    <html>
+      <head><script>alert('x')</script><style>body { color:red }</style></head>
+      <body>
+        <h1>분기보고서</h1>
+        <p>매출액은 증가했습니다.</p>
+        <p>영업이익은 감소했습니다.</p>
+      </body>
+    </html>
+    """
+
+    text = extract_disclosure_text(html)
+
+    assert "alert" not in text
+    assert "color:red" not in text
+    assert "분기보고서" in text
+    assert "매출액은 증가했습니다." in text
+    assert "영업이익은 감소했습니다." in text
+
+
+def test_disclosure_summary_normalizer_returns_stable_shape():
+    from app.services.company_disclosure_summary import normalize_summary_payload
+
+    payload = normalize_summary_payload(
+        {
+            "bullets": ["핵심 1", "핵심 2"],
+            "risks": ["리스크 1"],
+            "changes": ["변동 1"],
+        }
+    )
+
+    assert payload == {
+        "bullets": ["핵심 1", "핵심 2"],
+        "risks": ["리스크 1"],
+        "changes": ["변동 1"],
+        "limitations": [],
+    }
+
+
+@pytest.mark.asyncio
+async def test_openai_summary_client_parses_response_json(monkeypatch):
+    from app.services.company_disclosure_summary import summarize_with_openai
+
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("OPENAI_MODEL", "gpt-test")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.host == "api.openai.com"
+        assert request.headers["authorization"] == "Bearer test-key"
+        return httpx.Response(
+            200,
+            json={
+                "output": [
+                    {
+                        "content": [
+                            {
+                                "type": "output_text",
+                                "text": '{"bullets":["요약"],"risks":["위험"],"changes":["변동"],"limitations":[]}',
+                            }
+                        ]
+                    }
+                ]
+            },
+        )
+
+    payload = await summarize_with_openai(
+        title="분기보고서",
+        text="매출액은 증가했습니다.",
+        transport=httpx.MockTransport(handler),
+    )
+
+    assert payload["summary"]["bullets"] == ["요약"]
+    assert payload["summary"]["risks"] == ["위험"]
+    assert payload["model"] == "gpt-test"
+
+
+@pytest.mark.asyncio
+async def test_disclosure_summary_service_reuses_cached_summary(monkeypatch):
+    from app.services.company_disclosure_summary import (
+        DisclosureSummaryQuery,
+        DisclosureSummaryService,
+    )
+
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    store = FakeDataGroupStore()
+    service = DisclosureSummaryService(
+        transport=httpx.MockTransport(lambda request: httpx.Response(500)),
+        data_group_store=store,
+    )
+    store.records[
+        ("company", "20260701000000", "dart_disclosure_summary:gpt-4.1-mini:v1")
+    ] = fresh_record(
+        {
+            "receipt_no": "20260701000000",
+            "title": "분기보고서",
+            "summary": {
+                "bullets": ["cached"],
+                "risks": [],
+                "changes": [],
+                "limitations": [],
+            },
+            "model": "gpt-4.1-mini",
+            "prompt_version": "v1",
+        }
+    )
+
+    payload = await service.fetch(
+        DisclosureSummaryQuery(
+            receipt_no="20260701000000",
+            viewer_url="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260701000000",
+            title="분기보고서",
+        )
+    )
+
+    assert payload["summary"]["bullets"] == ["cached"]
 
 
 @pytest.mark.asyncio
@@ -1038,7 +1288,21 @@ async def test_company_info_service_attaches_normalized_dart_insights(monkeypatc
         if path.endswith("/company.json"):
             return httpx.Response(200, json={"status": "000", "corp_code": "00126380", "corp_name": "삼성전자"})
         if path.endswith("/list.json"):
-            return httpx.Response(200, json={"status": "000", "list": []})
+            return httpx.Response(
+                200,
+                json={
+                    "status": "000",
+                    "list": [
+                        {
+                            "rcept_dt": "20260701",
+                            "report_nm": "임원ㆍ주요주주특정증권등소유상황보고서",
+                            "corp_name": "삼성전자",
+                            "rcept_no": "20260701000000",
+                            "viewer_url": "https://dart.fss.or.kr/dsaf001/main.do",
+                        }
+                    ],
+                },
+            )
         if path.endswith("/fnlttSinglAcnt.json"):
             return httpx.Response(
                 200,
@@ -1080,6 +1344,10 @@ async def test_company_info_service_attaches_normalized_dart_insights(monkeypatc
     assert insights["dividend"]["dividend_per_share"] == "1,444"
     assert insights["audit"]["opinion"] == "적정"
     assert insights["ratios"]["items"][0]["name"] == "부채비율"
+    assert payload["availability"]["sections"]["basic"] == "available"
+    assert payload["availability"]["sections"]["dart"] == "available"
+    assert payload["disclosure_events"][0]["category"] == "ownership"
+    assert "requires_history" in payload["risk_signals"]
 
 
 def test_get_dart_company_insight_detail_returns_capital_detail(monkeypatch):
@@ -1125,6 +1393,68 @@ def test_get_dart_company_insight_detail_rejects_unknown_kind():
         )
 
     assert response.status_code == 422
+
+
+def test_get_dart_disclosure_summary_endpoint_uses_service_cache(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "dart.fss.or.kr":
+            return httpx.Response(
+                200,
+                text="<html><body><p>매출액은 증가했습니다.</p></body></html>",
+            )
+        if request.url.host == "api.openai.com":
+            return httpx.Response(
+                200,
+                json={
+                    "output": [
+                        {
+                            "content": [
+                                {
+                                    "type": "output_text",
+                                    "text": '{"bullets":["매출 증가"],"risks":[],"changes":[],"limitations":[]}',
+                                }
+                            ]
+                        }
+                    ]
+                },
+            )
+        raise AssertionError(str(request.url))
+
+    with TestClient(app) as client:
+        app.state.http_transport = httpx.MockTransport(handler)
+        response = client.get(
+            "/company/get_dart_disclosure_summary",
+            params={
+                "receipt_no": "20260701000000",
+                "viewer_url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260701000000",
+                "title": "분기보고서",
+            },
+        )
+        del app.state.http_transport
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["receipt_no"] == "20260701000000"
+    assert payload["summary"]["bullets"] == ["매출 증가"]
+
+
+def test_get_dart_disclosure_summary_requires_openai_key(monkeypatch):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+    with TestClient(app) as client:
+        response = client.get(
+            "/company/get_dart_disclosure_summary",
+            params={
+                "receipt_no": "20260701000000",
+                "viewer_url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260701000000",
+                "title": "분기보고서",
+            },
+        )
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "OPENAI_API_KEY is not configured"
 
 
 def test_company_api_is_available_under_api_prefix(monkeypatch):
