@@ -150,12 +150,12 @@ def test_root_serves_company_search_frontend():
     assert "text/html" in response.headers["content-type"]
     assert "Profilage" in response.text
     assert '<body class="is-idle google-like-home">' in response.text
-    assert 'class="wordmark"' in response.text
-    assert 'class="search-actions"' in response.text
+    assert 'class="home-title"' in response.text
+    assert 'class="example-query-list"' in response.text
     assert "/api/company/get_corp_outline" in response.text
     assert "/profile?crno=" in response.text
-    assert "/styles.css?v=google-home-8" in response.text
-    assert "/app.js?v=google-home-9" in response.text
+    assert "/styles.css?v=google-home-9" in response.text
+    assert "/app.js?v=google-home-10" in response.text
 
 
 def test_search_results_status_has_breathing_room():
@@ -182,6 +182,43 @@ def test_search_results_can_restore_query_from_return_url():
     assert "searchCompaniesWithCaseFallback" not in script_response.text
 
 
+def test_homepage_positions_as_b2b_company_data_platform():
+    with TestClient(app) as client:
+        response = client.get("/")
+        script_response = client.get("/app.js")
+        style_response = client.get("/styles.css")
+
+    assert response.status_code == 200
+    assert "기업 정보를 빠르게 찾고 비교하세요" in response.text
+    assert "금융위원회, DART, 주가 데이터를 기반" in response.text
+    assert "기업명, 종목코드, 법인등록번호로 검색" in response.text
+    assert "data-example-query" in response.text
+    assert "data-source-rail" in response.text
+    assert "B2B 기업 데이터 플랫폼" in response.text
+    assert "인물명" not in response.text
+    assert "[data-example-query]" in script_response.text
+    assert ".home-title" in style_response.text
+    assert ".source-rail" in style_response.text
+
+
+def test_search_results_render_dense_business_rows_with_entity_type():
+    with TestClient(app) as client:
+        script_response = client.get("/app.js")
+        style_response = client.get("/styles.css")
+
+    assert script_response.status_code == 200
+    assert style_response.status_code == 200
+    assert "result-card-main" in script_response.text
+    assert "result-meta-grid" in script_response.text
+    assert "data-result-compare-add" in script_response.text
+    assert "entity-type-badge" in script_response.text
+    assert "setupResultCompareButtons" in script_response.text
+    assert ".result-card-main" in style_response.text
+    assert ".result-meta-grid" in style_response.text
+    assert ".result-data-badges" in style_response.text
+    assert ".entity-type-badge" in style_response.text
+
+
 def test_profile_page_serves_company_profile_frontend():
     with TestClient(app) as client:
         response = client.get("/profile")
@@ -199,11 +236,11 @@ def test_profile_page_serves_company_profile_frontend():
     assert '<a href="/openapi.json">OpenAPI</a>' not in response.text
     assert '<a href="/docs">문서</a>' not in response.text
     assert '<a href="/">새 검색</a>' not in response.text
-    assert "/styles.css?v=company-profile-39" in response.text
+    assert "/styles.css?v=company-profile-40" in response.text
     assert "/profile-chart-2.css?v=interactive-7" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-35" in response.text
+    assert "/profile-page-5.js?v=company-profile-37" in response.text
 
 
 def test_compare_page_serves_company_compare_frontend():
@@ -215,7 +252,7 @@ def test_compare_page_serves_company_compare_frontend():
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
     assert 'id="compare-root"' in response.text
-    assert "/styles.css?v=company-profile-39" in response.text
+    assert "/styles.css?v=company-profile-40" in response.text
     assert "/compare-page.js?v=company-compare-5" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "COMPARE_STORAGE_KEY" in script_response.text
@@ -313,12 +350,17 @@ def test_profile_overview_groups_company_information_without_relationship_card()
     assert 'aria-label="홈페이지"' in script_response.text
     assert 'target="_blank" rel="noreferrer">홈페이지</a>' not in script_response.text
     assert "info.dart_company || {}" in script_response.text
-    assert "직원 수" in script_response.text
-    assert "전화번호" in script_response.text
-    assert "DART 고유번호" in script_response.text
-    assert "FSS 고유번호" in script_response.text
-    assert "최초 영업일" in script_response.text
-    assert "최종 영업일" in script_response.text
+    company_info_section = script_response.text.split(
+        '<section class="company-profile-info-section"', 1
+    )[1].split("</section>", 1)[0]
+    assert "직원 수" in company_info_section
+    assert "전화번호" in company_info_section
+    assert "DART 고유번호" not in company_info_section
+    assert "FSS 고유번호" not in company_info_section
+    assert "단축코드" not in company_info_section
+    assert "ISIN" not in company_info_section
+    assert "최초 영업일" in company_info_section
+    assert "최종 영업일" in company_info_section
     assert "outline.enpTlno || dartCompany.phn_no" in script_response.text
     assert "outline.enpEmpeCnt" in script_response.text
     assert "dartCompany.corp_code" in script_response.text
@@ -345,12 +387,58 @@ def test_profile_frontend_can_add_company_to_compare_list():
     assert "setupCompareActions" in script_response.text
     assert "data-compare-add" in script_response.text
     assert "비교에 추가" in script_response.text
-    assert "/profile-page-5.js?v=company-profile-35" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-37" in profile_response.text
     assert ".block-heading .homepage-icon-link:hover {\n  color: #185abc;\n}" in style_response.text
     assert ".company-facts dd {\n  min-width: 0;\n  margin: 0;\n  color: #111827;\n  font-weight: 500;" in style_response.text
     assert ".profile-heading-actions {\n    align-items: center;\n    flex-direction: row;" in style_response.text
     assert ".profile-heading-actions .compare-add-button,\n  .profile-heading-actions .compare-link-button {\n    width: auto;" in style_response.text
     assert "font-weight: 780;" not in style_response.text
+
+
+def test_profile_exposes_executive_summary_layer():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+        style_response = client.get("/styles.css")
+
+    assert script_response.status_code == 200
+    assert style_response.status_code == 200
+    assert "renderExecutiveSummary" in script_response.text
+    assert "renderKeyMetricStrip" in script_response.text
+    assert "executive-summary-block" in script_response.text
+    assert "key-metric-strip" in script_response.text
+    assert "preferredFinancialValue" in script_response.text
+    assert ".executive-summary-block" in style_response.text
+    assert ".key-metric-strip" in style_response.text
+
+
+def test_profile_uses_consistent_data_trust_meta():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+        style_response = client.get("/styles.css")
+
+    assert script_response.status_code == 200
+    assert style_response.status_code == 200
+    assert "renderDataTrustMeta" in script_response.text
+    assert "data-trust-meta" in script_response.text
+    assert "data-trust-badge" in script_response.text
+    assert ".data-trust-meta" in style_response.text
+    assert ".data-trust-badge" in style_response.text
+    assert "공개 데이터 기반" in script_response.text
+
+
+def test_profile_exposes_mobile_section_navigation():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+        style_response = client.get("/styles.css")
+
+    assert script_response.status_code == 200
+    assert style_response.status_code == 200
+    assert "renderProfileSectionNav" in script_response.text
+    assert "profile-section-nav" in script_response.text
+    assert "data-profile-section" in script_response.text
+    assert "setupCompanyAiSummaryMore" in script_response.text
+    assert ".profile-section-nav" in style_response.text
+    assert "position: sticky;" in style_response.text
 
 
 def test_profile_hero_uses_single_arrow_back_action_without_api_cta():
@@ -446,7 +534,7 @@ def test_financial_summary_cards_open_trend_modal_with_account_checks():
     assert "financial-trend-account-check" in script_response.text
     assert ".financial-trend-modal" in style_response.text
     assert ".financial-trend-chart" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-35" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-37" in profile_response.text
 
 
 def test_financial_summary_more_link_is_in_card_heading():
@@ -582,7 +670,7 @@ def test_stock_window_tabs_expose_loading_error_and_refresh_metadata():
     assert "주가 정보를 불러오지 못했습니다" in script_response.text
     assert ".stock-window-status" in style_response.text
     assert ".company-market-card.is-loading-stock" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-35" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-37" in profile_response.text
 
 
 def test_profile_sections_render_source_and_basis_metadata():
@@ -743,8 +831,8 @@ def test_relationship_summary_cards_open_company_list_modal():
     assert "relationship-list-modal" in script_response.text
     assert ".relationship-list-modal" in style_response.text
     assert ".relationship-list-items" in style_response.text
-    assert "/styles.css?v=company-profile-39" in profile_response.text
-    assert "/profile-page-5.js?v=company-profile-35" in profile_response.text
+    assert "/styles.css?v=company-profile-40" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-37" in profile_response.text
 
 
 def test_relationship_summary_terms_have_tooltips():
@@ -803,8 +891,8 @@ def test_profile_frontend_renders_normalized_dart_insight_cards():
     assert ".company-insight-cards" in style_response.text
     assert ".ownership-stacked-bar" in style_response.text
     assert ".ownership-bar-segment" in style_response.text
-    assert "/styles.css?v=company-profile-39" in profile_response.text
-    assert "/profile-page-5.js?v=company-profile-35" in profile_response.text
+    assert "/styles.css?v=company-profile-40" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-37" in profile_response.text
 
 
 def test_profile_frontend_exposes_lazy_dart_detail_modal():

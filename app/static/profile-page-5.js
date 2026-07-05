@@ -192,6 +192,11 @@ function formatFinancialAmount(value, currency = "KRW") {
   return `${sign}${absolute.toLocaleString("ko-KR")}원`;
 }
 
+function formatKoreanCurrency(value) {
+  const formatted = formatFinancialAmount(value);
+  return formatted === "-" ? "" : formatted;
+}
+
 function shortFinancialAmount(value) {
   const amount = Number(String(value || "").replaceAll(",", ""));
   if (!Number.isFinite(amount)) return "-";
@@ -390,6 +395,28 @@ function renderSourceMeta(items) {
         )
         .join("")}
     </dl>
+  `;
+}
+
+function renderDataTrustMeta(items, status = "공개 데이터 기반") {
+  const visibleItems = items.filter((item) => item?.value);
+  if (!visibleItems.length) return "";
+  return `
+    <div class="data-trust-meta">
+      <span class="data-trust-badge">${escapeHtml(status)}</span>
+      <dl>
+        ${visibleItems
+          .map(
+            (item) => `
+              <div>
+                <dt>${escapeHtml(item.label)}</dt>
+                <dd>${escapeHtml(item.value)}</dd>
+              </div>
+            `,
+          )
+          .join("")}
+      </dl>
+    </div>
   `;
 }
 
@@ -1139,7 +1166,7 @@ function renderDisclosureEventTimeline(events) {
   const items = (events || []).slice(0, 8);
   if (!items.length) return "";
   return `
-    <article class="info-block company-event-timeline-card">
+    <article id="section-disclosures" class="info-block company-event-timeline-card">
       <div class="block-heading">
         <h3>공시 이벤트</h3>
       </div>
@@ -1468,7 +1495,7 @@ function renderCompanyInsightRow(info) {
   if (!financialSummary && !disclosures) return "";
 
   return `
-    <div class="company-insight-row">
+    <div id="section-financials" class="company-insight-row">
       ${financialSummary}
       ${disclosures}
     </div>
@@ -1889,7 +1916,7 @@ function renderRelationshipSummary(info) {
   if (!affiliates.length && !subsidiaries.length) return "";
   const listedAffiliates = affiliates.filter((item) => item.lstgYn === "Y" || item.lstgYn === "상장");
   return `
-    <article class="info-block company-relationship-summary">
+    <article id="section-relationships" class="info-block company-relationship-summary">
       <div class="block-heading">
         <h3>관계회사 요약</h3>
       </div>
@@ -2215,6 +2242,7 @@ function renderCompanyStockCard({ outline, listed, stock, stockWindow, market, c
   const hasListedStock = Boolean(listed.srtnCd);
   return `
     <article
+      id="section-market"
       class="info-block company-market-card ${stockLoading ? "is-loading-stock" : ""}"
       data-stock-code="${attr(String(listed.srtnCd || "").replace(/^A/, ""))}"
       data-stock-exchange="KRX"
@@ -2242,11 +2270,11 @@ function renderCompanyStockCard({ outline, listed, stock, stockWindow, market, c
       </div>
       ${
         hasListedStock
-          ? renderSourceMeta([
+          ? renderDataTrustMeta([
               { label: "출처", value: "SearchAPI Google Finance" },
               { label: "캐시 만료", value: formatDateTime(stock?._meta?.expires_at) },
-            ])
-          : renderSourceMeta([{ label: "상태", value: "금융위원회 기본정보 기준 상장 종목을 찾지 못했습니다." }])
+            ], "주가 제공")
+          : renderDataTrustMeta([{ label: "상태", value: "금융위원회 기본정보 기준 상장 종목을 찾지 못했습니다." }], "부분 제공")
       }
     </article>
   `;
@@ -2270,9 +2298,60 @@ function refreshCompanyStockCard({ outline, listed, stock, stockWindow, market, 
   setupDisclosureSummaryButtons();
 }
 
+function preferredFinancialValue(info, accountNames) {
+  const rows = info?.dart_financial_accounts?.list || [];
+  const match = rows.find((row) => accountNames.includes(row.account_nm));
+  return match?.thstrm_amount || "";
+}
+
+function renderKeyMetricStrip({ info, outline, listed }) {
+  const metrics = [
+    ["시장", listed.mrktCtg || outline.corpRegMrktDcdNm],
+    ["직원 수", formatNumber(outline.enpEmpeCnt)],
+    ["설립일", compactDate(outline.enpEstbDt)],
+    ["매출액", formatKoreanCurrency(preferredFinancialValue(info, ["매출액"]))],
+    ["영업이익", formatKoreanCurrency(preferredFinancialValue(info, ["영업이익"]))],
+    ["자산총계", formatKoreanCurrency(preferredFinancialValue(info, ["자산총계"]))],
+  ];
+  return `
+    <section class="key-metric-strip" aria-label="핵심 지표">
+      ${metrics
+        .map(
+          ([label, value]) => `
+            <div>
+              <span>${escapeHtml(label)}</span>
+              <strong>${escapeHtml(text(value, "-"))}</strong>
+            </div>
+          `,
+        )
+        .join("")}
+    </section>
+  `;
+}
+
+function renderProfileSectionNav() {
+  const sections = [
+    ["summary", "요약"],
+    ["market", "주가"],
+    ["financials", "재무"],
+    ["disclosures", "공시"],
+    ["relationships", "관계회사"],
+    ["basic", "기업정보"],
+  ];
+  return `
+    <nav class="profile-section-nav" aria-label="프로필 섹션">
+      ${sections
+        .map(
+          ([id, label]) => `<a href="#section-${id}" data-profile-section="${id}">${label}</a>`,
+        )
+        .join("")}
+    </nav>
+  `;
+}
+
 function renderCompanyProfileSummaryCard() {
   return `
-    <article class="info-block company-ai-summary-card" data-company-profile-summary-card>
+    <section class="company-ai-summary-card is-collapsed-mobile" data-company-profile-summary-card>
       <div class="block-heading">
         <h3>AI 기업 요약</h3>
         <span class="summary-status-pill" data-company-profile-summary-status>생성 중</span>
@@ -2282,7 +2361,7 @@ function renderCompanyProfileSummaryCard() {
         <span class="skeleton-line skeleton-wide"></span>
         <span class="skeleton-line"></span>
       </div>
-    </article>
+    </section>
   `;
 }
 
@@ -2320,7 +2399,20 @@ function renderCompanyProfileSummaryPayload(payload) {
         : ""
     }
     <p class="company-ai-summary-source">OpenAI 요약 · 금융위원회/DART 기반이며 투자 판단이 아닙니다.</p>
+    <button type="button" class="company-ai-summary-more" data-company-ai-summary-more>요약 더보기</button>
   `;
+}
+
+function setupCompanyAiSummaryMore() {
+  document.querySelectorAll("[data-company-ai-summary-more]").forEach((button) => {
+    if (button.dataset.bound === "true") return;
+    button.dataset.bound = "true";
+    button.addEventListener("click", () => {
+      const card = button.closest(".company-ai-summary-card");
+      card?.classList.remove("is-collapsed-mobile");
+      button.remove();
+    });
+  });
 }
 
 async function loadCompanyProfileSummary(crno) {
@@ -2335,6 +2427,7 @@ async function loadCompanyProfileSummary(crno) {
     body.classList.remove("company-ai-summary-skeleton");
     body.innerHTML = renderCompanyProfileSummaryPayload(payload);
     if (status) status.textContent = payload.cached ? "저장됨" : "생성됨";
+    setupCompanyAiSummaryMore();
   } catch (error) {
     body.classList.remove("company-ai-summary-skeleton");
     body.innerHTML = `
@@ -2343,6 +2436,26 @@ async function loadCompanyProfileSummary(crno) {
     `;
     if (status) status.textContent = "실패";
   }
+}
+
+function renderExecutiveSummary({ info, outline, listed }) {
+  return `
+    <article id="section-summary" class="info-block executive-summary-block">
+      <div class="block-heading">
+        <h3>요약</h3>
+        <span class="summary-status-pill">업무용 핵심 정보</span>
+      </div>
+      ${renderCompanyProfileSummaryCard()}
+      ${renderKeyMetricStrip({ info, outline, listed })}
+      ${renderDataTrustMeta(
+        [
+          { label: "출처", value: "금융위원회 기업기본정보 · DART · SearchAPI" },
+          { label: "기준", value: compactDate(outline.basDt || listed.basDt) },
+        ],
+        "공개 데이터 기반",
+      )}
+    </article>
+  `;
 }
 
 function renderCompanyDetail({ info, outline, listed, stock, stockWindow, stockLoading = false }) {
@@ -2367,7 +2480,11 @@ function renderCompanyDetail({ info, outline, listed, stock, stockWindow, stockL
   profileDetail.innerHTML = `
     <div class="company-overview-grid">
       <div class="company-main-column">
-        <article class="info-block company-about-card">
+        ${renderProfileSectionNav()}
+
+        ${renderExecutiveSummary({ info, outline, listed })}
+
+        <article id="section-basic" class="info-block company-about-card">
           <div class="block-heading">
             <h3>기업 개요</h3>
             <div class="profile-heading-actions">
@@ -2394,23 +2511,17 @@ function renderCompanyDetail({ info, outline, listed, stock, stockWindow, stockL
               <div><dt>전화번호</dt><dd>${text(outline.enpTlno || dartCompany.phn_no)}</dd></div>
               <div><dt>법인등록번호</dt><dd>${text(outline.crno || dartCompany.jurir_no || crno)}</dd></div>
               <div><dt>사업자번호</dt><dd>${text(outline.bzno || dartCompany.bizr_no)}</dd></div>
-              <div><dt>DART 고유번호</dt><dd>${text(dartCompany.corp_code || info.dart_corp_code?.match?.corp_code)}</dd></div>
-              <div><dt>FSS 고유번호</dt><dd>${text(outline.fssCorpUnqNo)}</dd></div>
               <div><dt>시장</dt><dd>${market}</dd></div>
-              <div><dt>단축코드</dt><dd>${text(listed.srtnCd)}</dd></div>
-              <div><dt>ISIN</dt><dd>${text(listed.isinCd)}</dd></div>
               <div><dt>업종</dt><dd>${text(outline.enpMainBizNm || listed.itmsNm, "정보 없음")}</dd></div>
               <div><dt>최초 영업일</dt><dd>${compactDate(outline.fstOpegDt)}</dd></div>
               <div><dt>최종 영업일</dt><dd>${compactDate(outline.lastOpegDt)}</dd></div>
             </dl>
-            ${renderSourceMeta([
+            ${renderDataTrustMeta([
               { label: "출처", value: "금융위원회 기업기본정보 · DART" },
               { label: "기준일", value: compactDate(outline.basDt || listed.basDt) },
             ])}
           </section>
         </article>
-
-        ${renderCompanyProfileSummaryCard()}
 
         ${renderCompanyStockCard({ outline, listed, stock, stockWindow, market, crno, stockLoading, disclosureEvents: info.disclosure_events })}
 

@@ -6,6 +6,8 @@ const luckySearchButton = document.querySelector("#lucky-search");
 
 const outlineUrl = "/api/company/get_corp_outline";
 const listedUrl = "/api/company/get_krx_listed_item";
+const COMPARE_STORAGE_KEY = "profilage.compareCompanies";
+const MAX_COMPARE_COMPANIES = 4;
 
 function currentSearchQuery() {
   return queryInput.value.trim();
@@ -38,6 +40,41 @@ function normalizeItems(payload) {
 
 function text(value, fallback = "-") {
   return value === undefined || value === null || value === "" ? fallback : value;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function attr(value, fallback = "") {
+  return escapeHtml(text(value, fallback));
+}
+
+function formatResultNumber(value) {
+  if (value === undefined || value === null || value === "") return "-";
+  const numeric = Number(String(value).replaceAll(",", ""));
+  return Number.isFinite(numeric) ? numeric.toLocaleString("ko-KR") : text(value);
+}
+
+function compareItems() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(COMPARE_STORAGE_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCompareItems(items) {
+  localStorage.setItem(
+    COMPARE_STORAGE_KEY,
+    JSON.stringify(items.slice(0, MAX_COMPARE_COMPANIES)),
+  );
 }
 
 function setStatus(message) {
@@ -74,19 +111,63 @@ function renderResults(items) {
   items.forEach((company) => {
     const displayName = company.listedCorpName || company.corpNm || company.itmsNm;
     const market = company.mrktCtg || company.corpRegMrktDcdNm;
-    const link = document.createElement("a");
-    link.className = "result-card";
-    link.href = profileUrl(company.crno);
-    link.dataset.crno = company.crno;
-    link.innerHTML = `
-      <strong>${text(displayName)}</strong>
-      <span>법인등록번호 ${text(company.crno)}</span>
-      <span>${company.isListed ? `상장 ${text(market)} · ${text(company.srtnCd)}` : `${text(company.enpRprFnm, "대표자 정보 없음")} · ${text(company.bzno, "사업자등록번호 없음")}`}</span>
+    const card = document.createElement("article");
+    card.className = "result-card entity-result-row";
+    card.dataset.crno = company.crno;
+    card.innerHTML = `
+      <div class="result-card-main">
+        <div class="result-title-stack">
+          <span class="entity-type-badge">기업</span>
+          <a class="result-title-link" href="${attr(profileUrl(company.crno))}">
+            <strong>${escapeHtml(text(displayName, "기업명 정보 없음"))}</strong>
+          </a>
+          <span class="result-subtitle">${escapeHtml(text(company.corpEnsnNm || company.listedItemName || company.enpRprFnm, "보조 정보 없음"))}</span>
+        </div>
+        <div class="result-actions">
+          <span class="result-market-badge">${escapeHtml(company.isListed ? text(market, "상장") : "비상장/확인 필요")}</span>
+          <a class="result-profile-link" href="${attr(profileUrl(company.crno))}">프로필 보기</a>
+          <button
+            type="button"
+            data-result-compare-add="${attr(company.crno)}"
+            data-result-name="${attr(displayName)}"
+          >비교 추가</button>
+        </div>
+      </div>
+      <div class="result-meta-grid">
+        <span><b>법인등록번호</b>${escapeHtml(text(company.crno))}</span>
+        <span><b>업종</b>${escapeHtml(text(company.enpMainBizNm || company.itmsNm, "정보 없음"))}</span>
+        <span><b>대표자</b>${escapeHtml(text(company.enpRprFnm, "정보 없음"))}</span>
+        <span><b>직원 수</b>${escapeHtml(formatResultNumber(company.enpEmpeCnt))}</span>
+      </div>
+      <div class="result-data-badges">
+        <span>${company.isListed ? "주가 가능" : "주가 미제공"}</span>
+        <span>기본정보</span>
+        ${company.isListed ? `<span>${escapeHtml(text(company.srtnCd, "종목코드"))}</span>` : ""}
+      </div>
     `;
-    fragment.appendChild(link);
+    fragment.appendChild(card);
   });
 
   resultList.appendChild(fragment);
+  setupResultCompareButtons();
+}
+
+function setupResultCompareButtons() {
+  document.querySelectorAll("[data-result-compare-add]").forEach((button) => {
+    if (button.dataset.bound === "true") return;
+    button.dataset.bound = "true";
+    button.addEventListener("click", () => {
+      const crno = button.dataset.resultCompareAdd;
+      const name = button.dataset.resultName;
+      const nextItems = [
+        ...compareItems().filter((item) => item.crno !== crno),
+        { crno, name },
+      ].slice(0, MAX_COMPARE_COMPANIES);
+      saveCompareItems(nextItems);
+      button.textContent = "추가됨";
+      button.disabled = true;
+    });
+  });
 }
 
 function listedNameCandidates(query) {
@@ -247,9 +328,15 @@ form.addEventListener("submit", (event) => {
   searchCompanies(query);
 });
 
-luckySearchButton.addEventListener("click", () => {
+luckySearchButton?.addEventListener("click", () => {
   queryInput.value = "삼성전자";
   searchCompanies("삼성전자");
+});
+
+document.querySelectorAll("[data-example-query]").forEach((button) => {
+  button.addEventListener("click", () => {
+    searchCompanies(button.dataset.exampleQuery || "");
+  });
 });
 
 const restoredQuery = new URLSearchParams(window.location.search).get("q");

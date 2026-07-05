@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Profilage</title>
-    <link rel="stylesheet" href="/styles.css?v=google-home-8" />
+    <title>Profilage | 기업 데이터 검색</title>
+    <link rel="stylesheet" href="/styles.css?v=google-home-9" />
   </head>
   <body class="is-idle google-like-home">
     <header class="top-nav" aria-label="상단 메뉴">
@@ -25,24 +25,35 @@
         data-outline-url="/api/company/get_corp_outline"
         data-profile-url="/profile?crno="
       >
-        <h1 id="page-title" class="wordmark" aria-label="Profilage">
-          <span class="wordmark-blue">P</span><span class="wordmark-red">r</span><span class="wordmark-yellow">o</span><span class="wordmark-blue">f</span><span class="wordmark-green">i</span><span class="wordmark-red">l</span><span class="wordmark-blue">a</span><span class="wordmark-green">g</span><span class="wordmark-red">e</span>
-        </h1>
+        <div class="home-kicker">B2B 기업 데이터 플랫폼</div>
+        <h1 id="page-title" class="home-title">기업 정보를 빠르게 찾고 비교하세요</h1>
+        <p class="home-subtitle">
+          금융위원회, DART, 주가 데이터를 기반으로 기업 개요·재무·공시·관계회사를 한 화면에서 확인합니다.
+        </p>
         <form class="search-form" id="search-form">
-          <label class="visually-hidden" for="company-query">기업명</label>
+          <label class="visually-hidden" for="company-query">기업명, 종목코드, 법인등록번호</label>
           <input
             id="company-query"
             name="company-query"
             type="search"
             autocomplete="off"
-            placeholder="기업명 또는 법인등록번호 검색"
+            placeholder="기업명, 종목코드, 법인등록번호로 검색"
             minlength="1"
           />
           <button class="search-submit" type="submit">검색</button>
         </form>
-        <div class="search-actions" aria-label="검색 동작">
-          <button type="submit" form="search-form">Profilage 검색</button>
-          <button type="button" id="lucky-search">대표 기업 보기</button>
+        <div class="example-query-list" aria-label="예시 기업">
+          <button type="button" data-example-query="삼성전자">삼성전자</button>
+          <button type="button" data-example-query="LG전자">LG전자</button>
+          <button type="button" data-example-query="롯데이노베이트">롯데이노베이트</button>
+          <button type="button" data-example-query="카카오">카카오</button>
+          <button type="button" data-example-query="현대자동차">현대자동차</button>
+        </div>
+        <div class="source-rail" data-source-rail aria-label="데이터 출처">
+          <span>금융위원회 기업기본정보</span>
+          <span>DART 공시/재무</span>
+          <span>SearchAPI Google Finance</span>
+          <span>OpenAI 요약</span>
         </div>
         <p class="status" id="search-status" role="status"></p>
       </section>
@@ -60,6 +71,6 @@
         <a href="/docs">개발자</a>
       </nav>
     </footer>
-    <script src="/app.js?v=google-home-9" defer></script>
+    <script src="/app.js?v=google-home-10" defer></script>
   </body>
 </html>
