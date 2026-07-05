@@ -112,6 +112,12 @@ function listedNameCandidates(query) {
     .filter((value, index, values) => value && values.indexOf(value) === index);
 }
 
+function caseInsensitiveQueryCandidates(query) {
+  return [query, query.toUpperCase(), query.toLowerCase()]
+    .map((value) => value.trim())
+    .filter((value, index, values) => value && values.indexOf(value) === index);
+}
+
 function mergeCompanyResults(outlineItems, listedItems) {
   const companies = new Map();
   const listedMarketNames = new Set(["유가", "코스닥", "코넥스"]);
@@ -167,6 +173,60 @@ async function fetchJson(url, params) {
   return response.json();
 }
 
+async function loadCompanySearchResults(query) {
+  const listedRequests = listedNameCandidates(query).map((itemName) =>
+    fetchJson(listedUrl, {
+      item_name: itemName,
+      page: 1,
+      per_page: 1,
+    }).catch(() => null),
+  );
+  const [outlinePayload, ...listedPayloads] = await Promise.all([
+    fetchJson(outlineUrl, {
+      company_name: query,
+      page: 1,
+      per_page: 1000,
+    }),
+    ...listedRequests,
+  ]);
+  const outlineItems = normalizeItems(outlinePayload);
+  const listedItems = listedPayloads.flatMap((payload) => normalizeItems(payload));
+  const listedCrnos = new Set(listedItems.map((item) => item.crno).filter(Boolean));
+  const initialItems = mergeCompanyResults(outlineItems, listedItems).slice(0, 20);
+  const listedByCrnoPayloads = await Promise.all(
+    initialItems
+      .map((item) => item.crno)
+      .filter(
+        (crno, index, crnos) =>
+          crno && !listedCrnos.has(crno) && crnos.indexOf(crno) === index,
+      )
+      .map((crno) =>
+        fetchJson(listedUrl, {
+          corporate_registration_number: crno,
+          page: 1,
+          per_page: 1,
+        }).catch(() => null),
+      ),
+  );
+  return mergeCompanyResults(
+    outlineItems,
+    [
+      ...listedItems,
+      ...listedByCrnoPayloads.flatMap((payload) => normalizeItems(payload)),
+    ],
+  ).slice(0, 20);
+}
+
+async function searchCompaniesWithCaseFallback(query) {
+  const primaryItems = await loadCompanySearchResults(query);
+  if (primaryItems.length) return primaryItems;
+  for (const candidate of caseInsensitiveQueryCandidates(query).slice(1)) {
+    const fallbackItems = await loadCompanySearchResults(candidate);
+    if (fallbackItems.length) return fallbackItems;
+  }
+  return [];
+}
+
 async function searchCompanies(query) {
   document.body.classList.remove("is-idle");
   queryInput.value = query;
@@ -175,47 +235,7 @@ async function searchCompanies(query) {
   renderSearchSkeleton();
 
   try {
-    const listedRequests = listedNameCandidates(query).map((itemName) =>
-      fetchJson(listedUrl, {
-        item_name: itemName,
-        page: 1,
-        per_page: 1,
-      }).catch(() => null),
-    );
-    const [outlinePayload, ...listedPayloads] = await Promise.all([
-      fetchJson(outlineUrl, {
-        company_name: query,
-        page: 1,
-        per_page: 1000,
-      }),
-      ...listedRequests,
-    ]);
-    const outlineItems = normalizeItems(outlinePayload);
-    const listedItems = listedPayloads.flatMap((payload) => normalizeItems(payload));
-    const listedCrnos = new Set(listedItems.map((item) => item.crno).filter(Boolean));
-    const initialItems = mergeCompanyResults(outlineItems, listedItems).slice(0, 20);
-    const listedByCrnoPayloads = await Promise.all(
-      initialItems
-        .map((item) => item.crno)
-        .filter(
-          (crno, index, crnos) =>
-            crno && !listedCrnos.has(crno) && crnos.indexOf(crno) === index,
-        )
-        .map((crno) =>
-          fetchJson(listedUrl, {
-            corporate_registration_number: crno,
-            page: 1,
-            per_page: 1,
-          }).catch(() => null),
-        ),
-    );
-    const items = mergeCompanyResults(
-      outlineItems,
-      [
-        ...listedItems,
-        ...listedByCrnoPayloads.flatMap((payload) => normalizeItems(payload)),
-      ],
-    ).slice(0, 20);
+    const items = await searchCompaniesWithCaseFallback(query);
 
     if (items.length === 0) {
       setStatus("검색 결과가 없습니다.");

@@ -147,7 +147,7 @@ def test_root_serves_company_search_frontend():
     assert 'class="search-actions"' in response.text
     assert "/api/company/get_corp_outline" in response.text
     assert "/profile?crno=" in response.text
-    assert "/app.js?v=google-home-7" in response.text
+    assert "/app.js?v=google-home-8" in response.text
 
 
 def test_search_results_status_has_breathing_room():
@@ -167,6 +167,12 @@ def test_search_results_can_restore_query_from_return_url():
     assert "searchCompanies(restoredQuery" in script_response.text
     assert 'window.history.replaceState({}, "", nextUrl)' in script_response.text
     assert 'return_q' in script_response.text
+    assert "caseInsensitiveQueryCandidates" in script_response.text
+    assert "loadCompanySearchResults" in script_response.text
+    assert "query.toUpperCase()" in script_response.text
+    assert "query.toLowerCase()" in script_response.text
+    assert "const primaryItems = await loadCompanySearchResults(query);" in script_response.text
+    assert "if (primaryItems.length) return primaryItems;" in script_response.text
 
 
 def test_profile_page_serves_company_profile_frontend():
