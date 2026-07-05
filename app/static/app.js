@@ -112,12 +112,6 @@ function listedNameCandidates(query) {
     .filter((value, index, values) => value && values.indexOf(value) === index);
 }
 
-function caseInsensitiveQueryCandidates(query) {
-  return [query, query.toUpperCase(), query.toLowerCase()]
-    .map((value) => value.trim())
-    .filter((value, index, values) => value && values.indexOf(value) === index);
-}
-
 function mergeCompanyResults(outlineItems, listedItems) {
   const companies = new Map();
   const listedMarketNames = new Set(["유가", "코스닥", "코넥스"]);
@@ -217,16 +211,6 @@ async function loadCompanySearchResults(query) {
   ).slice(0, 20);
 }
 
-async function searchCompaniesWithCaseFallback(query) {
-  const primaryItems = await loadCompanySearchResults(query);
-  if (primaryItems.length) return primaryItems;
-  for (const candidate of caseInsensitiveQueryCandidates(query).slice(1)) {
-    const fallbackItems = await loadCompanySearchResults(candidate);
-    if (fallbackItems.length) return fallbackItems;
-  }
-  return [];
-}
-
 async function searchCompanies(query) {
   document.body.classList.remove("is-idle");
   queryInput.value = query;
@@ -235,7 +219,7 @@ async function searchCompanies(query) {
   renderSearchSkeleton();
 
   try {
-    const items = await searchCompaniesWithCaseFallback(query);
+    const items = await loadCompanySearchResults(query);
 
     if (items.length === 0) {
       setStatus("검색 결과가 없습니다.");

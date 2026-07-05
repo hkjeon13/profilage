@@ -60,6 +60,23 @@ def _first_openapi_item(payload: dict[str, Any]) -> dict[str, Any]:
     return item if isinstance(item, dict) else {}
 
 
+def _has_openapi_items(payload: dict[str, Any]) -> bool:
+    item = payload.get("body", {}).get("items", {}).get("item")
+    if isinstance(item, list):
+        return bool(item)
+    return isinstance(item, dict) and bool(item)
+
+
+def _case_relaxed_candidates(value: str) -> list[str]:
+    return list(
+        dict.fromkeys(
+            item
+            for item in (value, value.upper(), value.lower())
+            if item.strip()
+        )
+    )
+
+
 @dataclass(frozen=True)
 class CompanyAffiliateQuery:
     company_name: str | None
@@ -204,6 +221,39 @@ class OpenApiCompanyService:
         )
         return result
 
+    async def _fetch_with_case_relaxed_fallback(
+        self,
+        *,
+        endpoint_url: str,
+        params: dict[str, Any],
+        search_param_names: list[str],
+        service_key_param_name: str = "ServiceKey",
+    ) -> dict[str, Any]:
+        result = await self._fetch(
+            endpoint_url=endpoint_url,
+            params=params.copy(),
+            service_key_param_name=service_key_param_name,
+        )
+        if _has_openapi_items(result):
+            return result
+
+        for param_name in search_param_names:
+            original = params.get(param_name)
+            if not isinstance(original, str) or not original:
+                continue
+            for candidate in _case_relaxed_candidates(original)[1:]:
+                fallback_params = params.copy()
+                fallback_params[param_name] = candidate
+                fallback = await self._fetch(
+                    endpoint_url=endpoint_url,
+                    params=fallback_params,
+                    service_key_param_name=service_key_param_name,
+                )
+                if _has_openapi_items(fallback):
+                    return fallback
+
+        return result
+
 
 class CompanyAffiliateService(OpenApiCompanyService):
     async def fetch(self, query: CompanyAffiliateQuery) -> dict[str, Any]:
@@ -260,9 +310,10 @@ class CompanyCorpOutlineService(OpenApiCompanyService):
         if query.company_name:
             params["corpNm"] = query.company_name
 
-        return await self._fetch(
+        return await self._fetch_with_case_relaxed_fallback(
             endpoint_url=OPEN_API_GET_CORP_OUTLINE_URL,
             params=params,
+            search_param_names=["corpNm"],
         )
 
 
@@ -285,9 +336,10 @@ class CompanyKrxListedItemService(OpenApiCompanyService):
         if query.isin_code:
             params["isinCd"] = query.isin_code
 
-        return await self._fetch(
+        return await self._fetch_with_case_relaxed_fallback(
             endpoint_url=OPEN_API_GET_KRX_LISTED_ITEM_URL,
             params=params,
+            search_param_names=["corpNm", "itmsNm"],
             service_key_param_name="serviceKey",
         )
 

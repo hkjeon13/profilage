@@ -147,7 +147,7 @@ def test_root_serves_company_search_frontend():
     assert 'class="search-actions"' in response.text
     assert "/api/company/get_corp_outline" in response.text
     assert "/profile?crno=" in response.text
-    assert "/app.js?v=google-home-8" in response.text
+    assert "/app.js?v=google-home-9" in response.text
 
 
 def test_search_results_status_has_breathing_room():
@@ -167,12 +167,9 @@ def test_search_results_can_restore_query_from_return_url():
     assert "searchCompanies(restoredQuery" in script_response.text
     assert 'window.history.replaceState({}, "", nextUrl)' in script_response.text
     assert 'return_q' in script_response.text
-    assert "caseInsensitiveQueryCandidates" in script_response.text
     assert "loadCompanySearchResults" in script_response.text
-    assert "query.toUpperCase()" in script_response.text
-    assert "query.toLowerCase()" in script_response.text
-    assert "const primaryItems = await loadCompanySearchResults(query);" in script_response.text
-    assert "if (primaryItems.length) return primaryItems;" in script_response.text
+    assert "caseInsensitiveQueryCandidates" not in script_response.text
+    assert "searchCompaniesWithCaseFallback" not in script_response.text
 
 
 def test_profile_page_serves_company_profile_frontend():
@@ -1374,6 +1371,55 @@ def test_get_corp_outline_maps_snake_case_query_to_open_api_parameters(monkeypat
     assert response.json()["body"]["items"]["item"]["corpNm"] == "삼성전자(주)"
 
 
+def test_get_corp_outline_retries_company_name_without_case_sensitivity(monkeypatch):
+    monkeypatch.setenv("OPEN_API_DECODING_KEY", "decoded-service-key")
+    monkeypatch.delenv("OPEN_API_ENCODING_KEY", raising=False)
+
+    captured_params = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        params = dict(request.url.params)
+        captured_params.append(params)
+        item = (
+            {
+                "crno": "1101112487050",
+                "corpNm": "LG전자(주)",
+            }
+            if params.get("corpNm") == "LG전자"
+            else None
+        )
+        body = {
+            "numOfRows": "10",
+            "pageNo": "1",
+            "totalCount": "1" if item else "0",
+        }
+        if item:
+            body["items"] = {"item": item}
+        return httpx.Response(
+            200,
+            json={
+                "response": {
+                    "header": {"resultCode": "00", "resultMsg": "NORMAL SERVICE."},
+                    "body": body,
+                }
+            },
+        )
+
+    transport = httpx.MockTransport(handler)
+
+    with TestClient(app) as client:
+        app.state.http_transport = transport
+        response = client.get(
+            "/company/get_corp_outline",
+            params={"company_name": "lg전자", "page": 1, "per_page": 10},
+        )
+        del app.state.http_transport
+
+    assert response.status_code == 200
+    assert [params["corpNm"] for params in captured_params] == ["lg전자", "LG전자"]
+    assert response.json()["body"]["items"]["item"]["corpNm"] == "LG전자(주)"
+
+
 def test_get_corp_outline_requires_company_name_or_corporate_registration_number():
     with TestClient(app) as client:
         response = client.get("/company/get_corp_outline")
@@ -1450,6 +1496,57 @@ def test_get_krx_listed_item_maps_snake_case_query_to_open_api_parameters(monkey
         "itmsNm": "삼성전자",
     }
     assert response.json()["body"]["items"]["item"]["srtnCd"] == "005930"
+
+
+def test_get_krx_listed_item_retries_item_name_without_case_sensitivity(monkeypatch):
+    monkeypatch.setenv("OPEN_API_DECODING_KEY", "decoded-service-key")
+    monkeypatch.delenv("OPEN_API_ENCODING_KEY", raising=False)
+
+    captured_params = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        params = dict(request.url.params)
+        captured_params.append(params)
+        item = (
+            {
+                "srtnCd": "066570",
+                "itmsNm": "LG전자",
+                "crno": "1101112487050",
+                "corpNm": "LG전자(주)",
+            }
+            if params.get("itmsNm") == "LG전자"
+            else None
+        )
+        body = {
+            "numOfRows": "10",
+            "pageNo": "1",
+            "totalCount": "1" if item else "0",
+        }
+        if item:
+            body["items"] = {"item": item}
+        return httpx.Response(
+            200,
+            json={
+                "response": {
+                    "header": {"resultCode": "00", "resultMsg": "NORMAL SERVICE."},
+                    "body": body,
+                }
+            },
+        )
+
+    transport = httpx.MockTransport(handler)
+
+    with TestClient(app) as client:
+        app.state.http_transport = transport
+        response = client.get(
+            "/company/get_krx_listed_item",
+            params={"item_name": "lg전자", "page": 1, "per_page": 10},
+        )
+        del app.state.http_transport
+
+    assert response.status_code == 200
+    assert [params["itmsNm"] for params in captured_params] == ["lg전자", "LG전자"]
+    assert response.json()["body"]["items"]["item"]["itmsNm"] == "LG전자"
 
 
 def test_get_krx_listed_item_requires_a_search_condition():
