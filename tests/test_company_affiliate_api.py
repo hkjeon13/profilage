@@ -147,6 +147,7 @@ def test_root_serves_company_search_frontend():
     assert 'class="search-actions"' in response.text
     assert "/api/company/get_corp_outline" in response.text
     assert "/profile?crno=" in response.text
+    assert "/styles.css?v=google-home-8" in response.text
     assert "/app.js?v=google-home-9" in response.text
 
 
@@ -156,6 +157,8 @@ def test_search_results_status_has_breathing_room():
 
     assert response.status_code == 200
     assert ".google-like-home:not(.is-idle) .status {\n  margin-top: 36px;" in response.text
+    assert ".detail-panel {\n  min-height: 360px;" in response.text
+    assert ".result-list,\n.detail-panel {\n  min-height: 360px;" not in response.text
 
 
 def test_search_results_can_restore_query_from_return_url():
