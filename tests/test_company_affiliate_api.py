@@ -1649,7 +1649,7 @@ def test_get_company_info_keeps_outline_when_optional_sources_fail(monkeypatch):
         if request.url.path.endswith("/getConsSubsComp_V2"):
             return httpx.Response(502, json={"detail": "Subsidiary unavailable"})
         if request.url.path.endswith("/corpCode.xml"):
-            return httpx.Response(502, text="DART unavailable")
+            return httpx.Response(200, content=dart_corp_code_zip())
         return httpx.Response(404, json={})
 
     with TestClient(app) as client:
@@ -1667,7 +1667,8 @@ def test_get_company_info_keeps_outline_when_optional_sources_fail(monkeypatch):
     assert payload["krx_listed_item"]["_meta"]["status"] == "unavailable"
     assert payload["affiliate"]["_meta"]["status"] == "unavailable"
     assert payload["cons_subs_comp"]["_meta"]["status"] == "unavailable"
-    assert payload["dart_corp_code"]["_meta"]["status"] == "unavailable"
+    assert payload["dart_corp_code"]["status"] == "013"
+    assert payload["dart_corp_code"]["match"] is None
 
 
 @pytest.mark.asyncio

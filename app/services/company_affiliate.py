@@ -521,7 +521,7 @@ class CompanyInfoService(OpenApiCompanyService):
                 company_name=company_name,
             )
         )
-        corp_code = corp_code_payload.get("match", {}).get("corp_code")
+        corp_code = (corp_code_payload.get("match") or {}).get("corp_code")
         if not corp_code:
             return {"dart_corp_code": corp_code_payload}
 
