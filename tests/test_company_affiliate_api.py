@@ -189,7 +189,7 @@ def test_profile_page_serves_company_profile_frontend():
     assert '<a href="/openapi.json">OpenAPI</a>' not in response.text
     assert '<a href="/docs">문서</a>' not in response.text
     assert '<a href="/">새 검색</a>' not in response.text
-    assert "/styles.css?v=company-profile-38" in response.text
+    assert "/styles.css?v=company-profile-39" in response.text
     assert "/profile-chart-2.css?v=interactive-7" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
@@ -205,7 +205,7 @@ def test_compare_page_serves_company_compare_frontend():
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
     assert 'id="compare-root"' in response.text
-    assert "/styles.css?v=company-profile-38" in response.text
+    assert "/styles.css?v=company-profile-39" in response.text
     assert "/compare-page.js?v=company-compare-5" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "COMPARE_STORAGE_KEY" in script_response.text
@@ -233,6 +233,7 @@ def test_compare_page_serves_company_compare_frontend():
     assert "최소 2개 기업을 선택하면 비교표가 표시됩니다" in script_response.text
     assert ".compare-table" in style_response.text
     assert ".compare-best" in style_response.text
+    assert ".compare-table tbody tr:last-child th,\n.compare-table tbody tr:last-child td" in style_response.text
     assert ".compare-remove-button" in style_response.text
     assert ".compare-column-head" in style_response.text
     assert ".compare-column-basis" in style_response.text
@@ -723,7 +724,7 @@ def test_relationship_summary_cards_open_company_list_modal():
     assert "relationship-list-modal" in script_response.text
     assert ".relationship-list-modal" in style_response.text
     assert ".relationship-list-items" in style_response.text
-    assert "/styles.css?v=company-profile-38" in profile_response.text
+    assert "/styles.css?v=company-profile-39" in profile_response.text
     assert "/profile-page-5.js?v=company-profile-34" in profile_response.text
 
 
@@ -783,7 +784,7 @@ def test_profile_frontend_renders_normalized_dart_insight_cards():
     assert ".company-insight-cards" in style_response.text
     assert ".ownership-stacked-bar" in style_response.text
     assert ".ownership-bar-segment" in style_response.text
-    assert "/styles.css?v=company-profile-38" in profile_response.text
+    assert "/styles.css?v=company-profile-39" in profile_response.text
     assert "/profile-page-5.js?v=company-profile-34" in profile_response.text
 
 

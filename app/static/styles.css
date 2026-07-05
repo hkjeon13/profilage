@@ -1989,6 +1989,11 @@ a:hover {
   font-weight: 850;
 }
 
+.compare-table tbody tr:last-child th,
+.compare-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
 .compare-column-head {
   display: inline-flex;
   align-items: center;
