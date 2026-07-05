@@ -32,6 +32,10 @@ from app.services.company_insights import (
     normalize_capital_detail,
     normalize_people_detail,
 )
+from app.services.company_profile_summary import (
+    CompanyProfileSummaryQuery,
+    CompanyProfileSummaryService,
+)
 from app.services.company_store import get_default_data_group_store
 
 router = APIRouter(prefix="/company", tags=["company"])
@@ -349,6 +353,38 @@ async def get_dart_disclosure_summary(
             receipt_no=receipt_no,
             viewer_url=viewer_url,
             title=title,
+        )
+    )
+
+
+@router.get("/get_company_profile_summary")
+async def get_company_profile_summary(
+    request: Request,
+    corporate_registration_number: Annotated[
+        str, Query(description="법인등록번호")
+    ],
+):
+    transport = getattr(request.app.state, "http_transport", None)
+    store = get_default_data_group_store()
+    profile_service = CompanyInfoService(
+        transport=transport,
+        data_group_store=store,
+    )
+    profile_payload = await profile_service.fetch(
+        CompanyInfoQuery(
+            corporate_registration_number=corporate_registration_number,
+            page=1,
+            per_page=10,
+        )
+    )
+    summary_service = CompanyProfileSummaryService(
+        transport=transport,
+        data_group_store=store,
+    )
+    return await summary_service.fetch(
+        CompanyProfileSummaryQuery(
+            corporate_registration_number=corporate_registration_number,
+            profile_payload=profile_payload,
         )
     )
 

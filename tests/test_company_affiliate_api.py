@@ -1111,6 +1111,27 @@ def test_disclosure_summary_normalizer_returns_stable_shape():
     }
 
 
+def test_company_profile_summary_normalizer_returns_stable_shape():
+    from app.services.company_profile_summary import normalize_company_summary_payload
+
+    payload = normalize_company_summary_payload(
+        {
+            "headline": "롯데이노베이트는 IT 서비스 기업입니다.",
+            "bullets": ["공시 기반 요약", "재무 기반 요약"],
+            "watch_points": ["확인 필요"],
+            "data_basis": ["DART", "금융위원회"],
+        }
+    )
+
+    assert payload == {
+        "headline": "롯데이노베이트는 IT 서비스 기업입니다.",
+        "bullets": ["공시 기반 요약", "재무 기반 요약"],
+        "watch_points": ["확인 필요"],
+        "data_basis": ["DART", "금융위원회"],
+        "limitations": [],
+    }
+
+
 @pytest.mark.asyncio
 async def test_openai_summary_client_parses_response_json(monkeypatch):
     from app.services.company_disclosure_summary import summarize_with_openai
@@ -1187,6 +1208,65 @@ async def test_disclosure_summary_service_reuses_cached_summary(monkeypatch):
     )
 
     assert payload["summary"]["bullets"] == ["cached"]
+
+
+@pytest.mark.asyncio
+async def test_company_profile_summary_service_reuses_cached_summary(monkeypatch):
+    from app.services.company_profile_summary import (
+        COMPANY_PROFILE_SUMMARY_PROMPT_VERSION,
+        CompanyProfileSummaryQuery,
+        CompanyProfileSummaryService,
+        company_profile_summary_group_name,
+    )
+
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("OPENAI_MODEL", "gpt-test")
+    store = FakeDataGroupStore()
+    group_name = company_profile_summary_group_name("gpt-test")
+    store.records[("company", "1101113326588", group_name)] = fresh_record(
+        {
+            "corporate_registration_number": "1101113326588",
+            "summary": {
+                "headline": "cached headline",
+                "bullets": ["cached bullet"],
+                "watch_points": [],
+                "data_basis": ["cached basis"],
+                "limitations": [],
+            },
+            "fingerprint": "stable",
+            "model": "gpt-test",
+            "prompt_version": COMPANY_PROFILE_SUMMARY_PROMPT_VERSION,
+        }
+    )
+    service = CompanyProfileSummaryService(
+        transport=httpx.MockTransport(lambda request: httpx.Response(500)),
+        data_group_store=store,
+    )
+
+    payload = await service.fetch(
+        CompanyProfileSummaryQuery(
+            corporate_registration_number="1101113326588",
+            profile_payload={"fingerprint": "stable"},
+        )
+    )
+
+    assert payload["summary"]["headline"] == "cached headline"
+    assert payload["cached"] is True
+
+
+def test_profile_frontend_exposes_async_company_profile_summary_card():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+        style_response = client.get("/styles.css")
+
+    assert script_response.status_code == 200
+    assert style_response.status_code == 200
+    assert "renderCompanyProfileSummaryCard" in script_response.text
+    assert "loadCompanyProfileSummary" in script_response.text
+    assert "/api/company/get_company_profile_summary" in script_response.text
+    assert "company-ai-summary-card" in script_response.text
+    assert ".company-ai-summary-card" in style_response.text
+    assert ".company-ai-summary-skeleton" in style_response.text
 
 
 @pytest.mark.asyncio

@@ -2270,6 +2270,81 @@ function refreshCompanyStockCard({ outline, listed, stock, stockWindow, market, 
   setupDisclosureSummaryButtons();
 }
 
+function renderCompanyProfileSummaryCard() {
+  return `
+    <article class="info-block company-ai-summary-card" data-company-profile-summary-card>
+      <div class="block-heading">
+        <h3>AI 기업 요약</h3>
+        <span class="summary-status-pill" data-company-profile-summary-status>생성 중</span>
+      </div>
+      <div class="company-ai-summary-body company-ai-summary-skeleton" data-company-profile-summary-body aria-live="polite">
+        <span class="skeleton-line skeleton-section-title"></span>
+        <span class="skeleton-line skeleton-wide"></span>
+        <span class="skeleton-line"></span>
+      </div>
+    </article>
+  `;
+}
+
+function renderCompanyProfileSummaryList(items) {
+  if (!Array.isArray(items) || !items.length) return "";
+  return `
+    <ul>
+      ${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+    </ul>
+  `;
+}
+
+function renderCompanyProfileSummaryPayload(payload) {
+  const summary = payload?.summary || {};
+  return `
+    <p class="company-ai-summary-headline">${escapeHtml(text(summary.headline, "요약 문장을 생성하지 못했습니다."))}</p>
+    ${
+      summary.bullets?.length
+        ? `<section><h4>핵심 포인트</h4>${renderCompanyProfileSummaryList(summary.bullets)}</section>`
+        : ""
+    }
+    ${
+      summary.watch_points?.length
+        ? `<section><h4>확인할 점</h4>${renderCompanyProfileSummaryList(summary.watch_points)}</section>`
+        : ""
+    }
+    ${
+      summary.data_basis?.length
+        ? `<section><h4>데이터 기준</h4>${renderCompanyProfileSummaryList(summary.data_basis)}</section>`
+        : ""
+    }
+    ${
+      summary.limitations?.length
+        ? `<section><h4>한계</h4>${renderCompanyProfileSummaryList(summary.limitations)}</section>`
+        : ""
+    }
+    <p class="company-ai-summary-source">OpenAI 요약 · 금융위원회/DART 기반이며 투자 판단이 아닙니다.</p>
+  `;
+}
+
+async function loadCompanyProfileSummary(crno) {
+  const card = document.querySelector("[data-company-profile-summary-card]");
+  if (!card || !crno) return;
+  const body = card.querySelector("[data-company-profile-summary-body]");
+  const status = card.querySelector("[data-company-profile-summary-status]");
+  try {
+    const payload = await fetchJson("/api/company/get_company_profile_summary", {
+      corporate_registration_number: crno,
+    });
+    body.classList.remove("company-ai-summary-skeleton");
+    body.innerHTML = renderCompanyProfileSummaryPayload(payload);
+    if (status) status.textContent = payload.cached ? "저장됨" : "생성됨";
+  } catch (error) {
+    body.classList.remove("company-ai-summary-skeleton");
+    body.innerHTML = `
+      <p class="company-ai-summary-empty">기업 요약을 만들 수 없습니다.</p>
+      <p class="company-ai-summary-source">${escapeHtml(error.message || "요약 요청에 실패했습니다.")}</p>
+    `;
+    if (status) status.textContent = "실패";
+  }
+}
+
 function renderCompanyDetail({ info, outline, listed, stock, stockWindow, stockLoading = false }) {
   const crno = new URLSearchParams(window.location.search).get("crno");
   const dartCompany = info.dart_company || {};
@@ -2334,6 +2409,8 @@ function renderCompanyDetail({ info, outline, listed, stock, stockWindow, stockL
             ])}
           </section>
         </article>
+
+        ${renderCompanyProfileSummaryCard()}
 
         ${renderCompanyStockCard({ outline, listed, stock, stockWindow, market, crno, stockLoading, disclosureEvents: info.disclosure_events })}
 
@@ -2437,6 +2514,7 @@ async function loadProfile() {
       stockWindow,
       stockLoading: shouldLoadStock,
     });
+    loadCompanyProfileSummary(crno);
 
     if (listed.srtnCd) {
       const stock = await fetchJson(stockUrl, {

@@ -1418,6 +1418,81 @@ a:hover {
   overflow-wrap: anywhere;
 }
 
+.company-ai-summary-card .block-heading {
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.summary-status-pill {
+  display: inline-flex;
+  min-height: 26px;
+  align-items: center;
+  border-radius: 8px;
+  background: #f3f6fb;
+  color: #657188;
+  font-size: 12px;
+  font-weight: 850;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.company-ai-summary-body {
+  display: grid;
+  gap: 14px;
+  color: #3f4757;
+  line-height: 1.7;
+}
+
+.company-ai-summary-skeleton {
+  gap: 10px;
+}
+
+.company-ai-summary-headline {
+  margin: 0;
+  color: #111827;
+  font-size: 17px;
+  font-weight: 850;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.company-ai-summary-body section {
+  display: grid;
+  gap: 8px;
+}
+
+.company-ai-summary-body h4 {
+  margin: 0;
+  color: #687386;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.company-ai-summary-body ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.company-ai-summary-body li {
+  padding-left: 2px;
+  overflow-wrap: anywhere;
+}
+
+.company-ai-summary-source,
+.company-ai-summary-empty {
+  margin: 0;
+  color: #747f92;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.company-ai-summary-empty {
+  color: #3f4757;
+  font-weight: 800;
+}
+
 .company-profile-info-section {
   margin-top: 18px;
 }
