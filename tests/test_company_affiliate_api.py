@@ -263,7 +263,7 @@ def test_profile_page_serves_company_profile_frontend():
     assert "/profile-chart-2.css?v=interactive-9" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-44" in response.text
+    assert "/profile-page-5.js?v=company-profile-45" in response.text
 
 
 def test_compare_page_serves_company_compare_frontend():
@@ -416,7 +416,7 @@ def test_profile_frontend_can_add_company_to_compare_list():
     assert "setupCompareActions" in script_response.text
     assert "data-compare-add" in script_response.text
     assert "비교에 추가" in script_response.text
-    assert "/profile-page-5.js?v=company-profile-44" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-45" in profile_response.text
     assert ".block-heading .homepage-icon-link:hover {\n  color: #185abc;\n}" in style_response.text
     assert ".company-facts dd {\n  min-width: 0;\n  margin: 0;\n  color: #111827;\n  font-weight: 500;" in style_response.text
     assert ".profile-heading-actions {\n    align-items: center;\n    flex-direction: row;" in style_response.text
@@ -563,7 +563,7 @@ def test_financial_summary_cards_open_trend_modal_with_account_checks():
     assert "financial-trend-account-check" in script_response.text
     assert ".financial-trend-modal" in style_response.text
     assert ".financial-trend-chart" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-44" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-45" in profile_response.text
 
 
 def test_financial_summary_more_link_is_in_card_heading():
@@ -699,7 +699,7 @@ def test_stock_window_tabs_expose_loading_error_and_refresh_metadata():
     assert "주가 정보를 불러오지 못했습니다" in script_response.text
     assert ".stock-window-status" in style_response.text
     assert ".company-market-card.is-loading-stock" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-44" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-45" in profile_response.text
 
 
 def test_profile_sections_render_source_and_basis_metadata():
@@ -877,7 +877,7 @@ def test_relationship_summary_cards_open_company_list_modal():
     assert ".relationship-list-modal" in style_response.text
     assert ".relationship-list-items" in style_response.text
     assert "/styles.css?v=company-profile-47" in profile_response.text
-    assert "/profile-page-5.js?v=company-profile-44" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-45" in profile_response.text
 
 
 def test_relationship_summary_terms_have_tooltips():
@@ -925,6 +925,8 @@ def test_profile_frontend_renders_normalized_dart_insight_cards():
     assert "insights.audit" in script_response.text
     assert "insights.ratios" in script_response.text
     assert "renderOwnershipStackedBar" in script_response.text
+    assert "mergeOwnershipHolders" in script_response.text
+    assert "normalizedOwnershipHolderName" in script_response.text
     assert "setupShareholderDetailButtons" in script_response.text
     assert "shareholderSearchUrl" in script_response.text
     assert "상위 20개 기업집단 내 보유 후보" in script_response.text
@@ -942,7 +944,7 @@ def test_profile_frontend_renders_normalized_dart_insight_cards():
     assert ".ownership-bar-segment" in style_response.text
     assert ".shareholder-detail-modal" in style_response.text
     assert "/styles.css?v=company-profile-47" in profile_response.text
-    assert "/profile-page-5.js?v=company-profile-44" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-45" in profile_response.text
 
 
 def test_profile_frontend_exposes_lazy_dart_detail_modal():
@@ -1180,6 +1182,13 @@ def test_company_insight_normalizer_returns_stable_phase_one_shape():
                         "bsis_posesn_stock_qota_rt": "10.0",
                     },
                     {
+                        "nm": "홍길동",
+                        "relate": "특수관계인",
+                        "stock_knd": "우선주",
+                        "bsis_posesn_stock_co": "50",
+                        "bsis_posesn_stock_qota_rt": "1.25",
+                    },
+                    {
                         "nm": "특수관계인",
                         "relate": "계열회사",
                         "bsis_posesn_stock_qota_rt": "5.5",
@@ -1236,13 +1245,13 @@ def test_company_insight_normalizer_returns_stable_phase_one_shape():
         "홍길동",
         "특수관계인",
     ]
-    assert payload["ownership"]["holders"][0] == {
-        "name": "더큰주주",
-        "relation": "계열회사",
-        "ratio": "15.5",
-        "ratio_number": 15.5,
-    }
-    assert payload["ownership"]["holders"][1]["ratio_number"] == 10.0
+    assert payload["ownership"]["holders"][0]["name"] == "더큰주주"
+    assert payload["ownership"]["holders"][0]["relation"] == "계열회사"
+    assert payload["ownership"]["holders"][0]["ratio"] == "15.5"
+    assert payload["ownership"]["holders"][0]["ratio_number"] == 15.5
+    assert payload["ownership"]["holders"][1]["ratio"] == "11.25"
+    assert payload["ownership"]["holders"][1]["ratio_number"] == 11.25
+    assert len(payload["ownership"]["holders"][1]["rows"]) == 2
     assert payload["ownership"]["holders"][2]["ratio_number"] == 5.5
     assert payload["dividend"]["dividend_per_share"] == "1,444"
     assert payload["audit"]["auditor"] == "삼일회계법인"

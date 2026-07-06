@@ -40,29 +40,41 @@ def _is_ownership_total_row(row: dict[str, Any]) -> bool:
     return str(name or "").strip() in {"계", "합계", "소계", "총계"}
 
 
+def _holder_key(name: str | None) -> str:
+    return "".join(str(name or "").split()).lower()
+
+
 def normalize_ownership(payload: dict[str, Any] | None) -> dict[str, Any] | None:
     rows = _items(payload)
     if not rows:
         return None
-    holders = []
+    holders_by_key: dict[str, dict[str, Any]] = {}
     for row in rows:
         if _is_ownership_total_row(row):
             continue
+        name = _first_value(row, ["nm", "holder_nm", "stockholdr_nm"])
         ratio = _first_value(
             row,
             ["bsis_posesn_stock_qota_rt", "posesn_stock_qota_rt", "stock_qota_rt"],
         )
         ratio_number = _number(ratio)
-        if ratio_number is None:
+        if ratio_number is None or not name:
             continue
-        holders.append(
-            {
-                "name": _first_value(row, ["nm", "holder_nm", "stockholdr_nm"]),
+        key = _holder_key(name)
+        existing = holders_by_key.get(key)
+        if existing:
+            existing["ratio_number"] += ratio_number
+            existing["ratio"] = f"{existing['ratio_number']:.2f}".rstrip("0").rstrip(".")
+            existing["rows"].append(row)
+            continue
+        holders_by_key[key] = {
+                "name": name,
                 "relation": _first_value(row, ["relate", "relate_nm"]),
                 "ratio": ratio,
                 "ratio_number": ratio_number,
+                "rows": [row],
             }
-        )
+    holders = list(holders_by_key.values())
     holders.sort(key=lambda holder: holder["ratio_number"], reverse=True)
     largest_holder = holders[0] if holders else {}
     first = rows[0]

@@ -1622,10 +1622,36 @@ function isOwnershipTotalHolder(holder) {
   return ["계", "합계", "소계", "총계"].includes(String(holder?.name || "").trim());
 }
 
+function normalizedOwnershipHolderName(holder) {
+  return String(holder?.name || "").replace(/\s+/g, "").toLowerCase();
+}
+
+function mergeOwnershipHolders(holders) {
+  const merged = new Map();
+  holders.forEach((holder) => {
+    const key = normalizedOwnershipHolderName(holder);
+    if (!key) return;
+    const ratioNumber = Number(holder.ratio_number);
+    if (!Number.isFinite(ratioNumber) || ratioNumber <= 0 || isOwnershipTotalHolder(holder)) return;
+    const existing = merged.get(key);
+    if (existing) {
+      existing.ratio_number += ratioNumber;
+      existing.ratio = Number(existing.ratio_number).toFixed(2).replace(/\.?0+$/, "");
+      existing.rows = [...(existing.rows || []), holder];
+      return;
+    }
+    merged.set(key, {
+      ...holder,
+      ratio_number: ratioNumber,
+      ratio: holder.ratio || Number(ratioNumber).toFixed(2).replace(/\.?0+$/, ""),
+      rows: [holder],
+    });
+  });
+  return Array.from(merged.values());
+}
+
 function renderOwnershipStackedBar(ownership) {
-  const holders = (ownership?.holders || [])
-    .filter((holder) => Number.isFinite(Number(holder.ratio_number)) && Number(holder.ratio_number) > 0)
-    .filter((holder) => !isOwnershipTotalHolder(holder))
+  const holders = mergeOwnershipHolders(ownership?.holders || [])
     .sort((a, b) => Number(b.ratio_number) - Number(a.ratio_number))
     .slice(0, OWNERSHIP_BAR_MAX_HOLDERS);
   if (!holders.length) {
