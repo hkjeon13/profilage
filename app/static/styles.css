@@ -3605,8 +3605,13 @@ a:hover {
     padding-bottom: 32px;
   }
 
+  .company-main-column {
+    gap: 16px;
+  }
+
   .profile-page .info-block {
-    padding: 18px;
+    border-radius: 10px;
+    padding: 16px;
   }
 
   .profile-hero {
@@ -3651,7 +3656,8 @@ a:hover {
   }
 
   .profile-basic-card {
-    padding: 14px;
+    border-radius: 10px;
+    padding: 16px;
   }
 
   .profile-basic-heading {
@@ -3663,7 +3669,7 @@ a:hover {
   }
 
   .profile-basic-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
 
   .profile-basic-grid div,
@@ -3675,17 +3681,17 @@ a:hover {
   }
 
   .profile-basic-grid div:nth-child(odd) {
-    padding-right: 12px;
+    padding-right: 0;
   }
 
   .profile-basic-grid div:nth-child(even) {
-    border-left: 1px solid #eef0f6;
-    padding-left: 12px;
+    border-left: 0;
+    padding-left: 0;
   }
 
   .profile-basic-grid div:first-child,
   .profile-basic-grid .profile-basic-wide {
-    grid-column: auto;
+    grid-column: 1 / -1;
     border-left: 0;
   }
 
@@ -3695,7 +3701,7 @@ a:hover {
   }
 
   .profile-basic-grid div:first-child {
-    padding-right: 12px;
+    padding-right: 0;
   }
 
   .profile-basic-grid dt {
@@ -3704,22 +3710,153 @@ a:hover {
 
   .profile-basic-grid dd {
     font-size: 13px;
-    line-height: 1.42;
+    line-height: 1.48;
+  }
+
+  .profile-basic-grid a {
+    white-space: normal;
   }
 
   .profile-section-nav {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    display: flex;
     justify-content: flex-start;
-    overflow: visible;
+    overflow-x: auto;
     gap: 6px;
     padding: 8px;
+    scrollbar-width: none;
+  }
+
+  .profile-section-nav::-webkit-scrollbar {
+    display: none;
   }
 
   .profile-section-nav a {
-    min-height: 34px;
-    padding: 0 8px;
+    flex: 0 0 auto;
+    min-height: 36px;
+    padding: 0 13px;
     font-size: 12px;
+  }
+
+  .company-ai-summary-card {
+    gap: 14px;
+  }
+
+  .company-ai-summary-card .block-heading,
+  .company-insight-summary-heading {
+    gap: 10px;
+  }
+
+  .company-ai-summary-headline {
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .company-ai-summary-body {
+    gap: 12px;
+    line-height: 1.62;
+  }
+
+  .company-insight-summary-card {
+    gap: 12px;
+  }
+
+  .company-insight-card-grid {
+    gap: 10px;
+  }
+
+  .company-insight-card {
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .company-insight-card .block-heading {
+    margin-bottom: 4px;
+  }
+
+  .profile-page .company-insight-card h3 {
+    font-size: 15px;
+  }
+
+  .compact-metric-grid {
+    gap: 8px;
+  }
+
+  .compact-metric-grid > div {
+    padding: 10px;
+  }
+
+  .compact-metric-grid dd {
+    font-size: 17px;
+  }
+
+  .ownership-stacked-bar {
+    gap: 10px;
+  }
+
+  .ownership-bar-track {
+    height: 12px;
+  }
+
+  .ownership-bar-legend {
+    gap: 7px;
+  }
+
+  .ownership-bar-legend li {
+    grid-template-columns: 9px minmax(0, 1fr) auto;
+    gap: 7px;
+    font-size: 12px;
+  }
+
+  .ownership-bar-legend i {
+    width: 9px;
+    height: 9px;
+  }
+
+  .dart-insight-detail-actions {
+    gap: 7px;
+  }
+
+  .dart-insight-detail-actions button {
+    min-height: 38px;
+    padding: 0 10px;
+  }
+
+  .dart-insight-detail-modal {
+    align-items: end;
+    padding: 10px;
+  }
+
+  .dart-insight-detail-dialog {
+    width: 100%;
+    max-height: calc(100dvh - 20px);
+    border-radius: 14px;
+  }
+
+  .dart-insight-detail-header {
+    padding: 16px 16px 12px;
+  }
+
+  .dart-insight-detail-header h3 {
+    font-size: 19px;
+  }
+
+  .dart-insight-detail-close {
+    width: 44px;
+    height: 44px;
+    font-size: 21px;
+  }
+
+  .dart-insight-detail-body {
+    max-height: calc(100dvh - 96px);
+    padding: 14px 16px 16px;
+  }
+
+  .dart-insight-detail-list {
+    gap: 8px;
+  }
+
+  .dart-insight-detail-list li {
+    padding: 11px 12px;
   }
 
   .stock-chart svg {
@@ -3728,7 +3865,7 @@ a:hover {
 
   .profile-section-nav {
     top: 0;
-    padding-right: 16px;
+    padding-right: 8px;
   }
 
   .company-ai-summary-card.is-collapsed-mobile .company-ai-summary-body {

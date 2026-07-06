@@ -298,7 +298,7 @@ def test_profile_page_serves_company_profile_frontend():
     assert '<a href="/openapi.json">OpenAPI</a>' not in response.text
     assert '<a href="/docs">문서</a>' not in response.text
     assert '<a href="/">새 검색</a>' not in response.text
-    assert "/styles.css?v=company-profile-63" in response.text
+    assert "/styles.css?v=company-profile-64" in response.text
     assert "/profile-chart-2.css?v=interactive-9" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
@@ -465,10 +465,10 @@ def test_profile_mobile_layout_keeps_summary_near_first_viewport():
     assert ".profile-hero {\n    min-height: 228px;" in mobile_css
     assert ".profile-hero-badges {\n    display: none;" in mobile_css
     assert ".profile-rating-card {\n    left: 16px;\n    bottom: 16px;" in mobile_css
-    assert ".profile-basic-card {\n    padding: 14px;" in mobile_css
+    assert ".profile-basic-card {\n    border-radius: 10px;\n    padding: 16px;" in mobile_css
     assert ".profile-basic-heading {\n    margin-bottom: 12px;" in mobile_css
     assert ".profile-basic-grid div {\n    padding-top: 10px;\n    padding-bottom: 10px;" in mobile_css
-    assert ".profile-basic-grid .profile-basic-wide {\n    grid-column: auto;" in mobile_css
+    assert ".profile-basic-grid .profile-basic-wide {\n    grid-column: 1 / -1;" in mobile_css
     assert ".profile-basic-grid a {\n  display: inline-block;\n  max-width: 100%;" in style_response.text
     assert "text-overflow: ellipsis;" in style_response.text
 
@@ -518,7 +518,7 @@ def test_profile_exposes_mobile_section_navigation():
     assert "position: sticky;" in style_response.text
     assert "scrollbar-gutter: stable;" in style_response.text
     assert "scroll-padding-inline: 8px;" in style_response.text
-    assert ".profile-section-nav {\n    top: 0;\n    padding-right: 16px;" in style_response.text
+    assert ".profile-section-nav {\n    top: 0;\n    padding-right: 8px;" in style_response.text
 
 
 def test_profile_hero_uses_single_arrow_back_action_without_api_cta():
@@ -945,7 +945,7 @@ def test_relationship_summary_cards_open_company_list_modal():
     assert "relationship-list-modal" in script_response.text
     assert ".relationship-list-modal" in style_response.text
     assert ".relationship-list-items" in style_response.text
-    assert "/styles.css?v=company-profile-63" in profile_response.text
+    assert "/styles.css?v=company-profile-64" in profile_response.text
     assert "/profile-page-5.js?v=company-profile-57" in profile_response.text
 
 
@@ -1016,7 +1016,7 @@ def test_profile_frontend_renders_normalized_dart_insight_cards():
     assert ".ownership-stacked-bar" in style_response.text
     assert ".ownership-bar-segment" in style_response.text
     assert ".shareholder-detail-modal" in style_response.text
-    assert "/styles.css?v=company-profile-63" in profile_response.text
+    assert "/styles.css?v=company-profile-64" in profile_response.text
     assert "/profile-page-5.js?v=company-profile-57" in profile_response.text
 
 
@@ -1069,6 +1069,23 @@ def test_dart_insight_cards_include_source_and_empty_state_copy():
     assert "표시할 심화 정보가 없습니다" in script_response.text
     assert ".company-insight-source" in style_response.text
     assert "@media (max-width: 820px)" in style_response.text
+
+
+def test_profile_mobile_styles_reduce_dense_profile_sections():
+    with TestClient(app) as client:
+        style_response = client.get("/styles.css")
+
+    assert style_response.status_code == 200
+    mobile_rule = style_response.text.split("@media (max-width: 560px)", 1)[1]
+    assert ".profile-basic-grid {\n    grid-template-columns: 1fr;" in mobile_rule
+    assert ".profile-basic-grid div:nth-child(even) {\n    border-left: 0;" in mobile_rule
+    assert ".profile-section-nav {\n    display: flex;" in mobile_rule
+    insight_card_rule = mobile_rule.split(".company-insight-card {", 1)[1].split("}", 1)[0]
+    assert "padding: 12px;" in insight_card_rule
+    assert ".company-insight-card .block-heading {\n    margin-bottom: 4px;" in mobile_rule
+    assert ".dart-insight-detail-modal {\n    align-items: end;\n    padding: 10px;" in mobile_rule
+    assert ".dart-insight-detail-dialog {\n    width: 100%;" in mobile_rule
+    assert ".dart-insight-detail-close {\n    width: 44px;" in mobile_rule
 
 
 def test_profile_frontend_exposes_disclosure_events_and_risk_signals():
