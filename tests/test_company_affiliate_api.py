@@ -297,7 +297,7 @@ def test_profile_page_serves_company_profile_frontend():
     assert "/profile-chart-2.css?v=interactive-9" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-50" in response.text
+    assert "/profile-page-5.js?v=company-profile-51" in response.text
 
 
 def test_compare_page_serves_company_compare_frontend():
@@ -450,7 +450,7 @@ def test_profile_frontend_can_add_company_to_compare_list():
     assert "setupCompareActions" in script_response.text
     assert "data-compare-add" in script_response.text
     assert "비교에 추가" in script_response.text
-    assert "/profile-page-5.js?v=company-profile-50" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-51" in profile_response.text
     assert ".block-heading .homepage-icon-link:hover {\n  color: #185abc;\n}" in style_response.text
     assert ".company-facts dd {\n  min-width: 0;\n  margin: 0;\n  color: #111827;\n  font-weight: 500;" in style_response.text
     assert ".profile-heading-actions {\n    align-items: center;\n    flex-direction: row;" in style_response.text
@@ -609,7 +609,7 @@ def test_financial_summary_cards_open_trend_modal_with_account_checks():
     assert ".financial-trend-chart" in style_response.text
     assert ".disclosure-summary-close,\n.disclosure-viewer-close,\n.financial-trend-close," in style_response.text
     assert "background: transparent;" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-50" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-51" in profile_response.text
 
 
 def test_financial_summary_more_link_is_in_card_heading():
@@ -631,6 +631,11 @@ def test_financial_summary_and_disclosures_share_horizontal_row():
     assert style_response.status_code == 200
     assert "company-insight-row" in script_response.text
     assert "renderCompanyInsightRow(info)" in script_response.text
+    row_renderer = script_response.text.split("function renderCompanyInsightRow(info)", 1)[1].split("function renderInsightMetric", 1)[0]
+    assert "renderDartFinancialAccounts(info)" in row_renderer
+    assert "renderDisclosureEventTimeline(info.disclosure_events)" in row_renderer
+    assert "${financialSummary}" in row_renderer
+    assert "${disclosureEvents}" in row_renderer
     assert ".company-insight-row" in style_response.text
     assert "grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);" in style_response.text
 
@@ -642,6 +647,7 @@ def test_profile_uses_disclosure_event_timeline_without_recent_disclosure_card()
     assert script_response.status_code == 200
     assert "renderDartDisclosures" not in script_response.text
     assert "renderDisclosureEventTimeline" in script_response.text
+    assert "${renderDisclosureEventTimeline(info.disclosure_events)}" not in script_response.text
     assert "<h3>최근 공시</h3>" not in script_response.text
     assert "<h3>공시 이벤트</h3>" in script_response.text
 
@@ -747,7 +753,7 @@ def test_stock_window_tabs_expose_loading_error_and_refresh_metadata():
     assert "주가 정보를 불러오지 못했습니다" in script_response.text
     assert ".stock-window-status" in style_response.text
     assert ".company-market-card.is-loading-stock" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-50" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-51" in profile_response.text
 
 
 def test_profile_sections_render_source_and_basis_metadata():
@@ -925,7 +931,7 @@ def test_relationship_summary_cards_open_company_list_modal():
     assert ".relationship-list-modal" in style_response.text
     assert ".relationship-list-items" in style_response.text
     assert "/styles.css?v=company-profile-52" in profile_response.text
-    assert "/profile-page-5.js?v=company-profile-50" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-51" in profile_response.text
 
 
 def test_relationship_summary_terms_have_tooltips():
@@ -992,7 +998,7 @@ def test_profile_frontend_renders_normalized_dart_insight_cards():
     assert ".ownership-bar-segment" in style_response.text
     assert ".shareholder-detail-modal" in style_response.text
     assert "/styles.css?v=company-profile-52" in profile_response.text
-    assert "/profile-page-5.js?v=company-profile-50" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-51" in profile_response.text
 
 
 def test_profile_frontend_exposes_lazy_dart_detail_modal():

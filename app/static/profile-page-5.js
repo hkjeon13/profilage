@@ -1565,11 +1565,13 @@ function renderDartFinancialAccounts(info) {
 
 function renderCompanyInsightRow(info) {
   const financialSummary = renderDartFinancialAccounts(info);
-  if (!financialSummary) return "";
+  const disclosureEvents = renderDisclosureEventTimeline(info.disclosure_events);
+  if (!financialSummary && !disclosureEvents) return "";
 
   return `
     <div id="section-financials" class="company-insight-row">
       ${financialSummary}
+      ${disclosureEvents}
     </div>
   `;
 }
@@ -2778,8 +2780,6 @@ function renderCompanyDetail({ info, outline, listed, stock, stockWindow, stockL
         ${renderCompanyStockCard({ outline, listed, stock, stockWindow, market, crno, stockLoading, disclosureEvents: info.disclosure_events })}
 
         ${renderCompanyInsightRow(info)}
-
-        ${renderDisclosureEventTimeline(info.disclosure_events)}
 
         ${renderCompanyInsightCards(info.dart_insights)}
 
