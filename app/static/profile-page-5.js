@@ -2540,21 +2540,9 @@ function renderProfileSectionNav() {
 
 function renderCompanyProfileSummaryCard({ crno = "", compareName = "", isCompareAdded = false } = {}) {
   return `
-    <article id="section-summary" class="info-block company-ai-summary-card is-collapsed-mobile" data-company-profile-summary-card>
+    <article id="section-summary" class="info-block company-ai-summary-card" data-company-profile-summary-card>
       <div class="block-heading">
         <h3>AI 기업요약</h3>
-        <div class="summary-heading-actions">
-          <button
-            type="button"
-            class="compare-add-button summary-compare-button ${isCompareAdded ? "is-added" : ""}"
-            data-compare-add
-            data-compare-crno="${attr(crno)}"
-            data-compare-name="${attr(compareName)}"
-            aria-label="${isCompareAdded ? "비교함에 추가됨" : "비교에 추가"}"
-            title="${isCompareAdded ? "비교함에 추가됨" : "비교에 추가"}"
-          ><span data-compare-icon aria-hidden="true">${isCompareAdded ? "✓" : "+"}</span></button>
-          <span class="summary-status-pill" data-company-profile-summary-status hidden>생성 중</span>
-        </div>
       </div>
       <div class="company-ai-summary-body company-ai-summary-skeleton" data-company-profile-summary-body aria-live="polite">
         <span class="skeleton-line skeleton-section-title"></span>
@@ -2599,42 +2587,25 @@ function renderCompanyProfileSummaryPayload(payload) {
         : ""
     }
     <p class="company-ai-summary-source">OpenAI 요약 · 금융위원회/DART 기반이며 투자 판단이 아닙니다.</p>
-    <button type="button" class="company-ai-summary-more" data-company-ai-summary-more>요약 더보기</button>
   `;
-}
-
-function setupCompanyAiSummaryMore() {
-  document.querySelectorAll("[data-company-ai-summary-more]").forEach((button) => {
-    if (button.dataset.bound === "true") return;
-    button.dataset.bound = "true";
-    button.addEventListener("click", () => {
-      const card = button.closest(".company-ai-summary-card");
-      card?.classList.remove("is-collapsed-mobile");
-      button.remove();
-    });
-  });
 }
 
 async function loadCompanyProfileSummary(crno) {
   const card = document.querySelector("[data-company-profile-summary-card]");
   if (!card || !crno) return;
   const body = card.querySelector("[data-company-profile-summary-body]");
-  const status = card.querySelector("[data-company-profile-summary-status]");
   try {
     const payload = await fetchJson("/api/company/get_company_profile_summary", {
       corporate_registration_number: crno,
     });
     body.classList.remove("company-ai-summary-skeleton");
     body.innerHTML = renderCompanyProfileSummaryPayload(payload);
-    if (status) status.textContent = "완료";
-    setupCompanyAiSummaryMore();
   } catch (error) {
     body.classList.remove("company-ai-summary-skeleton");
     body.innerHTML = `
       <p class="company-ai-summary-empty">기업 요약을 만들 수 없습니다.</p>
       <p class="company-ai-summary-source">${escapeHtml(error.message || "요약 요청에 실패했습니다.")}</p>
     `;
-    if (status) status.textContent = "실패";
   }
 }
 

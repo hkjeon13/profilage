@@ -1953,19 +1953,6 @@ a:hover {
   gap: 12px;
 }
 
-.summary-status-pill {
-  display: inline-flex;
-  min-height: 26px;
-  align-items: center;
-  border-radius: 8px;
-  background: #f3f6fb;
-  color: #657188;
-  font-size: 12px;
-  font-weight: 850;
-  padding: 0 10px;
-  white-space: nowrap;
-}
-
 .company-ai-summary-body {
   display: grid;
   gap: 14px;
@@ -2021,10 +2008,6 @@ a:hover {
 .company-ai-summary-empty {
   color: #3f4757;
   font-weight: 800;
-}
-
-.company-ai-summary-more {
-  display: none;
 }
 
 .market-pill {
@@ -2921,13 +2904,6 @@ a:hover {
   display: none;
 }
 
-.summary-heading-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
 .compare-add-button,
 .primary-link-button {
   display: inline-flex;
@@ -2949,14 +2925,6 @@ a:hover {
   border-color: #d6f3e7;
   background: #ecfdf5;
   color: #08734f;
-}
-
-.summary-compare-button {
-  width: 34px;
-  min-width: 34px;
-  padding: 0;
-  font-size: 18px;
-  line-height: 1;
 }
 
 .compare-shell {
@@ -3781,6 +3749,10 @@ a:hover {
     gap: 8px;
   }
 
+  .company-insight-card .compact-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .compact-metric-grid > div {
     padding: 10px;
   }
@@ -3868,24 +3840,6 @@ a:hover {
     padding-right: 8px;
   }
 
-  .company-ai-summary-card.is-collapsed-mobile .company-ai-summary-body {
-    max-height: 190px;
-    overflow: hidden;
-  }
-
-  .company-ai-summary-more {
-    display: inline-flex;
-    min-height: 34px;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid #d8e5ff;
-    border-radius: 8px;
-    background: #f6f9ff;
-    color: #175cd3;
-    padding: 0 12px;
-    font-weight: 850;
-  }
-
   .compare-toolbar {
     align-items: stretch;
     flex-direction: column;
@@ -3900,10 +3854,6 @@ a:hover {
   .compare-share-button,
   .primary-link-button {
     width: 100%;
-  }
-
-  .summary-compare-button {
-    width: auto;
   }
 
   .compare-column-head {
