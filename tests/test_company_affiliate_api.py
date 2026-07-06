@@ -464,20 +464,19 @@ def test_profile_frontend_can_add_company_to_compare_list():
     assert "font-weight: 780;" not in style_response.text
 
 
-def test_profile_exposes_executive_summary_layer():
+def test_profile_exposes_company_ai_summary_layer():
     with TestClient(app) as client:
         script_response = client.get("/profile-page-5.js")
         style_response = client.get("/styles.css")
 
     assert script_response.status_code == 200
     assert style_response.status_code == 200
-    assert "renderExecutiveSummary" in script_response.text
-    assert "renderKeyMetricStrip" in script_response.text
-    assert "executive-summary-block" in script_response.text
-    assert "key-metric-strip" in script_response.text
-    assert "preferredFinancialValue" in script_response.text
-    assert ".executive-summary-block" in style_response.text
-    assert ".key-metric-strip" in style_response.text
+    assert "renderCompanyProfileSummaryCard" in script_response.text
+    assert "company-ai-summary-card" in script_response.text
+    assert "renderExecutiveSummary" not in script_response.text
+    assert "renderKeyMetricStrip" not in script_response.text
+    assert "key-metric-strip" not in script_response.text
+    assert ".company-ai-summary-card" in style_response.text
 
 
 def test_profile_uses_consistent_data_trust_meta():
@@ -1088,6 +1087,29 @@ def test_profile_frontend_exposes_disclosure_events_and_risk_signals():
     assert ".stock-chart-event-marker" not in style_response.text
     assert ".company-risk-card" in style_response.text
     assert ".relationship-list-filters" in style_response.text
+
+
+def test_company_ai_summary_renders_as_single_full_width_section_above_overview():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+
+    assert script_response.status_code == 200
+    script = script_response.text
+    detail_template = script.split("function renderCompanyDetail", 1)[1].split("profileDetail.innerHTML = `", 1)[1].split(
+        "`;",
+        1,
+    )[0]
+    summary_template = script.split("function renderCompanyProfileSummaryCard()", 1)[1].split(
+        "function renderCompanyProfileSummaryList", 1
+    )[0]
+
+    assert detail_template.index("${renderCompanyProfileSummaryCard()}") < detail_template.index(
+        '<div class="profile-dashboard-grid">'
+    )
+    assert 'id="section-summary"' in summary_template
+    assert "<h3>AI 기업요약</h3>" in summary_template
+    assert "<h3>요약</h3>" not in summary_template
+    assert "업무용 핵심 정보" not in summary_template
 
 
 def test_disclosure_summary_loading_uses_pastel_shimmer_background_only():

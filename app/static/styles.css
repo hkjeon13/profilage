@@ -1913,7 +1913,7 @@ a:hover {
 
 .profile-dashboard-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(330px, 0.9fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
   align-items: stretch;
 }
@@ -1924,46 +1924,10 @@ a:hover {
   color: #175cd3;
 }
 
-.executive-summary-block {
+.company-ai-summary-card {
   display: grid;
   gap: 16px;
   align-content: start;
-}
-
-.executive-summary-block .company-ai-summary-card {
-  border: 1px solid #eaecf0;
-  border-radius: 8px;
-  background: #ffffff;
-  box-shadow: none;
-  padding: 16px;
-}
-
-.key-metric-strip {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.key-metric-strip div {
-  display: grid;
-  gap: 5px;
-  border: 1px solid #eaecf0;
-  border-radius: 8px;
-  background: #f8fafc;
-  padding: 12px;
-}
-
-.key-metric-strip span {
-  color: #667085;
-  font-size: 12px;
-  font-weight: 850;
-}
-
-.key-metric-strip strong {
-  color: #101828;
-  font-size: 16px;
-  font-weight: 850;
-  overflow-wrap: anywhere;
 }
 
 .data-trust-meta {
@@ -3658,8 +3622,7 @@ a:hover {
     justify-content: flex-start;
   }
 
-  .result-meta-grid,
-  .key-metric-strip {
+  .result-meta-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -3839,8 +3802,7 @@ a:hover {
     min-width: 560px;
   }
 
-  .result-meta-grid,
-  .key-metric-strip {
+  .result-meta-grid {
     grid-template-columns: 1fr;
   }
 

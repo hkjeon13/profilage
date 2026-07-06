@@ -2551,37 +2551,6 @@ function refreshCompanyStockCard({ outline, listed, stock, stockWindow, market, 
   setupDisclosureSummaryButtons();
 }
 
-function preferredFinancialValue(info, accountNames) {
-  const rows = info?.dart_financial_accounts?.list || [];
-  const match = rows.find((row) => accountNames.includes(row.account_nm));
-  return match?.thstrm_amount || "";
-}
-
-function renderKeyMetricStrip({ info, outline, listed }) {
-  const metrics = [
-    ["시장", listed.mrktCtg || outline.corpRegMrktDcdNm],
-    ["직원 수", formatNumber(outline.enpEmpeCnt)],
-    ["설립일", compactDate(outline.enpEstbDt)],
-    ["매출액", formatKoreanCurrency(preferredFinancialValue(info, ["매출액"]))],
-    ["영업이익", formatKoreanCurrency(preferredFinancialValue(info, ["영업이익"]))],
-    ["자산총계", formatKoreanCurrency(preferredFinancialValue(info, ["자산총계"]))],
-  ];
-  return `
-    <section class="key-metric-strip" aria-label="핵심 지표">
-      ${metrics
-        .map(
-          ([label, value]) => `
-            <div>
-              <span>${escapeHtml(label)}</span>
-              <strong>${escapeHtml(text(value, "-"))}</strong>
-            </div>
-          `,
-        )
-        .join("")}
-    </section>
-  `;
-}
-
 function renderProfileSectionNav() {
   const sections = [
     ["basic", "기업개요"],
@@ -2604,17 +2573,17 @@ function renderProfileSectionNav() {
 
 function renderCompanyProfileSummaryCard() {
   return `
-    <section class="company-ai-summary-card is-collapsed-mobile" data-company-profile-summary-card>
+    <article id="section-summary" class="info-block company-ai-summary-card is-collapsed-mobile" data-company-profile-summary-card>
       <div class="block-heading">
-        <h3>AI 기업 요약</h3>
-        <span class="summary-status-pill" data-company-profile-summary-status>생성 중</span>
+        <h3>AI 기업요약</h3>
+        <span class="summary-status-pill" data-company-profile-summary-status hidden>생성 중</span>
       </div>
       <div class="company-ai-summary-body company-ai-summary-skeleton" data-company-profile-summary-body aria-live="polite">
         <span class="skeleton-line skeleton-section-title"></span>
         <span class="skeleton-line skeleton-wide"></span>
         <span class="skeleton-line"></span>
       </div>
-    </section>
+    </article>
   `;
 }
 
@@ -2691,26 +2660,6 @@ async function loadCompanyProfileSummary(crno) {
   }
 }
 
-function renderExecutiveSummary({ info, outline, listed }) {
-  return `
-    <article id="section-summary" class="info-block executive-summary-block">
-      <div class="block-heading">
-        <h3>요약</h3>
-        <span class="summary-status-pill">업무용 핵심 정보</span>
-      </div>
-      ${renderCompanyProfileSummaryCard()}
-      ${renderKeyMetricStrip({ info, outline, listed })}
-      ${renderDataTrustMeta(
-        [
-          { label: "출처", value: "금융위원회 기업기본정보 · DART · SearchAPI" },
-          { label: "기준", value: compactDate(outline.basDt || listed.basDt) },
-        ],
-        "공개 데이터 기반",
-      )}
-    </article>
-  `;
-}
-
 function renderProfileBasicCard({ outline, dartCompany, listed, market, industry, crno, homepage }) {
   const rows = [
     ["CRNO", escapeHtml(text(outline.crno || dartCompany.jurir_no || crno))],
@@ -2776,6 +2725,8 @@ function renderCompanyDetail({ info, outline, listed, stock, stockWindow, stockL
       <div class="company-main-column">
         ${renderProfileSectionNav()}
 
+        ${renderCompanyProfileSummaryCard()}
+
         <div class="profile-dashboard-grid">
           <article id="section-basic" class="info-block company-about-card">
             <div class="block-heading">
@@ -2808,8 +2759,6 @@ function renderCompanyDetail({ info, outline, listed, stock, stockWindow, stockL
               ])}
             </section>
           </article>
-
-          ${renderExecutiveSummary({ info, outline, listed })}
         </div>
 
         ${renderCompanyStockCard({ outline, listed, stock, stockWindow, market, crno, stockLoading, disclosureEvents: info.disclosure_events })}
