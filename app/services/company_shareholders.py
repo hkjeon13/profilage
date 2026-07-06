@@ -195,7 +195,9 @@ def select_top_business_groups(
                 group["group_name"],
             ),
         )[:limit]
-    raise ValueError("official rank or asset amount is required to select top groups")
+    for index, group in enumerate(normalized, start=1):
+        group["rank"] = index
+    return normalized[:limit]
 
 
 def normalize_holding_rows(
@@ -369,21 +371,30 @@ class BusinessGroupShareholderService:
 
         active_month = designation_month or datetime.now(UTC).strftime("%Y%m")
         group_payload = await self._fetch_business_group_api(settings.groups_path, active_month)
-        rank_payload = await self._fetch_business_group_api(settings.asset_ranks_path, active_month)
+        try:
+            rank_payload = await self._fetch_business_group_api(settings.asset_ranks_path, active_month)
+        except HTTPException:
+            rank_payload = {}
         group_rows = _items(rank_payload) or _items(group_payload)
         groups = select_top_business_groups(group_rows, limit=20)
         companies = []
         for group in groups:
-            company_payload = await self._fetch_business_group_api(
-                settings.companies_path,
-                active_month,
-                group_code=group["group_code"],
-                group_name=group["group_name"],
-            )
-            companies.extend(
-                normalize_business_group_company(row, group_code=group["group_code"])
-                for row in _items(company_payload)
-            )
+            try:
+                company_payload = await self._fetch_business_group_api(
+                    settings.companies_path,
+                    active_month,
+                    group_code=group["group_code"],
+                    group_name=group["group_name"],
+                )
+            except HTTPException:
+                continue
+            for row in _items(company_payload):
+                try:
+                    companies.append(
+                        normalize_business_group_company(row, group_code=group["group_code"])
+                    )
+                except ValueError:
+                    continue
         await self._store_groups_and_companies(
             designation_month=active_month,
             groups=groups,
@@ -503,6 +514,20 @@ class BusinessGroupShareholderService:
             row = {child.tag: (child.text or "").strip() for child in item}
             if row:
                 items.append(row)
+        if not items:
+            metadata_tags = {
+                "numOfRows",
+                "pageNo",
+                "resultCode",
+                "resultMsg",
+                "totalCount",
+            }
+            for node in list(root):
+                if node.tag in metadata_tags or not list(node):
+                    continue
+                row = {child.tag: (child.text or "").strip() for child in node}
+                if row:
+                    items.append(row)
         result_code = root.findtext(".//resultCode")
         result_msg = root.findtext(".//resultMsg")
         return {

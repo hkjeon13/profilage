@@ -1067,11 +1067,15 @@ def test_business_group_selector_uses_official_rank_or_assets():
     )
     assert by_asset[0]["group_name"] == "B그룹"
 
-    with pytest.raises(ValueError, match="official rank or asset amount"):
-        select_top_business_groups(
-            [{"unityGrupCode": "A", "unityGrupNm": "A그룹"}],
-            limit=1,
-        )
+    by_official_order = select_top_business_groups(
+        [
+            {"unityGrupCode": "A", "unityGrupNm": "A그룹"},
+            {"unityGrupCode": "B", "unityGrupNm": "B그룹"},
+        ],
+        limit=1,
+    )
+    assert by_official_order[0]["group_name"] == "A그룹"
+    assert by_official_order[0]["rank"] == 1
 
 
 def test_business_group_company_normalizer_keeps_identity_fields():
