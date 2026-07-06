@@ -3298,14 +3298,15 @@ a:hover {
   }
 
   .disclosure-event-timeline li {
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: start;
+    grid-template-columns: 84px minmax(0, 1fr);
+    align-items: center;
     gap: 6px;
   }
 
   .disclosure-event-badge {
-    min-width: 0;
-    width: fit-content;
+    width: 84px;
+    min-width: 84px;
+    box-sizing: border-box;
     justify-self: start;
     padding: 3px 8px;
   }
