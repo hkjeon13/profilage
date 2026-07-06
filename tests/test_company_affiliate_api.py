@@ -298,7 +298,7 @@ def test_profile_page_serves_company_profile_frontend():
     assert '<a href="/openapi.json">OpenAPI</a>' not in response.text
     assert '<a href="/docs">문서</a>' not in response.text
     assert '<a href="/">새 검색</a>' not in response.text
-    assert "/styles.css?v=company-profile-68" in response.text
+    assert "/styles.css?v=company-profile-69" in response.text
     assert "/profile-chart-2.css?v=interactive-10" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
@@ -954,7 +954,7 @@ def test_relationship_summary_cards_open_company_list_modal():
     assert "relationship-list-modal" in script_response.text
     assert ".relationship-list-modal" in style_response.text
     assert ".relationship-list-items" in style_response.text
-    assert "/styles.css?v=company-profile-68" in profile_response.text
+    assert "/styles.css?v=company-profile-69" in profile_response.text
     assert "/profile-page-5.js?v=company-profile-58" in profile_response.text
 
 
@@ -1025,7 +1025,7 @@ def test_profile_frontend_renders_normalized_dart_insight_cards():
     assert ".ownership-stacked-bar" in style_response.text
     assert ".ownership-bar-segment" in style_response.text
     assert ".shareholder-detail-modal" in style_response.text
-    assert "/styles.css?v=company-profile-68" in profile_response.text
+    assert "/styles.css?v=company-profile-69" in profile_response.text
     assert "/profile-page-5.js?v=company-profile-58" in profile_response.text
 
 
@@ -1120,6 +1120,9 @@ def test_profile_mobile_interactive_targets_use_touch_friendly_sizes():
     assert "min-height: 40px;" in style_response.text.split(".summary-tabs button", 1)[1].split("}", 1)[0]
     assert ".financial-more-link" in style_response.text
     assert "min-height: 40px;" in style_response.text.split(".financial-more-link", 1)[1].split("}", 1)[0]
+    assert "min-width: 40px;" in style_response.text.split(".financial-more-link", 1)[1].split("}", 1)[0]
+    assert "min-height: 40px;" in style_response.text.split(".ownership-holder-button", 1)[1].split("}", 1)[0]
+    assert "min-height: 40px;" in style_response.text.split(".dart-insight-detail-actions button", 1)[1].split("}", 1)[0]
     disclosure_summary_button_rule = style_response.text.split(".disclosure-summary-button {\n  display: inline-flex;", 1)[1].split("}", 1)[0]
     assert "min-height: 40px;" in disclosure_summary_button_rule
     disclosure_viewer_trigger_rule = style_response.text.split(".disclosure-viewer-trigger {\n  width: 100%;", 1)[1].split("}", 1)[0]

@@ -1000,6 +1000,7 @@ a:hover {
 
 .financial-more-link {
   display: inline-flex;
+  min-width: 40px;
   min-height: 40px;
   align-items: center;
   flex: 0 0 auto;
@@ -2510,6 +2511,9 @@ a:hover {
 }
 
 .ownership-holder-button {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
   min-width: 0;
   padding: 0;
   overflow: hidden;
@@ -2761,6 +2765,7 @@ a:hover {
 }
 
 .dart-insight-detail-actions button {
+  min-height: 40px;
   border: 1px solid #d8e4f5;
   border-radius: 8px;
   background: #fff;
