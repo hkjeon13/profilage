@@ -298,8 +298,8 @@ def test_profile_page_serves_company_profile_frontend():
     assert '<a href="/openapi.json">OpenAPI</a>' not in response.text
     assert '<a href="/docs">문서</a>' not in response.text
     assert '<a href="/">새 검색</a>' not in response.text
-    assert "/styles.css?v=company-profile-67" in response.text
-    assert "/profile-chart-2.css?v=interactive-9" in response.text
+    assert "/styles.css?v=company-profile-68" in response.text
+    assert "/profile-chart-2.css?v=interactive-10" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
     assert "/profile-page-5.js?v=company-profile-58" in response.text
@@ -472,7 +472,7 @@ def test_profile_mobile_layout_keeps_summary_near_first_viewport():
     assert ".profile-basic-heading {\n    margin-bottom: 12px;" in mobile_css
     assert ".profile-basic-grid div {\n    padding-top: 10px;\n    padding-bottom: 10px;" in mobile_css
     assert ".profile-basic-grid .profile-basic-wide {\n    grid-column: 1 / -1;" in mobile_css
-    assert ".profile-basic-grid a {\n  display: inline-block;\n  max-width: 100%;" in style_response.text
+    assert ".profile-basic-grid a {\n  display: inline-flex;\n  max-width: 100%;" in style_response.text
     assert "text-overflow: ellipsis;" in style_response.text
 
 
@@ -520,8 +520,8 @@ def test_profile_exposes_mobile_section_navigation():
     assert ".profile-section-nav" in style_response.text
     assert "position: sticky;" in style_response.text
     assert "scrollbar-gutter: stable;" in style_response.text
-    assert "scroll-padding-inline: 8px;" in style_response.text
-    assert ".profile-section-nav {\n    top: 0;\n    padding-right: 8px;" in style_response.text
+    assert "scroll-padding-inline: 12px;" in style_response.text
+    assert ".profile-section-nav {\n    top: 0;\n    padding-right: 12px;" in style_response.text
 
 
 def test_profile_hero_uses_single_arrow_back_action_without_api_cta():
@@ -880,7 +880,7 @@ def test_stock_chart_tooltip_is_compact_on_mobile():
     assert "padding: 8px 9px;" in chart_style_response.text
     assert ".stock-chart-tooltip strong {\n    font-size: 13px;" in chart_style_response.text
     assert ".stock-chart-tooltip span {\n    margin-top: 3px;\n    font-size: 11px;" in chart_style_response.text
-    assert "/profile-chart-2.css?v=interactive-9" in profile_response.text
+    assert "/profile-chart-2.css?v=interactive-10" in profile_response.text
 
 
 def test_profile_mobile_layout_prevents_horizontal_overflow():
@@ -954,7 +954,7 @@ def test_relationship_summary_cards_open_company_list_modal():
     assert "relationship-list-modal" in script_response.text
     assert ".relationship-list-modal" in style_response.text
     assert ".relationship-list-items" in style_response.text
-    assert "/styles.css?v=company-profile-67" in profile_response.text
+    assert "/styles.css?v=company-profile-68" in profile_response.text
     assert "/profile-page-5.js?v=company-profile-58" in profile_response.text
 
 
@@ -1025,7 +1025,7 @@ def test_profile_frontend_renders_normalized_dart_insight_cards():
     assert ".ownership-stacked-bar" in style_response.text
     assert ".ownership-bar-segment" in style_response.text
     assert ".shareholder-detail-modal" in style_response.text
-    assert "/styles.css?v=company-profile-67" in profile_response.text
+    assert "/styles.css?v=company-profile-68" in profile_response.text
     assert "/profile-page-5.js?v=company-profile-58" in profile_response.text
 
 
@@ -1098,6 +1098,32 @@ def test_profile_mobile_styles_reduce_dense_profile_sections():
     assert ".dart-insight-detail-modal {\n    align-items: end;\n    padding: 10px;" in mobile_rule
     assert ".dart-insight-detail-dialog {\n    width: 100%;" in mobile_rule
     assert ".dart-insight-detail-close {\n    width: 44px;" in mobile_rule
+
+
+def test_profile_mobile_interactive_targets_use_touch_friendly_sizes():
+    with TestClient(app) as client:
+        style_response = client.get("/styles.css")
+        chart_style_response = client.get("/profile-chart-2.css")
+
+    assert style_response.status_code == 200
+    assert chart_style_response.status_code == 200
+    mobile_rule = style_response.text.split("@media (max-width: 560px)", 1)[1]
+    assert ".profile-page .top-nav a" in style_response.text
+    assert "min-width: 40px;" in style_response.text.split(".profile-page .top-nav a", 1)[1].split("}", 1)[0]
+    assert ".back-link {\n  display: inline-flex;\n  align-items: center;\n  min-height: 40px;" in style_response.text
+    assert "min-height: 40px;" in style_response.text.split(".profile-basic-grid a", 1)[1].split("}", 1)[0]
+    assert ".profile-section-nav a {\n    flex: 0 0 auto;\n    min-height: 40px;" in mobile_rule
+    assert ".stock-range-tabs button" in style_response.text
+    assert "min-height: 40px;" in style_response.text.split(".stock-range-tabs button", 1)[1].split("}", 1)[0]
+    assert "min-height: 40px;" in chart_style_response.text.split(".stock-range-tabs button", 1)[1].split("}", 1)[0]
+    assert ".summary-tabs button" in style_response.text
+    assert "min-height: 40px;" in style_response.text.split(".summary-tabs button", 1)[1].split("}", 1)[0]
+    assert ".financial-more-link" in style_response.text
+    assert "min-height: 40px;" in style_response.text.split(".financial-more-link", 1)[1].split("}", 1)[0]
+    disclosure_summary_button_rule = style_response.text.split(".disclosure-summary-button {\n  display: inline-flex;", 1)[1].split("}", 1)[0]
+    assert "min-height: 40px;" in disclosure_summary_button_rule
+    disclosure_viewer_trigger_rule = style_response.text.split(".disclosure-viewer-trigger {\n  width: 100%;", 1)[1].split("}", 1)[0]
+    assert "min-height: 40px;" in disclosure_viewer_trigger_rule
 
 
 def test_profile_frontend_exposes_disclosure_events_and_risk_signals():
