@@ -1270,8 +1270,10 @@ function renderDisclosureEventTimeline(events) {
               <li>
                 <span class="disclosure-event-date">${escapeHtml(compactDate(event.date))}</span>
                 <span class="disclosure-event-badge disclosure-event-${attr(event.category)}">${escapeHtml(disclosureEventLabel(event.category))}</span>
-                <span class="disclosure-action-row">
-                  ${renderDisclosureViewerTrigger(viewerItem)}
+                <span class="disclosure-event-title-row">
+                  <span class="disclosure-event-title">
+                    ${renderDisclosureViewerTrigger(viewerItem)}
+                  </span>
                   ${renderDisclosureSummaryButton(viewerItem)}
                 </span>
               </li>
@@ -2605,6 +2607,7 @@ function renderCompanyDetail({ info, outline, listed, stock, stockWindow, stockL
               <div><dt>사업자번호</dt><dd>${text(outline.bzno || dartCompany.bizr_no)}</dd></div>
               <div><dt>시장</dt><dd>${market}</dd></div>
               <div><dt>업종</dt><dd>${text(outline.enpMainBizNm || listed.itmsNm, "정보 없음")}</dd></div>
+              <div class="company-fact-wide"><dt>주소</dt><dd>${text(outline.enpBsadr, "주소 정보 없음")}</dd></div>
               <div><dt>최초 영업일</dt><dd>${compactDate(outline.fstOpegDt)}</dd></div>
               <div><dt>최종 영업일</dt><dd>${compactDate(outline.lastOpegDt)}</dd></div>
             </dl>
@@ -2626,11 +2629,6 @@ function renderCompanyDetail({ info, outline, listed, stock, stockWindow, stockL
         ${renderRiskSignalCards(info.risk_signals)}
 
         ${renderRelationshipSummary(info)}
-
-        <article class="info-block company-address-card">
-          <h3>주소</h3>
-          <p>${text(outline.enpBsadr, "주소 정보 없음")}</p>
-        </article>
       </div>
 
     </div>

@@ -1085,21 +1085,40 @@ a:hover {
   gap: 8px;
 }
 
+.disclosure-event-title-row {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.disclosure-event-title {
+  min-width: 0;
+}
+
 .disclosure-summary-button {
-  border: 0;
-  background: transparent;
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d6e4ff;
+  border-radius: 7px;
+  background: #ffffff;
   color: #1a73e8;
   cursor: pointer;
-  padding: 0;
+  padding: 0 10px;
   font: inherit;
   font-size: 12px;
   font-weight: 850;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .disclosure-summary-button:hover,
 .disclosure-summary-button:focus-visible {
+  background: #eff6ff;
   color: #185abc;
-  text-decoration: underline;
 }
 
 .disclosure-summary-modal[hidden] {
@@ -1818,6 +1837,10 @@ a:hover {
   min-width: 0;
 }
 
+.company-facts .company-fact-wide {
+  grid-column: 1 / -1;
+}
+
 .company-facts dt {
   color: #7b8497;
   font-size: 12px;
@@ -1872,7 +1895,6 @@ a:hover {
   font-size: 13px;
 }
 
-.company-address-card p,
 .side-muted {
   margin: 0;
   color: #667085;
@@ -2985,6 +3007,10 @@ a:hover {
     grid-template-columns: 1fr;
     align-items: start;
     gap: 6px;
+  }
+
+  .disclosure-event-title-row {
+    width: 100%;
   }
 
   .relationship-list-modal {
