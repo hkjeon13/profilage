@@ -3615,7 +3615,7 @@ a:hover {
   }
 
   .profile-hero {
-    min-height: 228px;
+    min-height: 256px;
     padding: 18px 16px;
   }
 
@@ -3628,8 +3628,8 @@ a:hover {
   .profile-rating-card {
     left: 16px;
     bottom: 16px;
-    width: min(220px, calc(100% - 32px));
-    padding: 11px 12px;
+    width: min(205px, calc(100% - 32px));
+    padding: 10px 12px;
   }
 
   .profile-identity-row {
