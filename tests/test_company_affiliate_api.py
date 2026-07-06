@@ -1473,7 +1473,7 @@ async def test_disclosure_summary_service_reuses_cached_summary(monkeypatch):
         data_group_store=store,
     )
     store.records[
-        ("company", "20260701000000", "dart_disclosure_summary:gpt-4.1-mini:v1")
+        ("company", "20260701000000", "dart_disclosure_summary:gpt-4.1-mini:v2")
     ] = fresh_record(
         {
             "receipt_no": "20260701000000",
@@ -1485,7 +1485,7 @@ async def test_disclosure_summary_service_reuses_cached_summary(monkeypatch):
                 "limitations": [],
             },
             "model": "gpt-4.1-mini",
-            "prompt_version": "v1",
+            "prompt_version": "v2",
         }
     )
 
@@ -1843,6 +1843,73 @@ def test_get_dart_disclosure_summary_endpoint_uses_service_cache(monkeypatch):
     assert "model" not in payload
     assert "prompt_version" not in payload
     assert "cached" not in payload
+
+
+def test_get_dart_disclosure_summary_follows_dart_viewer_document(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    captured = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "dart.fss.or.kr" and request.url.path == "/dsaf001/main.do":
+            return httpx.Response(
+                200,
+                text="""
+                <html><body>
+                  <p>잠시만 기다려주세요.</p>
+                  <script>
+                    viewDoc("20260703000496", "11463174", "1", "800", "9052", "dart4.xsd", "");
+                  </script>
+                </body></html>
+                """,
+            )
+        if request.url.host == "dart.fss.or.kr" and request.url.path == "/report/viewer.do":
+            assert request.url.params["rcpNo"] == "20260703000496"
+            assert request.url.params["dcmNo"] == "11463174"
+            return httpx.Response(
+                200,
+                text="""
+                <html><body>
+                  <h1>주식등의 대량보유상황보고서</h1>
+                  <p>보유주식등의 수 및 보유비율은 23.10%입니다.</p>
+                  <p>보고사유는 특별관계자 변동입니다.</p>
+                </body></html>
+                """,
+            )
+        if request.url.host == "api.openai.com":
+            captured["payload"] = json.loads(request.content)
+            assert "보유주식등의 수 및 보유비율은 23.10%입니다." in captured["payload"]["input"]
+            assert "잠시만 기다려주세요" not in captured["payload"]["input"]
+            return httpx.Response(
+                200,
+                json={
+                    "output": [
+                        {
+                            "content": [
+                                {
+                                    "type": "output_text",
+                                    "text": '{"bullets":["보유비율 23.10%"],"risks":[],"changes":["특별관계자 변동"],"limitations":[]}',
+                                }
+                            ]
+                        }
+                    ]
+                },
+            )
+        raise AssertionError(str(request.url))
+
+    with TestClient(app) as client:
+        app.state.http_transport = httpx.MockTransport(handler)
+        response = client.get(
+            "/company/get_dart_disclosure_summary",
+            params={
+                "receipt_no": "20260703000496",
+                "viewer_url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260703000496",
+                "title": "주식등의대량보유상황보고서(일반)",
+            },
+        )
+        del app.state.http_transport
+
+    assert response.status_code == 200
+    assert response.json()["summary"]["bullets"] == ["보유비율 23.10%"]
 
 
 def test_get_dart_disclosure_summary_requires_openai_key(monkeypatch):
