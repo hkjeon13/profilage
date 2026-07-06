@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 import hashlib
 from typing import Any
+from xml.etree import ElementTree
 
 from fastapi import HTTPException
 import httpx
@@ -127,11 +128,11 @@ def shareholder_entity_id(
 
 
 def normalize_business_group(row: dict[str, Any]) -> dict[str, Any]:
-    group_code = _first_value(row, ["entrprsgrpCode", "bzentyGrpCd", "grpCode", "group_code"])
-    group_name = _first_value(row, ["entrprsgrpNm", "bzentyGrpNm", "grpNm", "group_name"])
-    rank = _number(_first_value(row, ["rank", "ord", "assetsRank", "assetRank", "ordr"]))
+    group_code = _first_value(row, ["unityGrupCode", "entrprsgrpCode", "bzentyGrpCd", "grpCode", "group_code"])
+    group_name = _first_value(row, ["unityGrupNm", "entrprsgrpNm", "bzentyGrpNm", "grpNm", "group_name"])
+    rank = _number(_first_value(row, ["rn", "rank", "ord", "assetsRank", "assetRank", "ordr"]))
     asset_amount = _number(
-        _first_value(row, ["assetsTotamt", "assetTotamt", "assetAmount", "totAssets"])
+        _first_value(row, ["assetsTotamt", "assetTotamt", "assetsSm", "assetAmount", "totAssets"])
     )
     if not group_code and group_name:
         group_code = normalize_shareholder_name(group_name)
@@ -142,11 +143,11 @@ def normalize_business_group(row: dict[str, Any]) -> dict[str, Any]:
         "group_name": group_name,
         "rank": int(rank) if rank is not None else None,
         "asset_amount": asset_amount,
-        "same_person_name": _first_value(row, ["samePersonNm", "unityNm", "indvdlNm"]),
+        "same_person_name": _first_value(row, ["smerNm", "samePersonNm", "unityNm", "indvdlNm"]),
         "representative_company_name": _first_value(
-            row, ["reprsntCmpyNm", "rprsCmpyNm", "representativeCompanyName"]
+            row, ["repreCmpny", "reprsntCmpyNm", "rprsCmpyNm", "representativeCompanyName"]
         ),
-        "company_count": int(_number(_first_value(row, ["affltsCo", "companyCount", "cmpyCnt"])) or 0)
+        "company_count": int(_number(_first_value(row, ["sumCmpnyCo", "affltsCo", "companyCount", "cmpyCnt"])) or 0)
         or None,
     }
 
@@ -156,7 +157,7 @@ def normalize_business_group_company(
     *,
     group_code: str,
 ) -> dict[str, Any]:
-    company_name = _first_value(row, ["corpNm", "cmpyNm", "afilCmpyNm", "company_name"])
+    company_name = _first_value(row, ["afilCmpyNm", "cmpnyNm", "corpNm", "cmpyNm", "company_name"])
     if not company_name:
         raise ValueError("business group company row requires company name")
     return {
@@ -164,8 +165,8 @@ def normalize_business_group_company(
         "company_name": company_name,
         "legal_registration_number": _first_value(row, ["jurirNo", "crno", "corpRegNo"]),
         "business_registration_number": _first_value(row, ["bizrNo", "bzno", "businessNumber"]),
-        "representative_name": _first_value(row, ["rprsntvNm", "ceoNm", "representativeName"]),
-        "included_on": _first_value(row, ["incDate", "includedOn", "afilDt"]),
+        "representative_name": _first_value(row, ["repreNm", "rprsntvNm", "ceoNm", "representativeName"]),
+        "included_on": _first_value(row, ["incDate", "includedOn", "afilDt", "entrprsCnptDe"]),
         "industry_name": _first_value(row, ["indutyNm", "industryName", "mainBizNm"]),
         "dart_corp_code": _first_value(row, ["corpCode", "dartCorpCode"]),
         "stock_code": _first_value(row, ["stockCode", "srtnCd"]),
@@ -448,17 +449,15 @@ class BusinessGroupShareholderService:
     ) -> dict[str, Any]:
         settings = get_business_group_api_settings()
         params: dict[str, Any] = {
-            "serviceKey": settings.service_key,
+            "ServiceKey": settings.service_key,
             "resultType": "json",
+            "_type": "json",
             "pageNo": 1,
             "numOfRows": 1000,
-            "presentnYear": designation_month[:4],
+            "presentnYear": designation_month,
         }
-        if len(designation_month) >= 6:
-            params["presentnMonth"] = designation_month[4:6]
         if group_code:
-            params["entrprsgrpCode"] = group_code
-            params["bzentyGrpCd"] = group_code
+            params["unityGrupCode"] = group_code
         if group_name:
             params["entrprsgrpNm"] = group_name
             params["bzentyGrpNm"] = group_name
@@ -474,10 +473,38 @@ class BusinessGroupShareholderService:
             ) from exc
         except httpx.HTTPError as exc:
             raise HTTPException(status_code=502, detail="business group API request failed") from exc
+        return self._parse_business_group_response(response)
+
+    def _parse_business_group_response(self, response: httpx.Response) -> dict[str, Any]:
         try:
             return response.json()
-        except ValueError as exc:
-            raise HTTPException(status_code=502, detail="business group API returned non-JSON") from exc
+        except ValueError:
+            pass
+
+        try:
+            root = ElementTree.fromstring(response.text)
+        except ElementTree.ParseError as exc:
+            raise HTTPException(status_code=502, detail="business group API returned invalid payload") from exc
+
+        items = []
+        for item in root.findall(".//item"):
+            row = {child.tag: (child.text or "").strip() for child in item}
+            if row:
+                items.append(row)
+        result_code = root.findtext(".//resultCode")
+        result_msg = root.findtext(".//resultMsg")
+        return {
+            "response": {
+                "header": {
+                    "resultCode": result_code,
+                    "resultMsg": result_msg,
+                },
+                "body": {
+                    "items": {"item": items},
+                    "totalCount": root.findtext(".//totalCount"),
+                },
+            }
+        }
 
     async def _latest_group_companies(self, *, limit: int) -> list[dict[str, Any]]:
         from psycopg import AsyncConnection

@@ -152,18 +152,18 @@ def get_business_group_api_settings() -> BusinessGroupApiSettings:
         ),
         base_url=os.getenv(
             "BUSINESS_GROUP_API_BASE_URL",
-            "https://apis.data.go.kr/1130000/FftcBusinessGroupPortal",
+            "https://apis.data.go.kr/1130000",
         ).rstrip("/"),
         groups_path=os.getenv(
             "BUSINESS_GROUP_API_GROUPS_PATH",
-            "/getLargeBusinessGroup",
+            "/appnGroupSttusList/appnGroupSttusListApi",
         ),
         asset_ranks_path=os.getenv(
             "BUSINESS_GROUP_API_ASSET_RANKS_PATH",
-            "/getLargeBusinessGroupAssetRank",
+            "/appnGroupAssetsList/appnGroupAssetsListApi",
         ),
         companies_path=os.getenv(
             "BUSINESS_GROUP_API_COMPANIES_PATH",
-            "/getLargeBusinessGroupCompany",
+            "/appnGroupCmpnyList/appnGroupCmpnyListApi",
         ),
     )

@@ -1051,8 +1051,8 @@ def test_dart_periodic_endpoint_registry_contains_phase_one_sources():
 def test_business_group_selector_uses_official_rank_or_assets():
     ranked = select_top_business_groups(
         [
-            {"entrprsgrpCode": "A", "entrprsgrpNm": "A그룹", "rank": "2"},
-            {"entrprsgrpCode": "B", "entrprsgrpNm": "B그룹", "rank": "1"},
+            {"unityGrupCode": "A", "unityGrupNm": "A그룹", "rn": "2"},
+            {"unityGrupCode": "B", "unityGrupNm": "B그룹", "rn": "1"},
         ],
         limit=1,
     )
@@ -1060,8 +1060,8 @@ def test_business_group_selector_uses_official_rank_or_assets():
 
     by_asset = select_top_business_groups(
         [
-            {"entrprsgrpCode": "A", "entrprsgrpNm": "A그룹", "assetAmount": "10,000"},
-            {"entrprsgrpCode": "B", "entrprsgrpNm": "B그룹", "assetAmount": "20,000"},
+            {"unityGrupCode": "A", "unityGrupNm": "A그룹", "assetAmount": "10,000"},
+            {"unityGrupCode": "B", "unityGrupNm": "B그룹", "assetAmount": "20,000"},
         ],
         limit=1,
     )
@@ -1069,7 +1069,7 @@ def test_business_group_selector_uses_official_rank_or_assets():
 
     with pytest.raises(ValueError, match="official rank or asset amount"):
         select_top_business_groups(
-            [{"entrprsgrpCode": "A", "entrprsgrpNm": "A그룹"}],
+            [{"unityGrupCode": "A", "unityGrupNm": "A그룹"}],
             limit=1,
         )
 
@@ -1077,10 +1077,10 @@ def test_business_group_selector_uses_official_rank_or_assets():
 def test_business_group_company_normalizer_keeps_identity_fields():
     normalized = normalize_business_group_company(
         {
-            "corpNm": "삼성전자",
+            "afilCmpyNm": "삼성전자",
             "jurirNo": "1301110006246",
             "bizrNo": "1248100998",
-            "rprsntvNm": "전영현",
+            "repreNm": "전영현",
             "stockCode": "005930",
         },
         group_code="samsung",
