@@ -2631,6 +2631,69 @@ async def test_stock_price_data_group_response_includes_cache_metadata(monkeypat
 
 
 @pytest.mark.asyncio
+async def test_stock_price_service_falls_back_to_latest_5d_session_for_empty_1d(monkeypatch):
+    monkeypatch.setenv("SEARCHAPI_API_KEY", "searchapi-key")
+    requested_windows = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        window = request.url.params.get("window")
+        requested_windows.append(window)
+        if window == "1D":
+            return httpx.Response(200, json={"summary": {}, "graph": []})
+        return httpx.Response(
+            200,
+            json={
+                "search_parameters": {"window": "5D"},
+                "summary": {
+                    "title": "Samsung Electronics Co Ltd",
+                    "stock": "005930",
+                    "exchange": "KRX",
+                    "price": 309500,
+                },
+                "graph": [
+                    {
+                        "date": "Jul 02 2026, 03:30 PM UTC+09:00",
+                        "price": 286000.0,
+                    },
+                    {
+                        "date": "Jul 03 2026, 09:30 AM UTC+09:00",
+                        "price": 304000.0,
+                    },
+                    {
+                        "date": "Jul 03 2026, 03:30 PM UTC+09:00",
+                        "price": 309500.0,
+                    },
+                ],
+            },
+        )
+
+    service = CompanyStockPriceService(
+        transport=httpx.MockTransport(handler),
+        cache=FakeJsonCache(),
+        data_group_store=None,
+    )
+
+    payload = await service.fetch(
+        CompanyStockPriceQuery(
+            q=None,
+            stock_code="005930",
+            exchange="KRX",
+            language="ko",
+            window="1D",
+        )
+    )
+
+    assert requested_windows == ["1D", "5D"]
+    assert payload["search_parameters"]["window"] == "1D"
+    assert payload["search_parameters"]["fallback_window"] == "5D"
+    assert [point["date"] for point in payload["graph"]] == [
+        "Jul 03 2026, 09:30 AM UTC+09:00",
+        "Jul 03 2026, 03:30 PM UTC+09:00",
+    ]
+    assert payload["summary"]["price"] == 309500
+
+
+@pytest.mark.asyncio
 async def test_open_api_service_can_bypass_cached_response(monkeypatch):
     monkeypatch.setenv("OPEN_API_DECODING_KEY", "decoded-service-key")
     monkeypatch.setenv("CACHE_BYPASS_RATE", "1")

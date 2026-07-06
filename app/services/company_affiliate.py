@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import date, datetime
 import hashlib
 import json
 import random
@@ -439,6 +440,45 @@ def compact_stock_price_payload(payload: dict[str, Any]) -> dict[str, Any]:
             if isinstance(point, dict)
         ],
     }
+
+
+def _stock_graph_date(point: dict[str, Any]) -> date | None:
+    raw_date = point.get("date")
+    if not isinstance(raw_date, str):
+        return None
+    date_part = raw_date.split(",", 1)[0].strip()
+    for date_format in ("%b %d %Y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(date_part, date_format).date()
+        except ValueError:
+            continue
+    return None
+
+
+def _latest_stock_session_points(graph: Any) -> list[dict[str, Any]]:
+    if not isinstance(graph, list):
+        return []
+    dated_points = [
+        (point, _stock_graph_date(point))
+        for point in graph
+        if isinstance(point, dict)
+    ]
+    latest_date = max(
+        (parsed_date for _, parsed_date in dated_points if parsed_date is not None),
+        default=None,
+    )
+    if latest_date is None:
+        return []
+    return [
+        point
+        for point, parsed_date in dated_points
+        if parsed_date == latest_date
+    ]
+
+
+def _stock_payload_has_chart_points(payload: dict[str, Any]) -> bool:
+    graph = payload.get("graph")
+    return isinstance(graph, list) and len(graph) >= 2
 
 
 @dataclass(frozen=True)
@@ -960,13 +1000,19 @@ class CompanyStockPriceService(OpenApiCompanyService):
         if query.window:
             params["window"] = query.window
 
-        async def fetch_searchapi() -> dict[str, Any]:
+        async def fetch_searchapi(
+            request_params: dict[str, Any] | None = None,
+        ) -> dict[str, Any]:
+            active_params = request_params or params
             try:
                 async with httpx.AsyncClient(
                     transport=self._transport,
                     timeout=30.0,
                 ) as client:
-                    response = await client.get(SEARCHAPI_SEARCH_URL, params=params)
+                    response = await client.get(
+                        SEARCHAPI_SEARCH_URL,
+                        params=active_params,
+                    )
                     response.raise_for_status()
             except httpx.HTTPStatusError as exc:
                 raise HTTPException(
@@ -990,6 +1036,31 @@ class CompanyStockPriceService(OpenApiCompanyService):
                     detail="SearchAPI returned a non-JSON response",
                 ) from exc
 
+        async def fetch_searchapi_with_1d_fallback() -> dict[str, Any]:
+            payload = await fetch_searchapi()
+            if (
+                (query.window or "").upper() != "1D"
+                or _stock_payload_has_chart_points(payload)
+            ):
+                return payload
+
+            fallback_params = {**params, "window": "5D"}
+            fallback_payload = await fetch_searchapi(fallback_params)
+            fallback_points = _latest_stock_session_points(
+                fallback_payload.get("graph")
+            )
+            if len(fallback_points) < 2:
+                return payload
+
+            search_parameters = dict(fallback_payload.get("search_parameters") or {})
+            search_parameters["window"] = "1D"
+            search_parameters["fallback_window"] = "5D"
+            return {
+                **fallback_payload,
+                "search_parameters": search_parameters,
+                "graph": fallback_points,
+            }
+
         if self._data_group_store is not None:
             return await fetch_with_group_store(
                 store=self._data_group_store,
@@ -1004,7 +1075,7 @@ class CompanyStockPriceService(OpenApiCompanyService):
                 group_name=STOCK_PRICE_GROUP,
                 source="searchapi:google_finance",
                 ttl=stock_price_ttl(query.exchange, query.window),
-                fetcher=fetch_searchapi,
+                fetcher=fetch_searchapi_with_1d_fallback,
             )
 
         cache_params = {key: value for key, value in params.items() if key != "api_key"}
@@ -1016,7 +1087,7 @@ class CompanyStockPriceService(OpenApiCompanyService):
         if cached is not None:
             return cached
 
-        payload = await fetch_searchapi()
+        payload = await fetch_searchapi_with_1d_fallback()
         await self._cache.set_json(
             cache_key,
             payload,
