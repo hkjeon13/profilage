@@ -2432,7 +2432,7 @@ a:hover {
   padding: 18px;
   border: 0;
   border-radius: 8px;
-  background: #f8fafc;
+  background: transparent;
 }
 
 .compact-metric-grid {
@@ -3806,7 +3806,7 @@ a:hover {
   .company-insight-card {
     gap: 10px;
     padding: 12px;
-    background: #f8fafc;
+    background: transparent;
   }
 
   .company-insight-card .block-heading {
