@@ -566,7 +566,6 @@ function renderStockChart(stock, activeWindow = "1D", statusText = stockUpdatedL
     date: point.date,
     volume: points[index].volume,
   }));
-  const eventMarkers = mapDisclosureEventsToPricePoints(disclosureEvents, interactionPoints);
   const linePath = coordinates
     .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
     .join(" ");
@@ -592,25 +591,6 @@ function renderStockChart(stock, activeWindow = "1D", statusText = stockUpdatedL
         <path class="stock-chart-line stock-chart-line-primary" d="${linePath}" />
         <rect class="stock-chart-hit-area" x="0" y="0" width="${width}" height="${height}" />
         <line class="stock-chart-guide" x1="${coordinates.at(-1).x.toFixed(2)}" y1="${paddingY}" x2="${coordinates.at(-1).x.toFixed(2)}" y2="${height - paddingY}" />
-        ${eventMarkers
-          .map(
-            (event) => `
-              <circle
-                class="stock-chart-event-marker stock-chart-event-marker-${attr(event.category)}"
-                cx="${Number(event.x).toFixed(2)}"
-                cy="${Math.max(paddingY + 7, Number(event.y) - 10).toFixed(2)}"
-                r="5"
-                tabindex="0"
-                role="button"
-                aria-label="${attr(`${disclosureEventLabel(event.category)} ${event.title}`)}"
-                data-disclosure-event-marker
-                data-disclosure-viewer="${attr(event.viewer_url || "")}"
-                data-disclosure-title="${attr(event.title)}"
-                data-disclosure-meta="${attr(disclosureEventMeta(event))}"
-              ></circle>
-            `,
-          )
-          .join("")}
         <circle class="stock-chart-dot" cx="${coordinates.at(-1).x.toFixed(2)}" cy="${coordinates.at(-1).y.toFixed(2)}" r="4" />
       </svg>
       <div class="stock-chart-axis-labels" aria-hidden="true">
@@ -2620,7 +2600,7 @@ function renderCompanyDetail({ info, outline, listed, stock, stockWindow, stockL
               <div><dt>법인등록번호</dt><dd>${text(outline.crno || dartCompany.jurir_no || crno)}</dd></div>
               <div><dt>사업자번호</dt><dd>${text(outline.bzno || dartCompany.bizr_no)}</dd></div>
               <div><dt>시장</dt><dd>${market}</dd></div>
-              <div><dt>업종</dt><dd>${text(outline.enpMainBizNm || listed.itmsNm, "정보 없음")}</dd></div>
+              <div><dt>업종</dt><dd>${text(outline.enpMainBizNm, "정보 없음")}</dd></div>
               <div class="company-fact-wide"><dt>주소</dt><dd>${text(outline.enpBsadr, "주소 정보 없음")}</dd></div>
               <div><dt>최초 영업일</dt><dd>${compactDate(outline.fstOpegDt)}</dd></div>
               <div><dt>최종 영업일</dt><dd>${compactDate(outline.lastOpegDt)}</dd></div>

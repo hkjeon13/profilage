@@ -1340,7 +1340,7 @@ a:hover {
 
 .disclosure-event-timeline li {
   display: grid;
-  grid-template-columns: 76px max-content minmax(0, 1fr);
+  grid-template-columns: 76px 84px minmax(0, 1fr);
   align-items: center;
   gap: 10px;
   border-bottom: 1px solid #eef0f6;
@@ -1363,6 +1363,9 @@ a:hover {
 }
 
 .disclosure-event-badge {
+  display: inline-flex;
+  min-width: 84px;
+  justify-content: center;
   border-radius: 999px;
   background: #eef4ff;
   color: #185abc;
@@ -1441,31 +1444,6 @@ a:hover {
 
 .stock-chart-dot.is-down {
   fill: #c5221f;
-}
-
-.stock-chart-event-marker {
-  fill: #ffffff;
-  stroke: #1a73e8;
-  stroke-width: 3;
-  cursor: pointer;
-  filter: drop-shadow(0 2px 4px rgb(15 23 42 / 18%));
-}
-
-.stock-chart-event-marker-periodic {
-  stroke: #1d5faa;
-}
-
-.stock-chart-event-marker-ownership,
-.stock-chart-event-marker-capital {
-  stroke: #7c3aed;
-}
-
-.stock-chart-event-marker-dividend {
-  stroke: #0f8b6d;
-}
-
-.stock-chart-event-marker-audit {
-  stroke: #dc2626;
 }
 
 .stock-chart-meta {
