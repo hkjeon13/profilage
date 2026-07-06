@@ -8,6 +8,16 @@ const outlineUrl = "/api/company/get_corp_outline";
 const listedUrl = "/api/company/get_krx_listed_item";
 const COMPARE_STORAGE_KEY = "profilage.compareCompanies";
 const MAX_COMPARE_COMPANIES = 4;
+const SEARCH_RESULT_PAGE_SIZE = 20;
+const SEARCH_LOAD_MORE_OFFSET = 420;
+const searchState = {
+  token: 0,
+  query: "",
+  items: [],
+  listedCrnos: new Set(),
+  renderedCount: 0,
+  isLoadingMore: false,
+};
 
 function currentSearchQuery() {
   return queryInput.value.trim();
@@ -105,8 +115,10 @@ function renderSearchSkeleton(count = 5) {
   resultList.appendChild(fragment);
 }
 
-function renderResults(items) {
-  clearResults();
+function renderResults(items, { append = false } = {}) {
+  if (!append) {
+    clearResults();
+  }
   const fragment = document.createDocumentFragment();
 
   items.forEach((company) => {
@@ -151,6 +163,71 @@ function renderResults(items) {
 
   resultList.appendChild(fragment);
   setupResultCompareButtons();
+}
+
+function shouldLoadMoreSearchResults() {
+  return (
+    window.innerHeight + window.scrollY >=
+    document.documentElement.scrollHeight - SEARCH_LOAD_MORE_OFFSET
+  );
+}
+
+async function enrichResultsForRender(items) {
+  const crnos = items
+    .map((item) => item.crno)
+    .filter(
+      (crno, index, values) =>
+        crno && !searchState.listedCrnos.has(crno) && values.indexOf(crno) === index,
+    );
+
+  if (crnos.length === 0) {
+    return items;
+  }
+
+  const listedByCrnoPayloads = await Promise.all(
+    crnos.map((crno) =>
+      fetchJson(listedUrl, {
+        corporate_registration_number: crno,
+        page: 1,
+        per_page: 1,
+      }).catch(() => null),
+    ),
+  );
+  const listedItems = listedByCrnoPayloads.flatMap((payload) => normalizeItems(payload));
+  listedItems
+    .map((item) => item.crno)
+    .filter(Boolean)
+    .forEach((crno) => searchState.listedCrnos.add(crno));
+
+  return mergeCompanyResults(items, listedItems);
+}
+
+async function renderNextSearchResults(token) {
+  if (searchState.isLoadingMore || token !== searchState.token) return;
+  if (searchState.renderedCount >= searchState.items.length) return;
+
+  searchState.isLoadingMore = true;
+  const start = searchState.renderedCount;
+  const nextItems = searchState.items.slice(start, start + SEARCH_RESULT_PAGE_SIZE);
+  const append = start > 0;
+
+  try {
+    if (append) {
+      setStatus("더 불러오는 중...");
+    }
+    const enrichedItems = await enrichResultsForRender(nextItems);
+    if (token !== searchState.token) return;
+    renderResults(enrichedItems, { append });
+    searchState.renderedCount += nextItems.length;
+    setStatus("");
+  } finally {
+    searchState.isLoadingMore = false;
+  }
+}
+
+function maybeLoadMoreSearchResults() {
+  if (!shouldLoadMoreSearchResults()) return;
+  renderNextSearchResults(searchState.token);
 }
 
 function setupResultCompareButtons() {
@@ -268,32 +345,20 @@ async function loadCompanySearchResults(query) {
   const outlineItems = normalizeItems(outlinePayload);
   const listedItems = listedPayloads.flatMap((payload) => normalizeItems(payload));
   const listedCrnos = new Set(listedItems.map((item) => item.crno).filter(Boolean));
-  const initialItems = mergeCompanyResults(outlineItems, listedItems).slice(0, 20);
-  const listedByCrnoPayloads = await Promise.all(
-    initialItems
-      .map((item) => item.crno)
-      .filter(
-        (crno, index, crnos) =>
-          crno && !listedCrnos.has(crno) && crnos.indexOf(crno) === index,
-      )
-      .map((crno) =>
-        fetchJson(listedUrl, {
-          corporate_registration_number: crno,
-          page: 1,
-          per_page: 1,
-        }).catch(() => null),
-      ),
-  );
-  return mergeCompanyResults(
-    outlineItems,
-    [
-      ...listedItems,
-      ...listedByCrnoPayloads.flatMap((payload) => normalizeItems(payload)),
-    ],
-  ).slice(0, 20);
+  return {
+    items: mergeCompanyResults(outlineItems, listedItems),
+    listedCrnos,
+  };
 }
 
 async function searchCompanies(query) {
+  const token = searchState.token + 1;
+  searchState.token = token;
+  searchState.query = query;
+  searchState.items = [];
+  searchState.listedCrnos = new Set();
+  searchState.renderedCount = 0;
+  searchState.isLoadingMore = false;
   document.body.classList.remove("is-idle");
   queryInput.value = query;
   syncSearchUrl(query);
@@ -301,7 +366,8 @@ async function searchCompanies(query) {
   renderSearchSkeleton();
 
   try {
-    const items = await loadCompanySearchResults(query);
+    const { items, listedCrnos } = await loadCompanySearchResults(query);
+    if (token !== searchState.token) return;
 
     if (items.length === 0) {
       setStatus("검색 결과가 없습니다.");
@@ -309,13 +375,20 @@ async function searchCompanies(query) {
       return;
     }
 
-    setStatus(`${items.length.toLocaleString("ko-KR")}개 결과`);
-    renderResults(items);
+    searchState.items = items;
+    searchState.listedCrnos = listedCrnos;
+    clearResults();
+    setStatus("");
+    await renderNextSearchResults(token);
+    maybeLoadMoreSearchResults();
   } catch (error) {
+    if (token !== searchState.token) return;
     setStatus(error.message);
     clearResults();
   }
 }
+
+window.addEventListener("scroll", maybeLoadMoreSearchResults, { passive: true });
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();

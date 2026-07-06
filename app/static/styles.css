@@ -1248,6 +1248,8 @@ a:hover {
 }
 
 .disclosure-summary-close {
+  flex: 0 0 auto;
+  min-width: 52px;
   min-height: 34px;
   border: 1px solid #e7ebf3;
   border-radius: 8px;
@@ -1258,6 +1260,7 @@ a:hover {
   font: inherit;
   font-size: 13px;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .disclosure-summary-body {
@@ -1722,10 +1725,12 @@ a:hover {
   display: flex;
   gap: 6px;
   overflow-x: auto;
+  scrollbar-gutter: stable;
   border: 1px solid #eaecf0;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.96);
   padding: 8px;
+  scroll-padding-inline: 8px;
   backdrop-filter: blur(8px);
 }
 
@@ -3386,6 +3391,10 @@ a:hover {
     border-radius: 8px;
   }
 
+  .disclosure-viewer-frame {
+    overflow: auto;
+  }
+
   .financial-trend-modal {
     padding: 10px;
   }
@@ -3495,6 +3504,7 @@ a:hover {
 
   .profile-section-nav {
     top: 0;
+    padding-right: 16px;
   }
 
   .company-ai-summary-card.is-collapsed-mobile .company-ai-summary-body {

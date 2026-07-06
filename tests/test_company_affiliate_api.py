@@ -185,7 +185,7 @@ def test_root_serves_company_search_frontend():
     assert "/api/company/get_corp_outline" in response.text
     assert "/profile?crno=" in response.text
     assert "/styles.css?v=google-home-10" in response.text
-    assert "/app.js?v=google-home-11" in response.text
+    assert "/app.js?v=google-home-12" in response.text
 
 
 def test_search_results_status_has_breathing_room():
@@ -264,6 +264,18 @@ def test_search_results_render_dense_business_rows_with_entity_type():
     assert ".entity-type-badge" in style_response.text
 
 
+def test_search_results_load_more_on_scroll_without_count_status():
+    with TestClient(app) as client:
+        script_response = client.get("/app.js")
+
+    assert script_response.status_code == 200
+    assert "SEARCH_RESULT_PAGE_SIZE = 20" in script_response.text
+    assert "window.addEventListener(\"scroll\", maybeLoadMoreSearchResults" in script_response.text
+    assert "renderNextSearchResults" in script_response.text
+    assert ".slice(0, 20)" not in script_response.text
+    assert 'setStatus(`${items.length.toLocaleString("ko-KR")}개 결과`)' not in script_response.text
+
+
 def test_profile_page_serves_company_profile_frontend():
     with TestClient(app) as client:
         response = client.get("/profile")
@@ -281,7 +293,7 @@ def test_profile_page_serves_company_profile_frontend():
     assert '<a href="/openapi.json">OpenAPI</a>' not in response.text
     assert '<a href="/docs">문서</a>' not in response.text
     assert '<a href="/">새 검색</a>' not in response.text
-    assert "/styles.css?v=company-profile-49" in response.text
+    assert "/styles.css?v=company-profile-50" in response.text
     assert "/profile-chart-2.css?v=interactive-9" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
@@ -490,6 +502,9 @@ def test_profile_exposes_mobile_section_navigation():
     assert "setupCompanyAiSummaryMore" in script_response.text
     assert ".profile-section-nav" in style_response.text
     assert "position: sticky;" in style_response.text
+    assert "scrollbar-gutter: stable;" in style_response.text
+    assert "scroll-padding-inline: 8px;" in style_response.text
+    assert ".profile-section-nav {\n    top: 0;\n    padding-right: 16px;" in style_response.text
 
 
 def test_profile_hero_uses_single_arrow_back_action_without_api_cta():
@@ -540,6 +555,7 @@ def test_profile_disclosures_open_inside_page_viewer():
     assert 'target="_blank" rel="noreferrer">${text(item.report_nm)}</a>' not in script_response.text
     assert ".disclosure-viewer-modal" in style_response.text
     assert ".disclosure-viewer-frame" in style_response.text
+    assert ".disclosure-viewer-frame {\n    overflow: auto;" in style_response.text
     assert ".company-disclosure-card .block-heading" in style_response.text
     assert ".company-disclosure-card .disclosure-list li" in style_response.text
     assert "border-bottom: 1px solid #eef0f6;" in style_response.text
@@ -898,7 +914,7 @@ def test_relationship_summary_cards_open_company_list_modal():
     assert "relationship-list-modal" in script_response.text
     assert ".relationship-list-modal" in style_response.text
     assert ".relationship-list-items" in style_response.text
-    assert "/styles.css?v=company-profile-49" in profile_response.text
+    assert "/styles.css?v=company-profile-50" in profile_response.text
     assert "/profile-page-5.js?v=company-profile-47" in profile_response.text
 
 
@@ -965,7 +981,7 @@ def test_profile_frontend_renders_normalized_dart_insight_cards():
     assert ".ownership-stacked-bar" in style_response.text
     assert ".ownership-bar-segment" in style_response.text
     assert ".shareholder-detail-modal" in style_response.text
-    assert "/styles.css?v=company-profile-49" in profile_response.text
+    assert "/styles.css?v=company-profile-50" in profile_response.text
     assert "/profile-page-5.js?v=company-profile-47" in profile_response.text
 
 
@@ -1079,6 +1095,8 @@ def test_profile_frontend_exposes_disclosure_summary_modal():
     assert "요약을 생성하는 중입니다" in script_response.text
     assert ".disclosure-summary-modal" in style_response.text
     assert ".disclosure-summary-button" in style_response.text
+    assert ".disclosure-summary-close" in style_response.text
+    assert "white-space: nowrap;" in style_response.text
     assert ".disclosure-summary-loading-card" in style_response.text
     assert "@keyframes disclosure-summary-surface-shimmer" in style_response.text
 
