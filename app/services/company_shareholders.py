@@ -299,6 +299,13 @@ class BusinessGroupShareholderService:
             async with conn.cursor() as cursor:
                 await cursor.execute(
                     """
+                    SELECT MAX(designation_month) AS designation_month, COUNT(*) AS group_count
+                    FROM business_groups
+                    """
+                )
+                corpus_row = await cursor.fetchone()
+                await cursor.execute(
+                    """
                     SELECT
                         se.entity_id,
                         se.entity_type,
@@ -341,10 +348,15 @@ class BusinessGroupShareholderService:
                 )
                 rows = await cursor.fetchall()
 
+        group_count = int((corpus_row or {}).get("group_count") or 0)
         return {
             "query": {"name": name, "normalized_name": normalized_name, "corp_code": corp_code},
             "matches": [self._public_match(row) for row in rows],
-            "corpus": {"available": True},
+            "corpus": {
+                "available": group_count > 0,
+                "designation_month": (corpus_row or {}).get("designation_month"),
+                "group_count": group_count,
+            },
         }
 
     async def sync_top_business_groups(self, *, designation_month: str | None = None) -> BusinessGroupSyncResult:
