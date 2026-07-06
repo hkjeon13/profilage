@@ -157,6 +157,21 @@ function text(value, fallback = "-") {
   return value === undefined || value === null || value === "" ? fallback : value;
 }
 
+function normalizedComparableText(value) {
+  return String(value || "").replace(/\s+/g, "").toLowerCase();
+}
+
+function validIndustryName(industry, { outline = {}, listed = {} } = {}) {
+  const normalizedIndustry = normalizedComparableText(industry);
+  if (!normalizedIndustry) return "";
+  const invalidNames = [
+    outline.corpNm,
+    outline.enpPbanCmpyNm,
+    listed.itmsNm,
+  ].map(normalizedComparableText);
+  return invalidNames.includes(normalizedIndustry) ? "" : industry;
+}
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -301,7 +316,10 @@ function shortFinancialAmount(value) {
 
 function companySummaryText({ info, outline, listed, market }) {
   const corpName = text(outline.corpNm, "이 기업");
-  const industry = firstCompanyValue(info.corp_outline, ["enpMainBizNm", "sicNm"]);
+  const industry = validIndustryName(
+    firstCompanyValue(info.corp_outline, ["enpMainBizNm", "sicNm"]),
+    { outline, listed },
+  );
   const listedName = text(listed.itmsNm || outline.enpPbanCmpyNm, "상장 종목");
   const ticker = listed.srtnCd ? `(${text(listed.srtnCd)})` : "";
   const representative = outline.enpRprFnm ? ` 대표자는 ${text(outline.enpRprFnm)}입니다.` : "";
@@ -2552,6 +2570,7 @@ function renderCompanyDetail({ info, outline, listed, stock, stockWindow, stockL
   const homepage = homepageUrl(outline.enpHmpgUrl || dartCompany.hm_url);
   const market = text(listed.mrktCtg || outline.corpRegMrktDcdNm, "비상장/정보 없음");
   const companySummary = companySummaryText({ info, outline, listed, market });
+  const industry = validIndustryName(outline.enpMainBizNm, { outline, listed });
   const logo = document.querySelector(".company-logo-box");
   const corpCode = info.dart_corp_code?.match?.corp_code || dartCompany.corp_code || "";
   const initialCompareItems = compareItems();
@@ -2600,7 +2619,7 @@ function renderCompanyDetail({ info, outline, listed, stock, stockWindow, stockL
               <div><dt>법인등록번호</dt><dd>${text(outline.crno || dartCompany.jurir_no || crno)}</dd></div>
               <div><dt>사업자번호</dt><dd>${text(outline.bzno || dartCompany.bizr_no)}</dd></div>
               <div><dt>시장</dt><dd>${market}</dd></div>
-              <div><dt>업종</dt><dd>${text(outline.enpMainBizNm, "정보 없음")}</dd></div>
+              <div><dt>업종</dt><dd>${text(industry, "정보 없음")}</dd></div>
               <div class="company-fact-wide"><dt>주소</dt><dd>${text(outline.enpBsadr, "주소 정보 없음")}</dd></div>
               <div><dt>최초 영업일</dt><dd>${compactDate(outline.fstOpegDt)}</dd></div>
               <div><dt>최종 영업일</dt><dd>${compactDate(outline.lastOpegDt)}</dd></div>
