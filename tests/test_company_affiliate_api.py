@@ -73,6 +73,13 @@ def dart_corp_code_zip() -> bytes:
     return buffer.getvalue()
 
 
+def dart_disclosure_document_zip(text: str) -> bytes:
+    buffer = BytesIO()
+    with ZipFile(buffer, "w") as archive:
+        archive.writestr("document.xml", text)
+    return buffer.getvalue()
+
+
 class FakeJsonCache:
     def __init__(self) -> None:
         self.values = {}
@@ -177,7 +184,7 @@ def test_root_serves_company_search_frontend():
     assert 'class="example-query-list"' in response.text
     assert "/api/company/get_corp_outline" in response.text
     assert "/profile?crno=" in response.text
-    assert "/styles.css?v=google-home-9" in response.text
+    assert "/styles.css?v=google-home-10" in response.text
     assert "/app.js?v=google-home-11" in response.text
 
 
@@ -222,6 +229,21 @@ def test_homepage_positions_as_b2b_company_data_platform():
     assert "[data-example-query]" in script_response.text
     assert ".home-title" in style_response.text
     assert ".source-rail" in style_response.text
+
+
+def test_homepage_search_submit_uses_icon_and_matches_result_width():
+    with TestClient(app) as client:
+        response = client.get("/")
+        style_response = client.get("/styles.css")
+
+    assert response.status_code == 200
+    assert style_response.status_code == 200
+    assert '<button class="search-submit" type="submit" aria-label="검색">' in response.text
+    assert 'class="search-submit-icon"' in response.text
+    assert 'class="visually-hidden">검색</span>' in response.text
+    assert '<button class="search-submit" type="submit">검색</button>' not in response.text
+    assert ".google-like-home:not(.is-idle) .search-form {\n  width: min(760px, 100%);" in style_response.text
+    assert ".content-grid {\n  display: grid;\n  grid-template-columns: minmax(0, 760px);" in style_response.text
 
 
 def test_search_results_render_dense_business_rows_with_entity_type():
@@ -1344,19 +1366,20 @@ def test_openai_settings_are_optional_until_summary_request(monkeypatch):
     assert settings.max_chars == 18000
 
 
-def test_disclosure_text_extractor_accepts_only_dart_viewer_urls():
+def test_disclosure_text_extractor_reads_dart_document_zip():
     from app.services.company_disclosure_summary import (
         disclosure_text_entity_key,
-        validate_dart_viewer_url,
+        extract_dart_document_zip_text,
     )
 
-    assert validate_dart_viewer_url(
-        "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260701000000"
+    text = extract_dart_document_zip_text(
+        dart_disclosure_document_zip(
+            "<html><body><p>보유주식등의 수 및 보유비율은 23.10%입니다.</p></body></html>"
+        )
     )
+
+    assert "보유비율은 23.10%입니다." in text
     assert disclosure_text_entity_key("20260701000000") == "20260701000000"
-    assert not validate_dart_viewer_url(
-        "https://example.com/dsaf001/main.do?rcpNo=20260701000000"
-    )
 
 
 def test_disclosure_html_to_text_removes_scripts_and_compacts_text():
@@ -1473,7 +1496,7 @@ async def test_disclosure_summary_service_reuses_cached_summary(monkeypatch):
         data_group_store=store,
     )
     store.records[
-        ("company", "20260701000000", "dart_disclosure_summary:gpt-4.1-mini:v2")
+        ("company", "20260701000000", "dart_disclosure_summary:gpt-4.1-mini:v3")
     ] = fresh_record(
         {
             "receipt_no": "20260701000000",
@@ -1485,7 +1508,7 @@ async def test_disclosure_summary_service_reuses_cached_summary(monkeypatch):
                 "limitations": [],
             },
             "model": "gpt-4.1-mini",
-            "prompt_version": "v2",
+            "prompt_version": "v3",
         }
     )
 
@@ -1799,12 +1822,19 @@ def test_get_dart_company_insight_detail_rejects_unknown_kind():
 
 def test_get_dart_disclosure_summary_endpoint_uses_service_cache(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("DART_API_KEY", "dart-key")
 
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.host == "dart.fss.or.kr":
+        if request.url.host == "opendart.fss.or.kr" and request.url.path == "/api/document.xml":
+            assert dict(request.url.params) == {
+                "crtfc_key": "dart-key",
+                "rcept_no": "20260701000000",
+            }
             return httpx.Response(
                 200,
-                text="<html><body><p>매출액은 증가했습니다.</p></body></html>",
+                content=dart_disclosure_document_zip(
+                    "<html><body><p>매출액은 증가했습니다.</p></body></html>"
+                ),
             )
         if request.url.host == "api.openai.com":
             return httpx.Response(
@@ -1845,40 +1875,34 @@ def test_get_dart_disclosure_summary_endpoint_uses_service_cache(monkeypatch):
     assert "cached" not in payload
 
 
-def test_get_dart_disclosure_summary_follows_dart_viewer_document(monkeypatch):
+def test_get_dart_disclosure_summary_uses_dart_document_api(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("DART_API_KEY", "dart-key")
     captured = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.host == "dart.fss.or.kr" and request.url.path == "/dsaf001/main.do":
+        if request.url.host == "dart.fss.or.kr":
+            raise AssertionError("summary text must not be fetched from DART viewer pages")
+        if request.url.host == "opendart.fss.or.kr" and request.url.path == "/api/document.xml":
+            assert dict(request.url.params) == {
+                "crtfc_key": "dart-key",
+                "rcept_no": "20260703000496",
+            }
             return httpx.Response(
                 200,
-                text="""
-                <html><body>
-                  <p>잠시만 기다려주세요.</p>
-                  <script>
-                    viewDoc("20260703000496", "11463174", "1", "800", "9052", "dart4.xsd", "");
-                  </script>
-                </body></html>
-                """,
-            )
-        if request.url.host == "dart.fss.or.kr" and request.url.path == "/report/viewer.do":
-            assert request.url.params["rcpNo"] == "20260703000496"
-            assert request.url.params["dcmNo"] == "11463174"
-            return httpx.Response(
-                200,
-                text="""
+                content=dart_disclosure_document_zip(
+                    """
                 <html><body>
                   <h1>주식등의 대량보유상황보고서</h1>
                   <p>보유주식등의 수 및 보유비율은 23.10%입니다.</p>
                   <p>보고사유는 특별관계자 변동입니다.</p>
                 </body></html>
-                """,
+                """
+                ),
             )
         if request.url.host == "api.openai.com":
             captured["payload"] = json.loads(request.content)
             assert "보유주식등의 수 및 보유비율은 23.10%입니다." in captured["payload"]["input"]
-            assert "잠시만 기다려주세요" not in captured["payload"]["input"]
             return httpx.Response(
                 200,
                 json={

@@ -104,7 +104,7 @@ a:hover {
 }
 
 .google-like-home:not(.is-idle) .search-form {
-  width: min(680px, 100%);
+  width: min(760px, 100%);
 }
 
 .google-like-home:not(.is-idle) .status {
@@ -200,14 +200,35 @@ a:hover {
 }
 
 .search-submit {
+  display: inline-flex;
+  width: 32px;
   height: 32px;
+  flex: 0 0 32px;
+  align-items: center;
+  justify-content: center;
   border: 0;
   border-radius: 16px;
   background: #f8f9fa;
   color: #5f6368;
   cursor: pointer;
-  padding: 0 14px;
+  padding: 0;
   white-space: nowrap;
+}
+
+.search-submit:hover,
+.search-submit:focus-visible {
+  background: #e8f0fe;
+  color: var(--accent);
+}
+
+.search-submit-icon {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.2;
 }
 
 .search-actions {

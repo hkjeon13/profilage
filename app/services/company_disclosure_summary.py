@@ -2,13 +2,14 @@ import html
 import json
 import re
 from dataclasses import dataclass
+from io import BytesIO
 from typing import Any
-from urllib.parse import urljoin, urlparse
+from zipfile import BadZipFile, ZipFile
 
 from fastapi import HTTPException
 import httpx
 
-from app.core.config import get_openai_settings
+from app.core.config import get_dart_api_key, get_openai_settings
 from app.services.company_store import (
     COMPANY_ENTITY_TYPE,
     DataGroupStore,
@@ -16,10 +17,10 @@ from app.services.company_store import (
 )
 
 
-DART_DISCLOSURE_TEXT_GROUP = "dart_disclosure_text"
-DART_DISCLOSURE_SUMMARY_PROMPT_VERSION = "v2"
+DART_DISCLOSURE_TEXT_GROUP = "dart_disclosure_text:document_api:v1"
+DART_DISCLOSURE_SUMMARY_PROMPT_VERSION = "v3"
 OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
-DART_VIEWER_DOCUMENT_LIMIT = 12
+DART_DOCUMENT_URL = "https://opendart.fss.or.kr/api/document.xml"
 
 
 @dataclass(frozen=True)
@@ -27,23 +28,6 @@ class DisclosureSummaryQuery:
     receipt_no: str
     viewer_url: str
     title: str | None
-
-
-@dataclass(frozen=True)
-class DartViewerDocumentRef:
-    rcp_no: str
-    dcm_no: str
-    ele_id: str | None
-    offset: str | None
-    length: str | None
-    dtd: str
-
-
-def validate_dart_viewer_url(viewer_url: str) -> bool:
-    parsed = urlparse(viewer_url)
-    return parsed.scheme in {"http", "https"} and parsed.netloc.endswith(
-        "dart.fss.or.kr"
-    )
 
 
 def disclosure_text_entity_key(receipt_no: str) -> str:
@@ -69,88 +53,35 @@ def extract_disclosure_text(html_text: str) -> str:
     return cleaned.strip()
 
 
-def _script_value(value: str | None) -> str | None:
-    if value is None:
-        return None
-    return html.unescape(value).strip()
-
-
-def _document_ref_key(ref: DartViewerDocumentRef) -> tuple[str, str, str | None]:
-    return (ref.rcp_no, ref.dcm_no, ref.ele_id)
-
-
-def extract_dart_viewer_document_refs(html_text: str) -> list[DartViewerDocumentRef]:
-    refs: list[DartViewerDocumentRef] = []
-    seen: set[tuple[str, str, str | None]] = set()
-
-    for block in re.findall(
-        r"(?is)var\s+node1\s*=\s*\{\};(.*?)treeData\.push\(node1\);",
-        html_text,
-    ):
-        values = {
-            key: _script_value(value)
-            for key, value in re.findall(
-                r"""node1\[['"]([^'"]+)['"]\]\s*=\s*"([^"]*)";""",
-                block,
-            )
-        }
-        rcp_no = values.get("rcpNo")
-        dcm_no = values.get("dcmNo")
-        dtd = values.get("dtd")
-        if not rcp_no or not dcm_no or not dtd:
+def _decode_document_bytes(raw: bytes) -> str:
+    for encoding in ("utf-8", "cp949", "euc-kr"):
+        try:
+            return raw.decode(encoding)
+        except UnicodeDecodeError:
             continue
-        ref = DartViewerDocumentRef(
-            rcp_no=rcp_no,
-            dcm_no=dcm_no,
-            ele_id=values.get("eleId"),
-            offset=values.get("offset"),
-            length=values.get("length"),
-            dtd=dtd,
-        )
-        key = _document_ref_key(ref)
-        if key not in seen:
-            refs.append(ref)
-            seen.add(key)
-
-    if refs:
-        return refs[:DART_VIEWER_DOCUMENT_LIMIT]
-
-    for match in re.findall(
-        r"""viewDoc\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*"([^"]*)"\s*,\s*"([^"]*)"\s*,\s*"([^"]*)"\s*,\s*"([^"]+)"\s*,\s*"([^"]*)"\s*\)""",
-        html_text,
-    ):
-        ref = DartViewerDocumentRef(
-            rcp_no=_script_value(match[0]) or "",
-            dcm_no=_script_value(match[1]) or "",
-            ele_id=_script_value(match[2]),
-            offset=_script_value(match[3]),
-            length=_script_value(match[4]),
-            dtd=_script_value(match[5]) or "",
-        )
-        if not ref.rcp_no or not ref.dcm_no or not ref.dtd:
-            continue
-        key = _document_ref_key(ref)
-        if key not in seen:
-            refs.append(ref)
-            seen.add(key)
-
-    return refs[:DART_VIEWER_DOCUMENT_LIMIT]
+    return raw.decode("utf-8", errors="ignore")
 
 
-def dart_viewer_document_url(viewer_url: str, ref: DartViewerDocumentRef) -> str:
-    base_url = urljoin(viewer_url, "/report/viewer.do")
-    params = [
-        ("rcpNo", ref.rcp_no),
-        ("dcmNo", ref.dcm_no),
-        ("dtd", ref.dtd),
-    ]
-    if ref.ele_id:
-        params.append(("eleId", ref.ele_id))
-    if ref.offset:
-        params.append(("offset", ref.offset))
-    if ref.length:
-        params.append(("length", ref.length))
-    return str(httpx.URL(base_url, params=params))
+def extract_dart_document_zip_text(content: bytes) -> str:
+    try:
+        with ZipFile(BytesIO(content)) as archive:
+            texts = [
+                extract_disclosure_text(_decode_document_bytes(archive.read(name)))
+                for name in archive.namelist()
+                if not name.endswith("/")
+            ]
+    except BadZipFile as exc:
+        error_text = extract_disclosure_text(_decode_document_bytes(content))
+        if error_text:
+            raise HTTPException(
+                status_code=502,
+                detail=f"DART document API returned non-zip response: {error_text[:200]}",
+            ) from exc
+        raise HTTPException(
+            status_code=502,
+            detail="DART document API returned an invalid zip file",
+        ) from exc
+    return "\n\n".join(text for text in texts if text).strip()
 
 
 def _string_list(value: Any, *, limit: int = 5) -> list[str]:
@@ -260,44 +191,35 @@ class DisclosureSummaryService:
         self,
         query: DisclosureSummaryQuery,
     ) -> dict[str, Any]:
-        if not validate_dart_viewer_url(query.viewer_url):
-            raise HTTPException(status_code=400, detail="DART viewer_url is required")
+        api_key = get_dart_api_key()
         try:
             async with httpx.AsyncClient(
                 transport=self._transport,
                 timeout=30.0,
-                headers={"User-Agent": "Mozilla/5.0"},
             ) as client:
-                response = await client.get(query.viewer_url)
+                response = await client.get(
+                    DART_DOCUMENT_URL,
+                    params={
+                        "crtfc_key": api_key,
+                        "rcept_no": query.receipt_no,
+                    },
+                )
                 response.raise_for_status()
-                viewer_html = response.text
-                document_refs = extract_dart_viewer_document_refs(viewer_html)
-                document_texts = []
-                for ref in document_refs:
-                    document_response = await client.get(
-                        dart_viewer_document_url(query.viewer_url, ref)
-                    )
-                    document_response.raise_for_status()
-                    document_text = extract_disclosure_text(document_response.text)
-                    if document_text:
-                        document_texts.append(document_text)
         except httpx.HTTPStatusError as exc:
             raise HTTPException(
                 status_code=502,
                 detail=(
-                    "DART disclosure request failed with status "
+                    "DART document API request failed with status "
                     f"{exc.response.status_code}"
                 ),
             ) from exc
         except httpx.HTTPError as exc:
             raise HTTPException(
                 status_code=502,
-                detail="DART disclosure request failed",
+                detail="DART document API request failed",
             ) from exc
 
-        text = "\n\n".join(document_texts).strip()
-        if not text:
-            text = extract_disclosure_text(viewer_html)
+        text = extract_dart_document_zip_text(response.content)
         if not text:
             raise HTTPException(status_code=502, detail="DART disclosure text was empty")
         return {"receipt_no": query.receipt_no, "title": query.title, "text": text}
@@ -329,7 +251,7 @@ class DisclosureSummaryService:
                 entity_type=COMPANY_ENTITY_TYPE,
                 entity_key=entity_key,
                 group_name=DART_DISCLOSURE_TEXT_GROUP,
-                source="dart:viewer",
+                source="dart:document_api",
                 ttl=None,
                 fetcher=lambda: self._fetch_disclosure_text(query),
             )

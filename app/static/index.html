@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Profilage | 기업 데이터 검색</title>
-    <link rel="stylesheet" href="/styles.css?v=google-home-9" />
+    <link rel="stylesheet" href="/styles.css?v=google-home-10" />
   </head>
   <body class="is-idle google-like-home">
     <header class="top-nav" aria-label="상단 메뉴">
@@ -40,7 +40,18 @@
             placeholder="기업명, 종목코드, 법인등록번호로 검색"
             minlength="1"
           />
-          <button class="search-submit" type="submit">검색</button>
+          <button class="search-submit" type="submit" aria-label="검색">
+            <svg
+              class="search-submit-icon"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <circle cx="11" cy="11" r="7"></circle>
+              <path d="m16.5 16.5 4 4"></path>
+            </svg>
+            <span class="visually-hidden">검색</span>
+          </button>
         </form>
         <div class="example-query-list" aria-label="예시 기업">
           <button type="button" data-example-query="삼성전자">삼성전자</button>
