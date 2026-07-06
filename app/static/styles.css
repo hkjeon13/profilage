@@ -1980,6 +1980,7 @@ a:hover {
   display: grid;
   gap: 14px;
   color: #3f4757;
+  font-size: 15px;
   line-height: 1.7;
 }
 
@@ -2429,9 +2430,9 @@ a:hover {
   gap: 14px;
   min-width: 0;
   padding: 18px;
-  border: 1px solid #eef0f6;
+  border: 0;
   border-radius: 8px;
-  background: #fff;
+  background: #f8fafc;
 }
 
 .compact-metric-grid {
@@ -3753,7 +3754,8 @@ a:hover {
     justify-content: flex-start;
     overflow-x: auto;
     gap: 6px;
-    padding: 8px;
+    padding: 8px 12px;
+    scroll-padding-inline: 12px;
     scrollbar-width: none;
   }
 
@@ -3778,13 +3780,19 @@ a:hover {
   }
 
   .company-ai-summary-headline {
-    font-size: 15px;
-    line-height: 1.5;
+    font-size: 14px;
+    line-height: 1.48;
   }
 
   .company-ai-summary-body {
-    gap: 12px;
-    line-height: 1.62;
+    gap: 10px;
+    font-size: 14px;
+    line-height: 1.56;
+  }
+
+  .company-ai-summary-body ul {
+    gap: 5px;
+    padding-left: 16px;
   }
 
   .company-insight-summary-card {
@@ -3798,6 +3806,7 @@ a:hover {
   .company-insight-card {
     gap: 10px;
     padding: 12px;
+    background: #f8fafc;
   }
 
   .company-insight-card .block-heading {
