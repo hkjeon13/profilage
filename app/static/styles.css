@@ -3744,7 +3744,7 @@ a:hover {
 
   .profile-section-nav {
     display: flex;
-    justify-content: flex-start;
+    justify-content: space-between;
     overflow-x: auto;
     gap: 4px;
     padding: 8px 12px;
@@ -3759,12 +3759,8 @@ a:hover {
   .profile-section-nav a {
     flex: 0 0 auto;
     min-height: 40px;
-    padding: 0 6px;
+    padding: 0 4px;
     font-size: 12px;
-  }
-
-  .profile-section-nav a:last-child {
-    margin-right: 6px;
   }
 
   .company-ai-summary-card {

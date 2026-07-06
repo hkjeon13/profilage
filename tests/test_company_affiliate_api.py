@@ -298,7 +298,7 @@ def test_profile_page_serves_company_profile_frontend():
     assert '<a href="/openapi.json">OpenAPI</a>' not in response.text
     assert '<a href="/docs">문서</a>' not in response.text
     assert '<a href="/">새 검색</a>' not in response.text
-    assert "/styles.css?v=company-profile-74" in response.text
+    assert "/styles.css?v=company-profile-75" in response.text
     assert "/profile-chart-2.css?v=interactive-10" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
@@ -954,7 +954,7 @@ def test_relationship_summary_cards_open_company_list_modal():
     assert "relationship-list-modal" in script_response.text
     assert ".relationship-list-modal" in style_response.text
     assert ".relationship-list-items" in style_response.text
-    assert "/styles.css?v=company-profile-74" in profile_response.text
+    assert "/styles.css?v=company-profile-75" in profile_response.text
     assert "/profile-page-5.js?v=company-profile-59" in profile_response.text
 
 
@@ -1025,7 +1025,7 @@ def test_profile_frontend_renders_normalized_dart_insight_cards():
     assert ".ownership-stacked-bar" in style_response.text
     assert ".ownership-bar-segment" in style_response.text
     assert ".shareholder-detail-modal" in style_response.text
-    assert "/styles.css?v=company-profile-74" in profile_response.text
+    assert "/styles.css?v=company-profile-75" in profile_response.text
     assert "/profile-page-5.js?v=company-profile-59" in profile_response.text
 
 
@@ -1097,8 +1097,7 @@ def test_profile_mobile_styles_reduce_dense_profile_sections():
     insight_card_rule = mobile_rule.split(".company-insight-card {", 1)[1].split("}", 1)[0]
     assert "padding: 12px;" in insight_card_rule
     assert "background: transparent;" in insight_card_rule
-    assert ".profile-section-nav {\n    display: flex;\n    justify-content: flex-start;\n    overflow-x: auto;\n    gap: 4px;\n    padding: 8px 12px;" in mobile_rule
-    assert ".profile-section-nav a:last-child {\n    margin-right: 6px;" in mobile_rule
+    assert ".profile-section-nav {\n    display: flex;\n    justify-content: space-between;\n    overflow-x: auto;\n    gap: 4px;\n    padding: 8px 12px;" in mobile_rule
     assert ".company-ai-summary-headline {\n    font-size: 14px;\n    line-height: 1.48;" in mobile_rule
     assert ".company-ai-summary-body {\n    gap: 10px;\n    font-size: 14px;\n    line-height: 1.56;" in mobile_rule
     assert ".company-ai-summary-body ul {\n    gap: 5px;\n    padding-left: 16px;" in mobile_rule
@@ -1124,6 +1123,7 @@ def test_profile_mobile_interactive_targets_use_touch_friendly_sizes():
     assert ".back-link {\n  display: inline-flex;\n  align-items: center;\n  min-height: 40px;" in style_response.text
     assert "min-height: 40px;" in style_response.text.split(".profile-basic-grid a", 1)[1].split("}", 1)[0]
     assert ".profile-section-nav a {\n    flex: 0 0 auto;\n    min-height: 40px;" in mobile_rule
+    assert "padding: 0 4px;" in mobile_rule.split(".profile-section-nav a {", 1)[1].split("}", 1)[0]
     assert ".stock-range-tabs button" in style_response.text
     assert "min-height: 40px;" in style_response.text.split(".stock-range-tabs button", 1)[1].split("}", 1)[0]
     assert "min-height: 40px;" in chart_style_response.text.split(".stock-range-tabs button", 1)[1].split("}", 1)[0]
