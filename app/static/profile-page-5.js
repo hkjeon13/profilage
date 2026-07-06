@@ -1234,38 +1234,6 @@ function setupDisclosureFilters({ corpCode, outline, crno }) {
   });
 }
 
-function renderDartDisclosures(disclosures) {
-  const items = (disclosures?.list || []).slice(0, 10);
-  if (!items.length) return "";
-  const crno = new URLSearchParams(window.location.search).get("crno");
-
-  return `
-    <article class="info-block company-disclosure-card">
-      <div class="block-heading">
-        <h3>최근 공시</h3>
-        <a href="/profile?crno=${encodeURIComponent(crno)}&view=disclosures">더보기</a>
-      </div>
-      <ul class="disclosure-list">
-        ${items
-          .map(
-            (item) => `
-              <li>
-                <span class="disclosure-title-row">
-                  <span class="disclosure-title-cell">
-                    ${renderDisclosureViewerTrigger(item)}
-                  </span>
-                  ${renderDisclosureSummaryButton(item)}
-                </span>
-                <span>${escapeHtml(disclosureMeta(item))}</span>
-              </li>
-            `,
-          )
-          .join("")}
-      </ul>
-    </article>
-  `;
-}
-
 function renderDisclosureEventTimeline(events) {
   const items = (events || []).slice(0, 8);
   if (!items.length) return "";
@@ -1405,7 +1373,7 @@ function ensureFinancialTrendModal() {
               <p id="financial-trend-meta">최근 5개년</p>
               <h2 id="financial-trend-title">재무 추이</h2>
             </div>
-            <button type="button" class="financial-trend-close" data-financial-trend-close>닫기</button>
+            <button type="button" class="financial-trend-close" data-financial-trend-close aria-label="닫기">&times;</button>
           </header>
           <div class="financial-trend-controls">
             <button type="button" class="financial-trend-toggle" data-financial-trend-toggle>계정 선택</button>
@@ -1597,13 +1565,11 @@ function renderDartFinancialAccounts(info) {
 
 function renderCompanyInsightRow(info) {
   const financialSummary = renderDartFinancialAccounts(info);
-  const disclosures = renderDartDisclosures(info.dart_disclosures);
-  if (!financialSummary && !disclosures) return "";
+  if (!financialSummary) return "";
 
   return `
     <div id="section-financials" class="company-insight-row">
       ${financialSummary}
-      ${disclosures}
     </div>
   `;
 }
