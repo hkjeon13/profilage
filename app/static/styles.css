@@ -3733,7 +3733,7 @@ a:hover {
   }
 
   .profile-basic-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .profile-basic-grid div,
@@ -3744,12 +3744,36 @@ a:hover {
     padding-left: 0;
   }
 
+  .profile-basic-grid div:nth-child(odd) {
+    padding-right: 12px;
+  }
+
+  .profile-basic-grid div:nth-child(even) {
+    border-left: 1px solid #eef0f6;
+    padding-left: 12px;
+  }
+
+  .profile-basic-grid div:first-child,
+  .profile-basic-grid .profile-basic-wide {
+    grid-column: 1 / -1;
+    border-left: 0;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
   .profile-section-nav {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     justify-content: flex-start;
+    overflow: visible;
+    gap: 6px;
+    padding: 8px;
   }
 
   .profile-section-nav a {
-    padding: 0 14px;
+    min-height: 34px;
+    padding: 0 8px;
+    font-size: 12px;
   }
 
   .stock-chart svg {
