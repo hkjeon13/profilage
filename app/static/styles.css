@@ -553,12 +553,12 @@ a:hover {
 }
 
 .skeleton-hero-title {
-  width: min(440px, 80vw);
+  width: min(360px, 100%);
   height: clamp(36px, 5vw, 58px);
 }
 
 .skeleton-hero-subtitle {
-  width: min(360px, 72vw);
+  width: min(300px, 100%);
   height: 16px;
 }
 
@@ -1636,6 +1636,15 @@ a:hover {
 .profile-title-block {
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.profile-hero.is-loading .profile-title-block {
+  width: min(360px, 100%);
+}
+
+.profile-hero.is-loading h1,
+.profile-hero.is-loading p {
+  max-width: 100%;
 }
 
 .profile-hero h1 {
