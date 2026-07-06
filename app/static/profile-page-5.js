@@ -902,7 +902,13 @@ function renderDisclosureSummaryButton(item) {
 function renderDisclosureSummaryLoading() {
   return `
     <div class="disclosure-summary-loading-card" role="status" aria-live="polite">
-      <span class="disclosure-summary-loading-glow" aria-hidden="true"></span>
+      <div class="disclosure-summary-loading-icon" aria-hidden="true"></div>
+      <div class="disclosure-summary-skeleton" aria-hidden="true">
+        <span class="disclosure-summary-skeleton-pill"></span>
+        <span class="disclosure-summary-skeleton-line is-wide"></span>
+        <span class="disclosure-summary-skeleton-line"></span>
+        <span class="disclosure-summary-skeleton-line is-short"></span>
+      </div>
       <strong>요약을 생성하는 중입니다</strong>
       <p>공시 원문을 읽고 핵심 요약을 정리하고 있습니다.</p>
     </div>
