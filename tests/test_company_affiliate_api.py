@@ -1084,11 +1084,12 @@ def test_business_group_selector_uses_official_rank_or_assets():
 def test_business_group_company_normalizer_keeps_identity_fields():
     normalized = normalize_business_group_company(
         {
-            "afilCmpyNm": "삼성전자",
-            "jurirNo": "1301110006246",
-            "bizrNo": "1248100998",
+            "entrprsNm": "삼성전자",
+            "jurirno": "1301110006246",
+            "bizrno": "1248100998",
             "repreNm": "전영현",
             "stockCode": "005930",
+            "grinil": "19690113",
         },
         group_code="samsung",
     )
@@ -1097,6 +1098,7 @@ def test_business_group_company_normalizer_keeps_identity_fields():
     assert normalized["company_name"] == "삼성전자"
     assert normalized["legal_registration_number"] == "1301110006246"
     assert normalized["stock_code"] == "005930"
+    assert normalized["included_on"] == "19690113"
 
 
 def test_shareholder_holding_normalizer_marks_name_only_matches_low_confidence():

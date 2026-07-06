@@ -157,16 +157,19 @@ def normalize_business_group_company(
     *,
     group_code: str,
 ) -> dict[str, Any]:
-    company_name = _first_value(row, ["afilCmpyNm", "cmpnyNm", "corpNm", "cmpyNm", "company_name"])
+    company_name = _first_value(
+        row,
+        ["entrprsNm", "afilCmpyNm", "cmpnyNm", "corpNm", "cmpyNm", "company_name"],
+    )
     if not company_name:
         raise ValueError("business group company row requires company name")
     return {
         "group_code": group_code,
         "company_name": company_name,
-        "legal_registration_number": _first_value(row, ["jurirNo", "crno", "corpRegNo"]),
-        "business_registration_number": _first_value(row, ["bizrNo", "bzno", "businessNumber"]),
+        "legal_registration_number": _first_value(row, ["jurirno", "jurirNo", "crno", "corpRegNo"]),
+        "business_registration_number": _first_value(row, ["bizrno", "bizrNo", "bzno", "businessNumber"]),
         "representative_name": _first_value(row, ["repreNm", "rprsntvNm", "ceoNm", "representativeName"]),
-        "included_on": _first_value(row, ["incDate", "includedOn", "afilDt", "entrprsCnptDe"]),
+        "included_on": _first_value(row, ["grinil", "incDate", "includedOn", "afilDt", "entrprsCnptDe"]),
         "industry_name": _first_value(row, ["indutyNm", "industryName", "mainBizNm"]),
         "dart_corp_code": _first_value(row, ["corpCode", "dartCorpCode"]),
         "stock_code": _first_value(row, ["stockCode", "srtnCd"]),

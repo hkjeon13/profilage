@@ -164,6 +164,6 @@ def get_business_group_api_settings() -> BusinessGroupApiSettings:
         ),
         companies_path=os.getenv(
             "BUSINESS_GROUP_API_COMPANIES_PATH",
-            "/appnGroupCmpnyList/appnGroupCmpnyListApi",
+            "/appnGroupAffiList/appnGroupAffiListApi",
         ),
     )
