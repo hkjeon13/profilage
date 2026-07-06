@@ -1808,42 +1808,42 @@ function renderCompanyInsightCards(insights) {
   const cards = [
     insights.ownership
       ? `
-        <article class="info-block company-insight-card">
+        <section class="company-insight-card">
           <div class="block-heading"><h3>최대주주</h3></div>
           ${renderOwnershipStackedBar(insights.ownership)}
-        </article>
+        </section>
       `
       : "",
     insights.dividend
       ? `
-        <article class="info-block company-insight-card">
+        <section class="company-insight-card">
           <div class="block-heading"><h3>배당</h3></div>
           <dl class="compact-metric-grid">
             ${renderInsightMetric("주당배당금", insights.dividend.dividend_per_share)}
             ${renderInsightMetric("배당성향", insights.dividend.payout_ratio)}
           </dl>
-        </article>
+        </section>
       `
       : "",
     insights.audit
       ? `
-        <article class="info-block company-insight-card">
+        <section class="company-insight-card">
           <div class="block-heading"><h3>감사의견</h3></div>
           <dl class="compact-metric-grid">
             ${renderInsightMetric("의견", insights.audit.opinion)}
             ${renderInsightMetric("회계감사인", insights.audit.auditor)}
           </dl>
-        </article>
+        </section>
       `
       : "",
     ratioItems.length
       ? `
-        <article class="info-block company-insight-card">
+        <section class="company-insight-card">
           <div class="block-heading"><h3>재무비율</h3></div>
           <dl class="compact-metric-grid">
             ${ratioItems.map((item) => renderInsightMetric(item.name, item.value)).join("")}
           </dl>
-        </article>
+        </section>
       `
       : "",
   ].filter(Boolean);
@@ -1854,11 +1854,16 @@ function renderCompanyInsightCards(insights) {
     ? `<p class="company-insight-source">출처 DART 정기보고서 · ${escapeHtml(insights.basis.business_year || "")} ${escapeHtml(insights.basis.report_name || "")} · 정정 공시가 있으면 수치가 바뀔 수 있습니다.</p>`
     : `<p class="company-insight-source">출처 DART 정기보고서 · 정정 공시가 있으면 수치가 바뀔 수 있습니다.</p>`;
   return `
-    <section class="company-insight-cards" aria-label="기업 심화 정보" data-dart-insight-basis="${basisPayload}">
-      ${cards.join("")}
+    <article class="info-block company-insight-summary-card" aria-label="기업 심화 정보" data-dart-insight-basis="${basisPayload}">
+      <div class="block-heading company-insight-summary-heading">
+        <h3>DART 핵심정보</h3>
+        ${renderDartInsightDetailButtons(insights)}
+      </div>
+      <div class="company-insight-card-grid">
+        ${cards.join("")}
+      </div>
       ${sourceMeta}
-      ${renderDartInsightDetailButtons(insights)}
-    </section>
+    </article>
   `;
 }
 

@@ -298,11 +298,11 @@ def test_profile_page_serves_company_profile_frontend():
     assert '<a href="/openapi.json">OpenAPI</a>' not in response.text
     assert '<a href="/docs">문서</a>' not in response.text
     assert '<a href="/">새 검색</a>' not in response.text
-    assert "/styles.css?v=company-profile-62" in response.text
+    assert "/styles.css?v=company-profile-63" in response.text
     assert "/profile-chart-2.css?v=interactive-9" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-56" in response.text
+    assert "/profile-page-5.js?v=company-profile-57" in response.text
 
 
 def test_compare_page_serves_company_compare_frontend():
@@ -448,7 +448,7 @@ def test_profile_frontend_can_add_company_to_compare_list():
     assert 'aria-label="${isCompareAdded ? "비교함에 추가됨" : "비교에 추가"}"' in script_response.text
     assert 'title="${isCompareAdded ? "비교함에 추가됨" : "비교에 추가"}"' in script_response.text
     assert 'data-compare-icon' in script_response.text
-    assert "/profile-page-5.js?v=company-profile-56" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-57" in profile_response.text
     assert ".company-facts" not in style_response.text
     assert ".summary-heading-actions" in style_response.text
     assert ".summary-compare-button" in style_response.text
@@ -625,7 +625,7 @@ def test_financial_summary_cards_open_trend_modal_with_account_checks():
     assert ".financial-trend-chart" in style_response.text
     assert ".disclosure-summary-close,\n.disclosure-viewer-close,\n.financial-trend-close," in style_response.text
     assert "background: transparent;" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-56" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-57" in profile_response.text
 
 
 def test_financial_summary_more_link_is_in_card_heading():
@@ -769,7 +769,7 @@ def test_stock_window_tabs_expose_loading_error_and_refresh_metadata():
     assert "주가 정보를 불러오지 못했습니다" in script_response.text
     assert ".stock-window-status" in style_response.text
     assert ".company-market-card.is-loading-stock" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-56" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-57" in profile_response.text
 
 
 def test_profile_sections_render_source_and_basis_metadata():
@@ -945,8 +945,8 @@ def test_relationship_summary_cards_open_company_list_modal():
     assert "relationship-list-modal" in script_response.text
     assert ".relationship-list-modal" in style_response.text
     assert ".relationship-list-items" in style_response.text
-    assert "/styles.css?v=company-profile-62" in profile_response.text
-    assert "/profile-page-5.js?v=company-profile-56" in profile_response.text
+    assert "/styles.css?v=company-profile-63" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-57" in profile_response.text
 
 
 def test_relationship_summary_terms_have_tooltips():
@@ -1008,12 +1008,16 @@ def test_profile_frontend_renders_normalized_dart_insight_cards():
     assert "주당배당금" in script_response.text
     assert "감사의견" in script_response.text
     assert "재무비율" in script_response.text
-    assert ".company-insight-cards" in style_response.text
+    assert "DART 핵심정보" in script_response.text
+    assert "company-insight-summary-card" in script_response.text
+    assert "company-insight-card-grid" in script_response.text
+    assert ".company-insight-summary-card" in style_response.text
+    assert ".company-insight-card-grid" in style_response.text
     assert ".ownership-stacked-bar" in style_response.text
     assert ".ownership-bar-segment" in style_response.text
     assert ".shareholder-detail-modal" in style_response.text
-    assert "/styles.css?v=company-profile-62" in profile_response.text
-    assert "/profile-page-5.js?v=company-profile-56" in profile_response.text
+    assert "/styles.css?v=company-profile-63" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-57" in profile_response.text
 
 
 def test_profile_frontend_exposes_lazy_dart_detail_modal():
@@ -1030,6 +1034,10 @@ def test_profile_frontend_exposes_lazy_dart_detail_modal():
     assert "주식구조 더보기" in script_response.text
     assert "임직원 더보기" in script_response.text
     assert ".dart-insight-detail-modal" in style_response.text
+    insight_template = script_response.text.split("function renderCompanyInsightCards", 1)[1].split(
+        "function renderRiskSignalCards", 1
+    )[0]
+    assert insight_template.index("renderDartInsightDetailButtons") < insight_template.index("company-insight-card-grid")
 
 
 def test_dart_detail_modal_formats_rows_with_human_labels():

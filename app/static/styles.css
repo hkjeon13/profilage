@@ -2364,14 +2364,32 @@ a:hover {
   color: #185abc;
 }
 
-.company-insight-cards {
+.company-insight-summary-card {
+  display: grid;
+  gap: 16px;
+}
+
+.company-insight-summary-heading {
+  align-items: center;
+  gap: 12px;
+}
+
+.company-insight-card-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
   gap: 14px;
 }
 
 .company-insight-card {
+  display: grid;
+  align-content: start;
+  gap: 14px;
   min-width: 0;
+  padding: 18px;
+  border: 1px solid #eef0f6;
+  border-radius: 8px;
+  background: #fff;
 }
 
 .compact-metric-grid {
@@ -2636,15 +2654,14 @@ a:hover {
 }
 
 .dart-insight-detail-actions {
-  grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  margin-left: auto;
 }
 
 .company-insight-source {
-  grid-column: 1 / -1;
-  margin: -2px 0 0;
+  margin: 0;
   color: #667085;
   font-size: 12px;
   line-height: 1.5;
@@ -3392,10 +3409,24 @@ a:hover {
 
   .company-overview-grid,
   .company-insight-row,
-  .company-insight-cards,
+  .company-insight-card-grid,
   .compact-metric-grid,
   .relationship-summary-grid {
     grid-template-columns: 1fr;
+  }
+
+  .company-insight-summary-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .company-insight-summary-heading .dart-insight-detail-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .company-insight-summary-heading .dart-insight-detail-actions button {
+    flex: 1 1 132px;
   }
 
   .disclosure-event-timeline li {
