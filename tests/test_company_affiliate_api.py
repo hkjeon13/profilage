@@ -184,7 +184,7 @@ def test_root_serves_company_search_frontend():
     assert 'class="example-query-list"' in response.text
     assert "/api/company/get_corp_outline" in response.text
     assert "/profile?crno=" in response.text
-    assert "/styles.css?v=google-home-11" in response.text
+    assert "/styles.css?v=google-home-12" in response.text
     assert "/app.js?v=google-home-12" in response.text
 
 
@@ -266,6 +266,7 @@ def test_search_results_render_dense_business_rows_with_entity_type():
     assert "align-items: center;" in badge_rule
     assert "justify-content: center;" in badge_rule
     assert "line-height: 1;" in badge_rule
+    assert ".result-card .result-market-badge" in style_response.text
 
 
 def test_search_results_load_more_on_scroll_without_count_status():

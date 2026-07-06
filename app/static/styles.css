@@ -407,6 +407,15 @@ a:hover {
   line-height: 1;
 }
 
+.result-card .entity-type-badge,
+.result-card .result-market-badge,
+.result-card .result-data-badges span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
 .entity-type-badge {
   background: #eff6ff;
   color: #175cd3;
