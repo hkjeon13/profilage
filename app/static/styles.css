@@ -1085,6 +1085,18 @@ a:hover {
   gap: 8px;
 }
 
+.disclosure-title-row {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.disclosure-title-cell {
+  min-width: 0;
+}
+
 .disclosure-event-title-row {
   display: grid;
   min-width: 0;
@@ -1194,6 +1206,81 @@ a:hover {
   display: grid;
   gap: 16px;
   padding: 18px 20px 22px;
+}
+
+.disclosure-summary-loading-card {
+  position: relative;
+  display: grid;
+  min-height: 168px;
+  align-content: center;
+  justify-items: center;
+  gap: 10px;
+  overflow: hidden;
+  border: 1px solid #dbe7ff;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #f8fbff 0%, #ffffff 48%, #eef6ff 100%);
+  color: #24364f;
+  padding: 26px;
+  text-align: center;
+}
+
+.disclosure-summary-loading-card::before {
+  position: absolute;
+  inset: -35%;
+  background: radial-gradient(circle, rgba(26, 115, 232, 0.24), transparent 48%);
+  content: "";
+  animation: disclosure-summary-glow 1.8s ease-in-out infinite;
+}
+
+.disclosure-summary-loading-card strong,
+.disclosure-summary-loading-card p,
+.disclosure-summary-loading-glow {
+  position: relative;
+  z-index: 1;
+}
+
+.disclosure-summary-loading-card strong {
+  color: #111827;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.disclosure-summary-loading-card p {
+  margin: 0;
+  color: #667085;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.disclosure-summary-loading-glow {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  background: #1a73e8;
+  box-shadow: 0 0 0 8px rgba(26, 115, 232, 0.08), 0 0 28px rgba(26, 115, 232, 0.32);
+  animation: disclosure-summary-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes disclosure-summary-glow {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.88) rotate(0deg);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.08) rotate(8deg);
+  }
+}
+
+@keyframes disclosure-summary-pulse {
+  0%,
+  100% {
+    transform: scale(0.92);
+  }
+  50% {
+    transform: scale(1.08);
+  }
 }
 
 .disclosure-summary-body h3 {

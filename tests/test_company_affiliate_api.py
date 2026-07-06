@@ -253,11 +253,11 @@ def test_profile_page_serves_company_profile_frontend():
     assert '<a href="/openapi.json">OpenAPI</a>' not in response.text
     assert '<a href="/docs">문서</a>' not in response.text
     assert '<a href="/">새 검색</a>' not in response.text
-    assert "/styles.css?v=company-profile-41" in response.text
-    assert "/profile-chart-2.css?v=interactive-7" in response.text
+    assert "/styles.css?v=company-profile-42" in response.text
+    assert "/profile-chart-2.css?v=interactive-8" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-39" in response.text
+    assert "/profile-page-5.js?v=company-profile-40" in response.text
 
 
 def test_compare_page_serves_company_compare_frontend():
@@ -269,7 +269,7 @@ def test_compare_page_serves_company_compare_frontend():
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
     assert 'id="compare-root"' in response.text
-    assert "/styles.css?v=company-profile-41" in response.text
+    assert "/styles.css?v=company-profile-42" in response.text
     assert "/compare-page.js?v=company-compare-6" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "COMPARE_STORAGE_KEY" in script_response.text
@@ -407,7 +407,7 @@ def test_profile_frontend_can_add_company_to_compare_list():
     assert "setupCompareActions" in script_response.text
     assert "data-compare-add" in script_response.text
     assert "비교에 추가" in script_response.text
-    assert "/profile-page-5.js?v=company-profile-39" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-40" in profile_response.text
     assert ".block-heading .homepage-icon-link:hover {\n  color: #185abc;\n}" in style_response.text
     assert ".company-facts dd {\n  min-width: 0;\n  margin: 0;\n  color: #111827;\n  font-weight: 500;" in style_response.text
     assert ".profile-heading-actions {\n    align-items: center;\n    flex-direction: row;" in style_response.text
@@ -554,7 +554,7 @@ def test_financial_summary_cards_open_trend_modal_with_account_checks():
     assert "financial-trend-account-check" in script_response.text
     assert ".financial-trend-modal" in style_response.text
     assert ".financial-trend-chart" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-39" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-40" in profile_response.text
 
 
 def test_financial_summary_more_link_is_in_card_heading():
@@ -690,7 +690,7 @@ def test_stock_window_tabs_expose_loading_error_and_refresh_metadata():
     assert "주가 정보를 불러오지 못했습니다" in script_response.text
     assert ".stock-window-status" in style_response.text
     assert ".company-market-card.is-loading-stock" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-39" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-40" in profile_response.text
 
 
 def test_profile_sections_render_source_and_basis_metadata():
@@ -765,6 +765,22 @@ def test_stock_chart_tooltip_stays_inside_mobile_chart_bounds():
     assert "transform: translate(-50%, -50%);" in chart_style_response.text
 
 
+def test_stock_chart_point_marker_only_appears_during_interaction():
+    with TestClient(app) as client:
+        script_response = client.get("/profile-page-5.js")
+        chart_style_response = client.get("/profile-chart-2.css")
+
+    assert script_response.status_code == 200
+    assert chart_style_response.status_code == 200
+    assert 'chart.classList.toggle("is-inspecting", revealMarker);' in script_response.text
+    assert "updateStockChartSelection(chart, points.at(-1), { revealMarker: false });" in script_response.text
+    assert "updateStockChartSelection(chart, nearest, { revealMarker: true });" in script_response.text
+    dot_rule = chart_style_response.text.split(".stock-chart-dot {", 1)[1].split("}", 1)[0]
+    assert "opacity: 0;" in dot_rule
+    assert "transition: opacity 120ms ease;" in dot_rule
+    assert ".stock-chart.is-inspecting .stock-chart-dot" in chart_style_response.text
+
+
 def test_stock_chart_tooltip_is_compact_on_mobile():
     with TestClient(app) as client:
         chart_style_response = client.get("/profile-chart-2.css")
@@ -777,7 +793,7 @@ def test_stock_chart_tooltip_is_compact_on_mobile():
     assert "padding: 8px 9px;" in chart_style_response.text
     assert ".stock-chart-tooltip strong {\n    font-size: 13px;" in chart_style_response.text
     assert ".stock-chart-tooltip span {\n    margin-top: 3px;\n    font-size: 11px;" in chart_style_response.text
-    assert "/profile-chart-2.css?v=interactive-7" in profile_response.text
+    assert "/profile-chart-2.css?v=interactive-8" in profile_response.text
 
 
 def test_profile_mobile_layout_prevents_horizontal_overflow():
@@ -851,8 +867,8 @@ def test_relationship_summary_cards_open_company_list_modal():
     assert "relationship-list-modal" in script_response.text
     assert ".relationship-list-modal" in style_response.text
     assert ".relationship-list-items" in style_response.text
-    assert "/styles.css?v=company-profile-41" in profile_response.text
-    assert "/profile-page-5.js?v=company-profile-39" in profile_response.text
+    assert "/styles.css?v=company-profile-42" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-40" in profile_response.text
 
 
 def test_relationship_summary_terms_have_tooltips():
@@ -911,8 +927,8 @@ def test_profile_frontend_renders_normalized_dart_insight_cards():
     assert ".company-insight-cards" in style_response.text
     assert ".ownership-stacked-bar" in style_response.text
     assert ".ownership-bar-segment" in style_response.text
-    assert "/styles.css?v=company-profile-41" in profile_response.text
-    assert "/profile-page-5.js?v=company-profile-39" in profile_response.text
+    assert "/styles.css?v=company-profile-42" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-40" in profile_response.text
 
 
 def test_profile_frontend_exposes_lazy_dart_detail_modal():
@@ -973,12 +989,15 @@ def test_profile_frontend_exposes_disclosure_events_and_risk_signals():
     assert "mapDisclosureEventsToPricePoints" in script_response.text
     assert "data-disclosure-event-marker" in script_response.text
     assert 'class="disclosure-event-title-row"' in script_response.text
+    assert 'class="disclosure-title-row"' in script_response.text
+    assert 'class="disclosure-title-cell"' in script_response.text
     assert "renderRiskSignalCards" in script_response.text
     assert "상장/주가 정보를 찾을 수 없습니다" in script_response.text
     assert "renderRelationshipFilters" in script_response.text
     assert "data-relationship-filter" in script_response.text
     assert ".disclosure-event-timeline" in style_response.text
     assert "grid-template-columns: minmax(0, 1fr) auto;" in style_response.text
+    assert ".disclosure-title-row" in style_response.text
     assert ".disclosure-event-title-row" in style_response.text
     assert ".stock-chart-event-marker" in style_response.text
     assert ".company-risk-card" in style_response.text
@@ -996,8 +1015,12 @@ def test_profile_frontend_exposes_disclosure_summary_modal():
     assert "data-disclosure-summary" in script_response.text
     assert "ensureDisclosureSummaryModal" in script_response.text
     assert "공시 요약" in script_response.text
+    assert "renderDisclosureSummaryLoading" in script_response.text
+    assert "요약을 생성하는 중입니다" in script_response.text
     assert ".disclosure-summary-modal" in style_response.text
     assert ".disclosure-summary-button" in style_response.text
+    assert ".disclosure-summary-loading-card" in style_response.text
+    assert "@keyframes disclosure-summary-glow" in style_response.text
 
 
 def test_dart_periodic_endpoint_registry_contains_phase_one_sources():

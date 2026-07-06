@@ -56,8 +56,14 @@
 
 .stock-chart-dot {
   fill: #1d5faa;
+  opacity: 0;
   stroke: #ffffff;
   stroke-width: 2.5;
+  transition: opacity 120ms ease;
+}
+
+.stock-chart.is-inspecting .stock-chart-dot {
+  opacity: 1;
 }
 
 .stock-chart-hit-area {

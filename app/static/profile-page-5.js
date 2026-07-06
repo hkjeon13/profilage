@@ -625,7 +625,7 @@ function renderStockChart(stock, activeWindow = "1D", statusText = stockUpdatedL
   `;
 }
 
-function updateStockChartSelection(chart, point) {
+function updateStockChartSelection(chart, point, { revealMarker = true } = {}) {
   const tooltip = chart.querySelector(".stock-chart-tooltip");
   const guide = chart.querySelector(".stock-chart-guide");
   const dot = chart.querySelector(".stock-chart-dot");
@@ -648,6 +648,7 @@ function updateStockChartSelection(chart, point) {
   dot.setAttribute("cx", point.x);
   dot.setAttribute("cy", point.y);
   chart.classList.add("is-active");
+  chart.classList.toggle("is-inspecting", revealMarker);
   chart.classList.toggle("is-start-selected", point.index === 0);
   chart.classList.toggle(
     "is-end-selected",
@@ -685,13 +686,13 @@ function setupStockChartInteractions() {
       const nearest = points.reduce((current, point) =>
         Math.abs(point.x - x) < Math.abs(current.x - x) ? point : current,
       );
-      updateStockChartSelection(chart, nearest);
+      updateStockChartSelection(chart, nearest, { revealMarker: true });
     };
     const selectFromTouch = (event) => {
       selectNearestPoint(event.touches?.[0]?.clientX);
     };
 
-    updateStockChartSelection(chart, points.at(-1));
+    updateStockChartSelection(chart, points.at(-1), { revealMarker: false });
 
     chart.addEventListener("pointermove", (event) => {
       selectNearestPoint(event.clientX);
@@ -716,7 +717,7 @@ function setupStockChartInteractions() {
     chart.addEventListener("touchstart", selectFromTouch, { passive: true });
     chart.addEventListener("touchmove", selectFromTouch, { passive: true });
     svg.addEventListener("focus", () => {
-      updateStockChartSelection(chart, points.at(-1));
+      updateStockChartSelection(chart, points.at(-1), { revealMarker: true });
     });
     svg.addEventListener("keydown", (event) => {
       if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
@@ -728,7 +729,7 @@ function setupStockChartInteractions() {
         event.key === "ArrowLeft"
           ? Math.max((currentIndex < 0 ? fallbackIndex : currentIndex) - 1, 0)
           : Math.min((currentIndex < 0 ? fallbackIndex : currentIndex) + 1, points.length - 1);
-      updateStockChartSelection(chart, points[nextIndex]);
+      updateStockChartSelection(chart, points[nextIndex], { revealMarker: true });
     });
   });
 }
@@ -900,6 +901,16 @@ function renderDisclosureSummaryButton(item) {
   `;
 }
 
+function renderDisclosureSummaryLoading() {
+  return `
+    <div class="disclosure-summary-loading-card" role="status" aria-live="polite">
+      <span class="disclosure-summary-loading-glow" aria-hidden="true"></span>
+      <strong>요약을 생성하는 중입니다</strong>
+      <p>공시 원문을 읽고 핵심 요약을 정리하고 있습니다.</p>
+    </div>
+  `;
+}
+
 function ensureDisclosureSummaryModal() {
   const existing = document.querySelector(".disclosure-summary-modal");
   if (existing) return existing;
@@ -966,7 +977,7 @@ async function openDisclosureSummary(button) {
   modal.querySelector("#disclosure-summary-title").textContent =
     button.dataset.disclosureTitle || "공시 요약";
   modal.querySelector("[data-disclosure-summary-body]").innerHTML =
-    `<p class="empty-copy">요약을 생성하는 중입니다.</p>`;
+    renderDisclosureSummaryLoading();
   try {
     const payload = await fetchJson(summaryUrl, {
       receipt_no: button.dataset.disclosureReceiptNo,
@@ -1069,8 +1080,10 @@ function disclosureListItemsHtml(items, includeReceiptNo = false) {
       .map(
         (item) => `
           <li>
-            <span class="disclosure-action-row">
-              ${renderDisclosureViewerTrigger(item)}
+            <span class="disclosure-title-row">
+              <span class="disclosure-title-cell">
+                ${renderDisclosureViewerTrigger(item)}
+              </span>
               ${renderDisclosureSummaryButton(item)}
             </span>
             <span>${escapeHtml(disclosureMeta(item, includeReceiptNo))}</span>
@@ -1240,8 +1253,10 @@ function renderDartDisclosures(disclosures) {
           .map(
             (item) => `
               <li>
-                <span class="disclosure-action-row">
-                  ${renderDisclosureViewerTrigger(item)}
+                <span class="disclosure-title-row">
+                  <span class="disclosure-title-cell">
+                    ${renderDisclosureViewerTrigger(item)}
+                  </span>
                   ${renderDisclosureSummaryButton(item)}
                 </span>
                 <span>${escapeHtml(disclosureMeta(item))}</span>
