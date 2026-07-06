@@ -3263,7 +3263,10 @@ a:hover {
     font-size: 18px;
   }
 
-  .financial-summary-heading,
+  .financial-summary-heading {
+    align-items: center;
+  }
+
   .financial-summary-panel-head {
     align-items: flex-start;
     flex-direction: column;
