@@ -922,7 +922,7 @@ function ensureDisclosureSummaryModal() {
               <p id="disclosure-summary-meta">DART 공시</p>
               <h2 id="disclosure-summary-title">공시 요약</h2>
             </div>
-            <button type="button" class="disclosure-summary-close" data-disclosure-summary-close>닫기</button>
+            <button type="button" class="disclosure-summary-close" data-disclosure-summary-close aria-label="닫기">&times;</button>
           </header>
           <div class="disclosure-summary-body" data-disclosure-summary-body></div>
         </section>
@@ -1015,7 +1015,7 @@ function ensureDisclosureViewerModal() {
             </div>
             <div class="disclosure-viewer-actions">
               <a class="disclosure-viewer-external" href="#" target="_blank" rel="noreferrer">DART에서 열기</a>
-              <button type="button" class="disclosure-viewer-close" data-disclosure-viewer-close>닫기</button>
+              <button type="button" class="disclosure-viewer-close" data-disclosure-viewer-close aria-label="닫기">&times;</button>
             </div>
           </header>
           <iframe class="disclosure-viewer-frame" title="DART 공시 뷰어" loading="lazy" referrerpolicy="no-referrer" scrolling="yes"></iframe>

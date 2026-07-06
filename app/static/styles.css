@@ -880,11 +880,7 @@ a:hover {
 }
 
 .disclosure-viewer-close {
-  border: 0;
-  background: #101828;
-  color: #ffffff;
-  cursor: pointer;
-  padding: 0 14px;
+  min-height: 34px;
 }
 
 .disclosure-viewer-frame {
@@ -1248,19 +1244,7 @@ a:hover {
 }
 
 .disclosure-summary-close {
-  flex: 0 0 auto;
-  min-width: 52px;
   min-height: 34px;
-  border: 1px solid #e7ebf3;
-  border-radius: 8px;
-  background: #fff;
-  color: #344054;
-  cursor: pointer;
-  padding: 0 12px;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 800;
-  white-space: nowrap;
 }
 
 .disclosure-summary-body {
@@ -2162,9 +2146,18 @@ a:hover {
 }
 
 .financial-trend-close {
+  min-height: 34px;
+}
+
+.disclosure-summary-close,
+.disclosure-viewer-close,
+.financial-trend-close,
+.shareholder-detail-close,
+.dart-insight-detail-close,
+.relationship-list-close {
   display: inline-grid;
   width: 34px;
-  min-height: 34px;
+  height: 34px;
   flex: 0 0 auto;
   place-items: center;
   border: 1px solid #e7ebf3;
@@ -2454,14 +2447,7 @@ a:hover {
 }
 
 .shareholder-detail-close {
-  width: 34px;
-  height: 34px;
-  border: 1px solid #d8deea;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #344054;
   font-size: 20px;
-  cursor: pointer;
 }
 
 .shareholder-detail-body {
@@ -2692,15 +2678,7 @@ a:hover {
 }
 
 .dart-insight-detail-close {
-  width: 34px;
-  height: 34px;
-  border: 1px solid #e7ebf3;
-  border-radius: 8px;
-  background: #fff;
-  color: #344054;
-  cursor: pointer;
   font-size: 22px;
-  line-height: 1;
 }
 
 .dart-insight-detail-body {
@@ -3117,15 +3095,7 @@ a:hover {
 }
 
 .relationship-list-close {
-  width: 34px;
-  height: 34px;
-  border: 1px solid #e7ebf3;
-  border-radius: 8px;
-  background: #fff;
-  color: #344054;
-  cursor: pointer;
   font-size: 22px;
-  line-height: 1;
 }
 
 .relationship-list-body {
