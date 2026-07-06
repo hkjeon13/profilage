@@ -396,12 +396,15 @@ a:hover {
   width: fit-content;
   min-height: 26px;
   align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
   border-radius: 999px;
   background: #f2f4f7;
   color: #344054;
   padding: 0 9px;
   font-size: 12px;
   font-weight: 800;
+  line-height: 1;
 }
 
 .entity-type-badge {
