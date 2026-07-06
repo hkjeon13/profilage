@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>기업 프로필 | Profilage</title>
-    <link rel="stylesheet" href="/styles.css?v=company-profile-57" />
+    <link rel="stylesheet" href="/styles.css?v=company-profile-58" />
     <link rel="stylesheet" href="/profile-chart-2.css?v=interactive-9" />
   </head>
   <body class="profile-page">
@@ -18,23 +18,39 @@
       </header>
 
       <main class="profile-shell">
-        <section
-          class="profile-hero company-profile-card"
-          aria-labelledby="profile-title"
-          data-info-url="/api/company/get_company_info"
-          data-stock-url="/api/company/get_stock_price"
-        >
-          <a class="back-link" href="/">
-            <span class="back-link-icon" aria-hidden="true">←</span>
-            <span>검색으로 돌아가기</span>
-          </a>
-          <div class="profile-identity-row">
-            <div class="company-logo-box" aria-hidden="true">P</div>
-            <div class="profile-title-block">
-              <h1 id="profile-title">기업 정보를 불러오는 중입니다</h1>
-              <p id="profile-subtitle">법인등록번호를 기준으로 공공데이터, KRX, 주가 정보를 연결합니다.</p>
+        <a class="back-link" href="/">
+          <span class="back-link-icon" aria-hidden="true">←</span>
+          <span>검색결과로 돌아가기</span>
+        </a>
+
+        <section class="profile-top-grid" aria-label="기업 핵심 정보">
+          <section
+            class="profile-hero company-profile-card"
+            aria-labelledby="profile-title"
+            data-info-url="/api/company/get_company_info"
+            data-stock-url="/api/company/get_stock_price"
+          >
+            <div class="profile-identity-row">
+              <div class="company-logo-box" aria-hidden="true">P</div>
+              <div class="profile-title-block">
+                <h1 id="profile-title">기업 정보를 불러오는 중입니다</h1>
+                <p id="profile-subtitle">법인등록번호를 기준으로 공공데이터, KRX, 주가 정보를 연결합니다.</p>
+              </div>
             </div>
-          </div>
+            <div class="profile-hero-badges" aria-hidden="true">
+              <span>공개 데이터</span>
+              <span>Profilage</span>
+            </div>
+            <div class="profile-rating-card" aria-label="Profilage 기업평가">
+              <span>Profilage 기업평가</span>
+              <strong>DATA</strong>
+              <p>공개 데이터와 DART 기반으로 기업 정보를 연결합니다.</p>
+            </div>
+          </section>
+
+          <aside class="profile-basic-card" id="profile-basic-card" aria-label="기업 기본정보">
+            <div class="profile-basic-placeholder">기업 기본정보를 불러오는 중입니다.</div>
+          </aside>
         </section>
 
         <section class="profile-layout">
@@ -48,6 +64,6 @@
       </main>
     </div>
 
-    <script src="/profile-page-5.js?v=company-profile-52" defer></script>
+    <script src="/profile-page-5.js?v=company-profile-53" defer></script>
   </body>
 </html>

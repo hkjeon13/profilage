@@ -2,6 +2,7 @@ const profileTitle = document.querySelector("#profile-title");
 const profileSubtitle = document.querySelector("#profile-subtitle");
 const profileDetail = document.querySelector("#profile-detail");
 const profileCard = document.querySelector(".company-profile-card");
+const profileBasicCard = document.querySelector("#profile-basic-card");
 const backLink = document.querySelector(".back-link");
 
 const infoUrl = "/api/company/get_company_info";
@@ -2583,12 +2584,12 @@ function renderKeyMetricStrip({ info, outline, listed }) {
 
 function renderProfileSectionNav() {
   const sections = [
-    ["summary", "요약"],
-    ["market", "주가"],
-    ["financials", "재무"],
-    ["disclosures", "공시"],
+    ["basic", "기업개요"],
+    ["summary", "핵심요약"],
+    ["market", "주가정보"],
+    ["financials", "재무요약"],
+    ["disclosures", "공시정보"],
     ["relationships", "관계회사"],
-    ["basic", "기업정보"],
   ];
   return `
     <nav class="profile-section-nav" aria-label="프로필 섹션">
@@ -2710,6 +2711,35 @@ function renderExecutiveSummary({ info, outline, listed }) {
   `;
 }
 
+function renderProfileBasicCard({ outline, dartCompany, listed, market, industry, crno, homepage }) {
+  const rows = [
+    ["CRNO", escapeHtml(text(outline.crno || dartCompany.jurir_no || crno))],
+    ["대표자", escapeHtml(text(outline.enpRprFnm || dartCompany.ceo_nm))],
+    ["법인구분", escapeHtml(text(dartCompany.corp_cls ? `DART ${dartCompany.corp_cls}` : market))],
+    ["설립일", escapeHtml(compactDate(outline.enpEstbDt || dartCompany.est_dt))],
+    ["상장일", escapeHtml(compactDate(listed.lstgDt || outline.fstOpegDt))],
+    ["종업원수", escapeHtml(`${formatNumber(outline.enpEmpeCnt)}${outline.basDt ? ` (${compactDate(outline.basDt)} 기준)` : ""}`)],
+    ["본사주소", escapeHtml(text(outline.enpBsadr, "주소 정보 없음"))],
+    ["홈페이지", homepage ? `<a href="${attr(homepage)}" target="_blank" rel="noreferrer">${escapeHtml(homepage.replace(/^https?:\/\//, ""))} ↗</a>` : "정보 없음"],
+  ];
+  return `
+    <div class="profile-basic-heading">
+      <h2>기업 기본정보</h2>
+      <span>${escapeHtml(market)}</span>
+    </div>
+    <dl class="profile-basic-grid">
+      ${rows
+        .map(([label, value], index) => `
+          <div class="${index >= 6 ? "profile-basic-wide" : ""}">
+            <dt>${escapeHtml(label)}</dt>
+            <dd>${value}</dd>
+          </div>
+        `)
+        .join("")}
+    </dl>
+  `;
+}
+
 function renderCompanyDetail({ info, outline, listed, stock, stockWindow, stockLoading = false }) {
   const crno = new URLSearchParams(window.location.search).get("crno");
   const dartCompany = info.dart_company || {};
@@ -2729,53 +2759,58 @@ function renderCompanyDetail({ info, outline, listed, stock, stockWindow, stockL
   if (logo) {
     logo.textContent = initials(outline.corpNm);
   }
+  if (profileBasicCard) {
+    profileBasicCard.innerHTML = renderProfileBasicCard({
+      outline,
+      dartCompany,
+      listed,
+      market,
+      industry,
+      crno,
+      homepage,
+    });
+  }
 
   profileDetail.innerHTML = `
     <div class="company-overview-grid">
       <div class="company-main-column">
         ${renderProfileSectionNav()}
 
-        ${renderExecutiveSummary({ info, outline, listed })}
-
-        <article id="section-basic" class="info-block company-about-card">
-          <div class="block-heading">
-            <h3>기업 개요</h3>
-            <div class="profile-heading-actions">
-              <button
-                type="button"
-                class="compare-add-button ${isCompareAdded ? "is-added" : ""}"
-                data-compare-add
-                data-compare-crno="${attr(crno)}"
-                data-compare-name="${attr(outline.corpNm || listed.itmsNm)}"
-              >${isCompareAdded ? "비교함에 추가됨" : "비교에 추가"}</button>
-              <a class="compare-link-button" href="${attr(compareUrl(initialCompareItems))}" data-compare-link ${initialCompareItems.length >= 2 ? "" : "hidden"}>비교 보기</a>
-              ${homepage ? `<a class="homepage-icon-link" href="${homepage}" target="_blank" rel="noreferrer" aria-label="홈페이지" title="홈페이지"><span aria-hidden="true">↗</span></a>` : ""}
+        <div class="profile-dashboard-grid">
+          <article id="section-basic" class="info-block company-about-card">
+            <div class="block-heading">
+              <h3>기업 개요</h3>
+              <div class="profile-heading-actions">
+                <button
+                  type="button"
+                  class="compare-add-button ${isCompareAdded ? "is-added" : ""}"
+                  data-compare-add
+                  data-compare-crno="${attr(crno)}"
+                  data-compare-name="${attr(outline.corpNm || listed.itmsNm)}"
+                >${isCompareAdded ? "비교함에 추가됨" : "비교에 추가"}</button>
+                <a class="compare-link-button" href="${attr(compareUrl(initialCompareItems))}" data-compare-link ${initialCompareItems.length >= 2 ? "" : "hidden"}>비교 보기</a>
+                ${homepage ? `<a class="homepage-icon-link" href="${homepage}" target="_blank" rel="noreferrer" aria-label="홈페이지" title="홈페이지"><span aria-hidden="true">↗</span></a>` : ""}
+              </div>
             </div>
-          </div>
-          <p class="company-summary">
-            ${escapeHtml(companySummary)}
-          </p>
-          <section class="company-profile-info-section" aria-label="기업 정보">
-            <h3>기업 정보</h3>
-            <dl class="company-facts">
-              <div><dt>대표자</dt><dd>${text(outline.enpRprFnm || dartCompany.ceo_nm)}</dd></div>
-              <div><dt>설립일</dt><dd>${compactDate(outline.enpEstbDt || dartCompany.est_dt)}</dd></div>
-              <div><dt>직원 수</dt><dd>${formatNumber(outline.enpEmpeCnt)}</dd></div>
-              <div><dt>전화번호</dt><dd>${text(outline.enpTlno || dartCompany.phn_no)}</dd></div>
-              <div><dt>법인등록번호</dt><dd>${text(outline.crno || dartCompany.jurir_no || crno)}</dd></div>
-              <div><dt>사업자번호</dt><dd>${text(outline.bzno || dartCompany.bizr_no)}</dd></div>
-              <div><dt>시장</dt><dd>${market}</dd></div>
-              <div><dt>업종</dt><dd>${text(industry, "정보 없음")}</dd></div>
-              <div class="company-fact-wide"><dt>주소</dt><dd>${text(outline.enpBsadr, "주소 정보 없음")}</dd></div>
-              <div><dt>최초 영업일</dt><dd>${compactDate(outline.fstOpegDt)}</dd></div>
-              <div><dt>최종 영업일</dt><dd>${compactDate(outline.lastOpegDt)}</dd></div>
-            </dl>
-            ${renderDataTrustMeta([
-              { label: "출처", value: "금융위원회 기업기본정보 · DART" },
-              { label: "기준일", value: compactDate(outline.basDt || listed.basDt) },
-            ])}
-          </section>
-        </article>
+            <p class="company-summary">
+              ${escapeHtml(companySummary)}
+            </p>
+            <section class="company-profile-info-section company-overview-points" aria-label="기업 정보">
+              <dl class="company-facts">
+                <div><dt>주요시장</dt><dd>${market}</dd></div>
+                <div><dt>업종</dt><dd>${text(industry, "정보 없음")}</dd></div>
+                <div><dt>사업자번호</dt><dd>${text(outline.bzno || dartCompany.bizr_no)}</dd></div>
+                <div><dt>전화번호</dt><dd>${text(outline.enpTlno || dartCompany.phn_no)}</dd></div>
+              </dl>
+              ${renderDataTrustMeta([
+                { label: "출처", value: "금융위원회 기업기본정보 · DART" },
+                { label: "기준일", value: compactDate(outline.basDt || listed.basDt) },
+              ])}
+            </section>
+          </article>
+
+          ${renderExecutiveSummary({ info, outline, listed })}
+        </div>
 
         ${renderCompanyStockCard({ outline, listed, stock, stockWindow, market, crno, stockLoading, disclosureEvents: info.disclosure_events })}
 
