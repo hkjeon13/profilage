@@ -7,6 +7,7 @@ const backLink = document.querySelector(".back-link");
 const infoUrl = "/api/company/get_company_info";
 const stockUrl = "/api/company/get_stock_price";
 const summaryUrl = "/api/company/get_dart_disclosure_summary";
+const shareholderSearchUrl = "/api/company/shareholders/search";
 const financialReportOptions = [
   ["11011", "사업보고서"],
   ["11012", "반기보고서"],
@@ -1642,6 +1643,8 @@ function renderOwnershipStackedBar(ownership) {
       ratio: Math.max(0, Number(holder.ratio_number)),
       ratioText: holder.ratio || `${Number(holder.ratio_number).toFixed(2)}%`,
       color: ownershipBarColor(index),
+      holder,
+      isHolder: true,
     })),
     ...(knownRatio < 100
       ? [{
@@ -1649,6 +1652,8 @@ function renderOwnershipStackedBar(ownership) {
           ratio: 100 - knownRatio,
           ratioText: `${(100 - knownRatio).toFixed(2)}%`,
           color: "#e7ebf3",
+          holder: null,
+          isHolder: false,
         }]
       : []),
   ];
@@ -1673,7 +1678,15 @@ function renderOwnershipStackedBar(ownership) {
             (segment) => `
               <li>
                 <i style="background: ${segment.color};"></i>
-                <span>${escapeHtml(segment.name)}</span>
+                ${
+                  segment.isHolder
+                    ? `<button
+                        type="button"
+                        class="ownership-holder-button"
+                        data-shareholder-detail="${attr(JSON.stringify(segment.holder || {}))}"
+                      >${escapeHtml(segment.name)}</button>`
+                    : `<span>${escapeHtml(segment.name)}</span>`
+                }
                 <strong>${escapeHtml(segment.ratioText)}</strong>
               </li>
             `,
@@ -1682,6 +1695,146 @@ function renderOwnershipStackedBar(ownership) {
       </ul>
     </div>
   `;
+}
+
+function shareholderEntityLabel(entityType) {
+  if (entityType === "corporation") return "법인 주주";
+  if (entityType === "individual") return "개인 주주 후보";
+  return "주주 후보";
+}
+
+function inferShareholderEntityType(holder) {
+  const name = String(holder?.name || "");
+  if (/(주식회사|㈜|\(주\)|유한회사|합자회사|합명회사|사단법인|재단법인)/.test(name)) {
+    return "corporation";
+  }
+  return "individual";
+}
+
+function renderShareholderCurrentDetail(holder) {
+  const entityType = inferShareholderEntityType(holder);
+  return `
+    <section class="shareholder-detail-section">
+      <span class="shareholder-detail-kicker">${shareholderEntityLabel(entityType)}</span>
+      <h4>${escapeHtml(holder?.name || "주주명 정보 없음")}</h4>
+      <dl class="shareholder-detail-grid">
+        <div><dt>현재 회사 지분율</dt><dd>${escapeHtml(holder?.ratio || holder?.ratio_number || "정보 없음")}</dd></div>
+        <div><dt>관계</dt><dd>${escapeHtml(holder?.relation || "정보 없음")}</dd></div>
+      </dl>
+    </section>
+  `;
+}
+
+function renderShareholderMatches(payload) {
+  const matches = payload?.matches || [];
+  if (!payload?.corpus?.available) {
+    return `<p class="empty-copy">상위 20개 기업집단 DB가 아직 준비되지 않았습니다.</p>`;
+  }
+  if (!matches.length) {
+    return `<p class="empty-copy">상위 20개 기업집단 DB에서 다른 보유 후보를 찾지 못했습니다.</p>`;
+  }
+  return `
+    <ul class="shareholder-match-list">
+      ${matches
+        .map((match) => {
+          const holding = match.holding || {};
+          return `
+            <li>
+              <div class="shareholder-match-main">
+                <strong>${escapeHtml(holding.company_name || "회사명 정보 없음")}</strong>
+                <span>${escapeHtml(holding.group_name || holding.group_code || "기업집단 정보 없음")}</span>
+              </div>
+              <dl>
+                <div><dt>지분율</dt><dd>${escapeHtml(holding.holding_ratio || "정보 없음")}</dd></div>
+                <div><dt>관계</dt><dd>${escapeHtml(holding.relation || "정보 없음")}</dd></div>
+                <div><dt>보고서</dt><dd>${escapeHtml([holding.report_year, holding.report_code].filter(Boolean).join(" · ") || "정보 없음")}</dd></div>
+              </dl>
+              ${
+                match.same_name_warning
+                  ? `<p class="shareholder-match-warning">이름만으로 찾은 후보입니다. 동명이인일 수 있습니다.</p>`
+                  : ""
+              }
+            </li>
+          `;
+        })
+        .join("")}
+    </ul>
+  `;
+}
+
+function ensureShareholderDetailModal() {
+  const existing = document.querySelector(".shareholder-detail-modal");
+  if (existing) return existing;
+  const wrapper = document.createElement("div");
+  wrapper.innerHTML = `
+    <div class="shareholder-detail-modal" hidden>
+      <button type="button" class="shareholder-detail-backdrop" data-shareholder-detail-close aria-label="닫기"></button>
+      <section class="shareholder-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="shareholder-detail-title">
+        <div class="shareholder-detail-header">
+          <h3 id="shareholder-detail-title">주주 상세</h3>
+          <button type="button" class="shareholder-detail-close" data-shareholder-detail-close aria-label="닫기">×</button>
+        </div>
+        <div class="shareholder-detail-body" data-shareholder-detail-body></div>
+      </section>
+    </div>
+  `;
+  const modal = wrapper.firstElementChild;
+  document.body.appendChild(modal);
+  modal.querySelectorAll("[data-shareholder-detail-close]").forEach((button) => {
+    button.addEventListener("click", () => {
+      modal.hidden = true;
+      document.body.classList.remove("has-shareholder-detail-open");
+    });
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !modal.hidden) {
+      modal.hidden = true;
+      document.body.classList.remove("has-shareholder-detail-open");
+    }
+  });
+  return modal;
+}
+
+async function openShareholderDetail(button) {
+  const holder = JSON.parse(button.dataset.shareholderDetail || "{}");
+  const modal = ensureShareholderDetailModal();
+  const body = modal.querySelector("[data-shareholder-detail-body]");
+  modal.hidden = false;
+  document.body.classList.add("has-shareholder-detail-open");
+  modal.querySelector("#shareholder-detail-title").textContent = holder.name || "주주 상세";
+  body.innerHTML = `
+    ${renderShareholderCurrentDetail(holder)}
+    <section class="shareholder-detail-section">
+      <h4>상위 20개 기업집단 내 보유 후보</h4>
+      <p class="empty-copy">조회하는 중입니다.</p>
+    </section>
+  `;
+  const payload = await fetchJson(shareholderSearchUrl, {
+    name: holder.name,
+    corp_code: profileDetail.dataset.dartCorpCode || "",
+  });
+  body.innerHTML = `
+    ${renderShareholderCurrentDetail(holder)}
+    <section class="shareholder-detail-section">
+      <h4>상위 20개 기업집단 내 보유 후보</h4>
+      ${renderShareholderMatches(payload)}
+    </section>
+  `;
+}
+
+function setupShareholderDetailButtons() {
+  document.querySelectorAll("[data-shareholder-detail]").forEach((button) => {
+    if (button.dataset.shareholderDetailBound === "true") return;
+    button.dataset.shareholderDetailBound = "true";
+    button.addEventListener("click", () => {
+      openShareholderDetail(button).catch((error) => {
+        const modal = ensureShareholderDetailModal();
+        modal.hidden = false;
+        document.body.classList.add("has-shareholder-detail-open");
+        modal.querySelector("[data-shareholder-detail-body]").innerHTML = `<p class="empty-copy">${escapeHtml(error.message || "주주 정보를 불러오지 못했습니다.")}</p>`;
+      });
+    });
+  });
 }
 
 function renderDartInsightDetailButtons(insights) {
@@ -2651,6 +2804,7 @@ function renderCompanyDetail({ info, outline, listed, stock, stockWindow, stockL
   setupFinancialSummaryTabs();
   setupFinancialTrendCards();
   setupDartInsightDetailButtons();
+  setupShareholderDetailButtons();
   setupRelationshipSummaryCards();
   setupCompareActions();
   setupDisclosureViewer();

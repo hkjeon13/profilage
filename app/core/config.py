@@ -44,6 +44,15 @@ class OpenAiSettings:
 
 
 @dataclass(frozen=True)
+class BusinessGroupApiSettings:
+    service_key: str | None
+    base_url: str
+    groups_path: str
+    asset_ranks_path: str
+    companies_path: str
+
+
+@dataclass(frozen=True)
 class JwtSettings:
     secret: str | None
 
@@ -130,3 +139,31 @@ def get_database_settings() -> DatabaseSettings:
     load_dotenv()
 
     return DatabaseSettings(database_url=os.getenv("DATABASE_URL"))
+
+
+def get_business_group_api_settings() -> BusinessGroupApiSettings:
+    load_dotenv()
+
+    return BusinessGroupApiSettings(
+        service_key=(
+            os.getenv("BUSINESS_GROUP_SERVICE_KEY")
+            or os.getenv("EGROUP_SERVICE_KEY")
+            or os.getenv("OPEN_API_DECODING_KEY")
+        ),
+        base_url=os.getenv(
+            "BUSINESS_GROUP_API_BASE_URL",
+            "https://apis.data.go.kr/1130000/FftcBusinessGroupPortal",
+        ).rstrip("/"),
+        groups_path=os.getenv(
+            "BUSINESS_GROUP_API_GROUPS_PATH",
+            "/getLargeBusinessGroup",
+        ),
+        asset_ranks_path=os.getenv(
+            "BUSINESS_GROUP_API_ASSET_RANKS_PATH",
+            "/getLargeBusinessGroupAssetRank",
+        ),
+        companies_path=os.getenv(
+            "BUSINESS_GROUP_API_COMPANIES_PATH",
+            "/getLargeBusinessGroupCompany",
+        ),
+    )

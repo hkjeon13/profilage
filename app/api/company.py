@@ -43,6 +43,7 @@ from app.services.company_profile_summary import (
     CompanyProfileSummaryQuery,
     CompanyProfileSummaryService,
 )
+from app.services.company_shareholders import BusinessGroupShareholderService
 from app.services.company_store import get_default_data_group_store
 
 router = APIRouter(prefix="/company", tags=["company"])
@@ -696,3 +697,55 @@ async def get_dart_company_insight_detail(
     if has_valid_full_response_jwt(authorization):
         return payload
     return _public_insight_detail_payload(payload)
+
+
+@router.get("/shareholders/search")
+async def search_shareholders(
+    request: Request,
+    name: Annotated[str, Query(description="주주명")],
+    corp_code: Annotated[
+        str | None, Query(description="현재 회사 DART 고유번호")
+    ] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+):
+    service = BusinessGroupShareholderService(
+        transport=getattr(request.app.state, "http_transport", None)
+    )
+    return await service.search(name=name, corp_code=corp_code, limit=limit)
+
+
+@router.post("/shareholders/sync_top_business_groups")
+async def sync_top_business_group_shareholders(
+    request: Request,
+    designation_month: Annotated[
+        str | None, Query(description="지정월(YYYYMM), 미입력 시 현재 연월")
+    ] = None,
+):
+    service = BusinessGroupShareholderService(
+        transport=getattr(request.app.state, "http_transport", None)
+    )
+    result = await service.sync_top_business_groups(designation_month=designation_month)
+    return {
+        "designation_month": result.designation_month,
+        "groups": result.groups,
+        "companies": result.companies,
+    }
+
+
+@router.post("/shareholders/index_dart_holdings")
+async def index_dart_shareholder_holdings(
+    request: Request,
+    report_year: Annotated[str, Query(description="사업연도(YYYY)")],
+    report_code: Annotated[
+        str, Query(description="보고서 코드: 11011 사업보고서, 11012 반기, 11013 1분기, 11014 3분기")
+    ] = "11011",
+    limit: Annotated[int, Query(ge=1, le=1000)] = 200,
+):
+    service = BusinessGroupShareholderService(
+        transport=getattr(request.app.state, "http_transport", None)
+    )
+    return await service.index_dart_holdings(
+        report_year=report_year,
+        report_code=report_code,
+        limit=limit,
+    )

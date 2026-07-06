@@ -36,6 +36,12 @@ from app.services.company_insights import (
     normalize_company_risk_signals,
     normalize_dart_insights,
 )
+from app.services.company_shareholders import (
+    classify_shareholder,
+    normalize_business_group_company,
+    normalize_holding_rows,
+    select_top_business_groups,
+)
 from app.services.company_store import (
     AFFILIATE_GROUP,
     COMPANY_ENTITY_TYPE,
@@ -253,11 +259,11 @@ def test_profile_page_serves_company_profile_frontend():
     assert '<a href="/openapi.json">OpenAPI</a>' not in response.text
     assert '<a href="/docs">문서</a>' not in response.text
     assert '<a href="/">새 검색</a>' not in response.text
-    assert "/styles.css?v=company-profile-45" in response.text
+    assert "/styles.css?v=company-profile-46" in response.text
     assert "/profile-chart-2.css?v=interactive-9" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-43" in response.text
+    assert "/profile-page-5.js?v=company-profile-44" in response.text
 
 
 def test_compare_page_serves_company_compare_frontend():
@@ -410,7 +416,7 @@ def test_profile_frontend_can_add_company_to_compare_list():
     assert "setupCompareActions" in script_response.text
     assert "data-compare-add" in script_response.text
     assert "비교에 추가" in script_response.text
-    assert "/profile-page-5.js?v=company-profile-43" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-44" in profile_response.text
     assert ".block-heading .homepage-icon-link:hover {\n  color: #185abc;\n}" in style_response.text
     assert ".company-facts dd {\n  min-width: 0;\n  margin: 0;\n  color: #111827;\n  font-weight: 500;" in style_response.text
     assert ".profile-heading-actions {\n    align-items: center;\n    flex-direction: row;" in style_response.text
@@ -557,7 +563,7 @@ def test_financial_summary_cards_open_trend_modal_with_account_checks():
     assert "financial-trend-account-check" in script_response.text
     assert ".financial-trend-modal" in style_response.text
     assert ".financial-trend-chart" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-43" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-44" in profile_response.text
 
 
 def test_financial_summary_more_link_is_in_card_heading():
@@ -693,7 +699,7 @@ def test_stock_window_tabs_expose_loading_error_and_refresh_metadata():
     assert "주가 정보를 불러오지 못했습니다" in script_response.text
     assert ".stock-window-status" in style_response.text
     assert ".company-market-card.is-loading-stock" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-43" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-44" in profile_response.text
 
 
 def test_profile_sections_render_source_and_basis_metadata():
@@ -870,8 +876,8 @@ def test_relationship_summary_cards_open_company_list_modal():
     assert "relationship-list-modal" in script_response.text
     assert ".relationship-list-modal" in style_response.text
     assert ".relationship-list-items" in style_response.text
-    assert "/styles.css?v=company-profile-45" in profile_response.text
-    assert "/profile-page-5.js?v=company-profile-43" in profile_response.text
+    assert "/styles.css?v=company-profile-46" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-44" in profile_response.text
 
 
 def test_relationship_summary_terms_have_tooltips():
@@ -919,7 +925,11 @@ def test_profile_frontend_renders_normalized_dart_insight_cards():
     assert "insights.audit" in script_response.text
     assert "insights.ratios" in script_response.text
     assert "renderOwnershipStackedBar" in script_response.text
+    assert "setupShareholderDetailButtons" in script_response.text
+    assert "shareholderSearchUrl" in script_response.text
+    assert "상위 20개 기업집단 내 보유 후보" in script_response.text
     assert "ownership-bar-segment" in script_response.text
+    assert "ownership-holder-button" in script_response.text
     assert "isOwnershipTotalHolder" in script_response.text
     assert "Number(b.ratio_number) - Number(a.ratio_number)" in script_response.text
     assert "기타 주주" in script_response.text
@@ -930,8 +940,9 @@ def test_profile_frontend_renders_normalized_dart_insight_cards():
     assert ".company-insight-cards" in style_response.text
     assert ".ownership-stacked-bar" in style_response.text
     assert ".ownership-bar-segment" in style_response.text
-    assert "/styles.css?v=company-profile-45" in profile_response.text
-    assert "/profile-page-5.js?v=company-profile-43" in profile_response.text
+    assert ".shareholder-detail-modal" in style_response.text
+    assert "/styles.css?v=company-profile-46" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-44" in profile_response.text
 
 
 def test_profile_frontend_exposes_lazy_dart_detail_modal():
@@ -1035,6 +1046,105 @@ def test_dart_periodic_endpoint_registry_contains_phase_one_sources():
     assert DART_PERIODIC_ENDPOINTS["audit_opinion"]["group_name"] == "dart_audit_opinion"
     assert DART_PERIODIC_ENDPOINTS["financial_ratios"]["group_name"] == "dart_financial_ratios"
     assert DART_PERIODIC_ENDPOINTS["major_shareholders"]["endpoint"].endswith(".json") is False
+
+
+def test_business_group_selector_uses_official_rank_or_assets():
+    ranked = select_top_business_groups(
+        [
+            {"entrprsgrpCode": "A", "entrprsgrpNm": "A그룹", "rank": "2"},
+            {"entrprsgrpCode": "B", "entrprsgrpNm": "B그룹", "rank": "1"},
+        ],
+        limit=1,
+    )
+    assert ranked[0]["group_name"] == "B그룹"
+
+    by_asset = select_top_business_groups(
+        [
+            {"entrprsgrpCode": "A", "entrprsgrpNm": "A그룹", "assetAmount": "10,000"},
+            {"entrprsgrpCode": "B", "entrprsgrpNm": "B그룹", "assetAmount": "20,000"},
+        ],
+        limit=1,
+    )
+    assert by_asset[0]["group_name"] == "B그룹"
+
+    with pytest.raises(ValueError, match="official rank or asset amount"):
+        select_top_business_groups(
+            [{"entrprsgrpCode": "A", "entrprsgrpNm": "A그룹"}],
+            limit=1,
+        )
+
+
+def test_business_group_company_normalizer_keeps_identity_fields():
+    normalized = normalize_business_group_company(
+        {
+            "corpNm": "삼성전자",
+            "jurirNo": "1301110006246",
+            "bizrNo": "1248100998",
+            "rprsntvNm": "전영현",
+            "stockCode": "005930",
+        },
+        group_code="samsung",
+    )
+
+    assert normalized["group_code"] == "samsung"
+    assert normalized["company_name"] == "삼성전자"
+    assert normalized["legal_registration_number"] == "1301110006246"
+    assert normalized["stock_code"] == "005930"
+
+
+def test_shareholder_holding_normalizer_marks_name_only_matches_low_confidence():
+    rows = normalize_holding_rows(
+        shareholder_payload={
+            "list": [
+                {"nm": "계", "bsis_posesn_stock_qota_rt": "30.0"},
+                {
+                    "nm": "홍길동",
+                    "relate": "본인",
+                    "stock_knd": "보통주",
+                    "bsis_posesn_stock_co": "1,000",
+                    "bsis_posesn_stock_qota_rt": "10.5",
+                },
+            ],
+        },
+        executives_payload={"list": [{"nm": "홍길동", "ofcps": "대표이사"}]},
+        held_company_name="테스트회사",
+        held_company_corp_code="00123456",
+        held_company_group_code="test-group",
+        report_year="2025",
+        report_code="11011",
+    )
+
+    assert len(rows) == 1
+    assert rows[0]["entity"]["entity_type"] == "individual"
+    assert rows[0]["entity"]["confidence_basis"] == "low"
+    assert rows[0]["holding"]["holding_ratio"] == 10.5
+    assert rows[0]["holding"]["share_count"] == 1000
+
+
+def test_shareholder_classifier_detects_corporations():
+    assert classify_shareholder(name="삼성물산(주)") == "corporation"
+    assert classify_shareholder(name="삼성물산", dart_corp_code="00123456") == "corporation"
+    assert classify_shareholder(name="홍길동", executive_match=True) == "individual"
+
+
+def test_shareholder_search_api_degrades_without_database_url(monkeypatch):
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    with TestClient(app) as client:
+        response = client.get("/company/shareholders/search", params={"name": "홍길동"})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["matches"] == []
+    assert payload["corpus"]["available"] is False
+
+
+def test_shareholder_api_exposes_sync_and_index_routes():
+    with TestClient(app) as client:
+        routes = set(client.get("/openapi.json").json()["paths"])
+
+    assert "/company/shareholders/search" in routes
+    assert "/company/shareholders/sync_top_business_groups" in routes
+    assert "/company/shareholders/index_dart_holdings" in routes
 
 
 def test_company_insight_normalizer_returns_stable_phase_one_shape():

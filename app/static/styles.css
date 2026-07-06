@@ -2346,9 +2346,196 @@ a:hover {
   white-space: nowrap;
 }
 
+.ownership-holder-button {
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  color: #344054;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ownership-holder-button:hover,
+.ownership-holder-button:focus-visible {
+  color: #006fdb;
+  text-decoration: underline;
+  outline: none;
+}
+
 .ownership-bar-legend strong {
   color: #101828;
   font-weight: 850;
+}
+
+.shareholder-detail-modal[hidden] {
+  display: none;
+}
+
+.shareholder-detail-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  justify-items: end;
+}
+
+.shareholder-detail-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(15, 23, 42, 0.32);
+  cursor: pointer;
+}
+
+.shareholder-detail-dialog {
+  position: relative;
+  z-index: 1;
+  width: min(440px, 100%);
+  height: 100%;
+  overflow: auto;
+  background: #ffffff;
+  box-shadow: -16px 0 40px rgba(15, 23, 42, 0.18);
+}
+
+.shareholder-detail-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px;
+  border-bottom: 1px solid #e7ebf3;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(10px);
+}
+
+.shareholder-detail-header h3 {
+  margin: 0;
+  color: #101828;
+  font-size: 18px;
+  font-weight: 850;
+}
+
+.shareholder-detail-close {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #d8deea;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #344054;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.shareholder-detail-body {
+  display: grid;
+  gap: 14px;
+  padding: 18px 20px 24px;
+}
+
+.shareholder-detail-section {
+  display: grid;
+  gap: 12px;
+}
+
+.shareholder-detail-section h4 {
+  margin: 0;
+  color: #101828;
+  font-size: 16px;
+  font-weight: 850;
+}
+
+.shareholder-detail-kicker {
+  width: fit-content;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #eef4ff;
+  color: #175cd3;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.shareholder-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.shareholder-detail-grid div,
+.shareholder-match-list li {
+  border: 1px solid #e7ebf3;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.shareholder-detail-grid div {
+  padding: 12px;
+}
+
+.shareholder-detail-grid dt,
+.shareholder-match-list dt {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.shareholder-detail-grid dd,
+.shareholder-match-list dd {
+  margin: 4px 0 0;
+  color: #101828;
+  font-weight: 850;
+}
+
+.shareholder-match-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shareholder-match-list li {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.shareholder-match-main {
+  display: grid;
+  gap: 2px;
+}
+
+.shareholder-match-main strong {
+  color: #101828;
+  font-size: 14px;
+}
+
+.shareholder-match-main span,
+.shareholder-match-warning {
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.shareholder-match-list dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.shareholder-match-warning {
+  margin: 0;
+  color: #b54708;
 }
 
 .dart-insight-detail-actions {
@@ -3351,6 +3538,23 @@ a:hover {
 
   .result-meta-grid,
   .key-metric-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .shareholder-detail-modal {
+    align-items: end;
+    justify-items: stretch;
+  }
+
+  .shareholder-detail-dialog {
+    width: 100%;
+    height: min(82vh, 680px);
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -16px 40px rgba(15, 23, 42, 0.18);
+  }
+
+  .shareholder-detail-grid,
+  .shareholder-match-list dl {
     grid-template-columns: 1fr;
   }
 }

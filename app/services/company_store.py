@@ -96,6 +96,158 @@ class PostgresDataGroupStore:
                     ON company_data_groups (expires_at)
                     """
                 )
+                await cursor.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS shareholder_sync_runs (
+                        run_id BIGSERIAL PRIMARY KEY,
+                        kind TEXT NOT NULL,
+                        status TEXT NOT NULL,
+                        designation_month TEXT,
+                        row_counts JSONB NOT NULL DEFAULT '{}'::jsonb,
+                        error_message TEXT,
+                        started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                        finished_at TIMESTAMPTZ
+                    )
+                    """
+                )
+                await cursor.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS business_groups (
+                        designation_month TEXT NOT NULL,
+                        group_code TEXT NOT NULL,
+                        group_name TEXT NOT NULL,
+                        rank INTEGER,
+                        asset_amount NUMERIC,
+                        same_person_name TEXT,
+                        representative_company_name TEXT,
+                        company_count INTEGER,
+                        source TEXT NOT NULL,
+                        fetched_at TIMESTAMPTZ NOT NULL,
+                        PRIMARY KEY (designation_month, group_code)
+                    )
+                    """
+                )
+                await cursor.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_business_groups_rank
+                    ON business_groups (designation_month, rank)
+                    """
+                )
+                await cursor.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS business_group_companies (
+                        designation_month TEXT NOT NULL,
+                        group_code TEXT NOT NULL,
+                        company_name TEXT NOT NULL,
+                        legal_registration_number TEXT,
+                        business_registration_number TEXT,
+                        representative_name TEXT,
+                        included_on TEXT,
+                        industry_name TEXT,
+                        dart_corp_code TEXT,
+                        stock_code TEXT,
+                        source TEXT NOT NULL,
+                        fetched_at TIMESTAMPTZ NOT NULL,
+                        PRIMARY KEY (designation_month, group_code, company_name)
+                    )
+                    """
+                )
+                await cursor.execute(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS uq_business_group_companies_identity
+                    ON business_group_companies (
+                        designation_month,
+                        group_code,
+                        company_name,
+                        COALESCE(legal_registration_number, '')
+                    )
+                    """
+                )
+                await cursor.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_business_group_companies_dart
+                    ON business_group_companies (dart_corp_code)
+                    """
+                )
+                await cursor.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS shareholder_entities (
+                        entity_id TEXT PRIMARY KEY,
+                        entity_type TEXT NOT NULL,
+                        display_name TEXT NOT NULL,
+                        normalized_name TEXT NOT NULL,
+                        legal_registration_number TEXT,
+                        dart_corp_code TEXT,
+                        stock_code TEXT,
+                        confidence_basis TEXT,
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                    )
+                    """
+                )
+                await cursor.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_shareholder_entities_name
+                    ON shareholder_entities (normalized_name)
+                    """
+                )
+                await cursor.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS shareholder_holdings (
+                        entity_id TEXT NOT NULL REFERENCES shareholder_entities(entity_id),
+                        held_company_corp_code TEXT,
+                        held_company_name TEXT NOT NULL,
+                        held_company_group_code TEXT,
+                        report_year TEXT NOT NULL,
+                        report_code TEXT NOT NULL,
+                        relation TEXT,
+                        share_class TEXT,
+                        share_count NUMERIC,
+                        holding_ratio NUMERIC,
+                        source_endpoint TEXT NOT NULL,
+                        source_receipt_no TEXT,
+                        source_fetched_at TIMESTAMPTZ NOT NULL,
+                        PRIMARY KEY (
+                            entity_id,
+                            held_company_name,
+                            report_year,
+                            report_code
+                        )
+                    )
+                    """
+                )
+                await cursor.execute(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS uq_shareholder_holdings_identity
+                    ON shareholder_holdings (
+                        entity_id,
+                        COALESCE(held_company_corp_code, ''),
+                        held_company_name,
+                        report_year,
+                        report_code,
+                        COALESCE(share_class, '')
+                    )
+                    """
+                )
+                await cursor.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_shareholder_holdings_company
+                    ON shareholder_holdings (held_company_corp_code, held_company_name)
+                    """
+                )
+                await cursor.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS shareholder_source_payloads (
+                        source_key TEXT PRIMARY KEY,
+                        source_endpoint TEXT NOT NULL,
+                        corp_code TEXT NOT NULL,
+                        report_year TEXT NOT NULL,
+                        report_code TEXT NOT NULL,
+                        payload JSONB NOT NULL,
+                        fetched_at TIMESTAMPTZ NOT NULL
+                    )
+                    """
+                )
             await conn.commit()
 
     async def get_record(
