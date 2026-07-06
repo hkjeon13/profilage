@@ -1018,7 +1018,7 @@ function ensureDisclosureViewerModal() {
               <button type="button" class="disclosure-viewer-close" data-disclosure-viewer-close>닫기</button>
             </div>
           </header>
-          <iframe class="disclosure-viewer-frame" title="DART 공시 뷰어" loading="lazy" referrerpolicy="no-referrer"></iframe>
+          <iframe class="disclosure-viewer-frame" title="DART 공시 뷰어" loading="lazy" referrerpolicy="no-referrer" scrolling="yes"></iframe>
         </section>
       </div>
     `,
