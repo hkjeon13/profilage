@@ -625,7 +625,7 @@ function renderStockChart(stock, activeWindow = "1D", statusText = stockUpdatedL
   `;
 }
 
-function updateStockChartSelection(chart, point, { revealMarker = true } = {}) {
+function updateStockChartSelection(chart, point) {
   const tooltip = chart.querySelector(".stock-chart-tooltip");
   const guide = chart.querySelector(".stock-chart-guide");
   const dot = chart.querySelector(".stock-chart-dot");
@@ -648,7 +648,6 @@ function updateStockChartSelection(chart, point, { revealMarker = true } = {}) {
   dot.setAttribute("cx", point.x);
   dot.setAttribute("cy", point.y);
   chart.classList.add("is-active");
-  chart.classList.toggle("is-inspecting", revealMarker);
   chart.classList.toggle("is-start-selected", point.index === 0);
   chart.classList.toggle(
     "is-end-selected",
@@ -686,13 +685,13 @@ function setupStockChartInteractions() {
       const nearest = points.reduce((current, point) =>
         Math.abs(point.x - x) < Math.abs(current.x - x) ? point : current,
       );
-      updateStockChartSelection(chart, nearest, { revealMarker: true });
+      updateStockChartSelection(chart, nearest);
     };
     const selectFromTouch = (event) => {
       selectNearestPoint(event.touches?.[0]?.clientX);
     };
 
-    updateStockChartSelection(chart, points.at(-1), { revealMarker: false });
+    updateStockChartSelection(chart, points.at(-1));
 
     chart.addEventListener("pointermove", (event) => {
       selectNearestPoint(event.clientX);
@@ -717,7 +716,7 @@ function setupStockChartInteractions() {
     chart.addEventListener("touchstart", selectFromTouch, { passive: true });
     chart.addEventListener("touchmove", selectFromTouch, { passive: true });
     svg.addEventListener("focus", () => {
-      updateStockChartSelection(chart, points.at(-1), { revealMarker: true });
+      updateStockChartSelection(chart, points.at(-1));
     });
     svg.addEventListener("keydown", (event) => {
       if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
@@ -729,7 +728,7 @@ function setupStockChartInteractions() {
         event.key === "ArrowLeft"
           ? Math.max((currentIndex < 0 ? fallbackIndex : currentIndex) - 1, 0)
           : Math.min((currentIndex < 0 ? fallbackIndex : currentIndex) + 1, points.length - 1);
-      updateStockChartSelection(chart, points[nextIndex], { revealMarker: true });
+      updateStockChartSelection(chart, points[nextIndex]);
     });
   });
 }

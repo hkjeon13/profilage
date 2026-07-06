@@ -1086,15 +1086,29 @@ a:hover {
 }
 
 .disclosure-title-row {
-  display: grid;
+  display: flex;
   min-width: 0;
-  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
 }
 
 .disclosure-title-cell {
+  flex: 1 1 auto;
   min-width: 0;
+}
+
+.disclosure-title-cell .disclosure-viewer-trigger,
+.disclosure-title-cell .disclosure-title {
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.disclosure-title-row .disclosure-summary-button {
+  flex: 0 0 auto;
 }
 
 .disclosure-event-title-row {
