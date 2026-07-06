@@ -1094,9 +1094,23 @@ a:hover {
   width: 100%;
 }
 
+.disclosure-list .disclosure-title-row {
+  display: flex;
+  margin-top: 0;
+  color: inherit;
+  font-size: inherit;
+}
+
 .disclosure-title-cell {
   flex: 1 1 auto;
   min-width: 0;
+}
+
+.disclosure-list .disclosure-title-cell {
+  display: block;
+  margin-top: 0;
+  color: inherit;
+  font-size: inherit;
 }
 
 .disclosure-title-cell .disclosure-viewer-trigger,
