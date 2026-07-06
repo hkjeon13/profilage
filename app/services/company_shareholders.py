@@ -415,11 +415,12 @@ class BusinessGroupShareholderService:
         report_year: str,
         report_code: str = "11011",
         limit: int = 200,
+        offset: int = 0,
     ) -> dict[str, Any]:
         if not self._database_url:
             raise HTTPException(status_code=503, detail="DATABASE_URL must be configured")
 
-        companies = await self._latest_group_companies(limit=limit)
+        companies = await self._latest_group_companies(limit=limit, offset=offset)
         dart_service = DartCompanyService(transport=self._transport)
         indexed = 0
         skipped = 0
@@ -460,6 +461,8 @@ class BusinessGroupShareholderService:
         return {
             "report_year": report_year,
             "report_code": report_code,
+            "offset": offset,
+            "limit": limit,
             "indexed_companies": indexed,
             "skipped_companies": skipped,
             "holdings": holdings_total,
@@ -546,7 +549,7 @@ class BusinessGroupShareholderService:
             }
         }
 
-    async def _latest_group_companies(self, *, limit: int) -> list[dict[str, Any]]:
+    async def _latest_group_companies(self, *, limit: int, offset: int = 0) -> list[dict[str, Any]]:
         from psycopg import AsyncConnection
         from psycopg.rows import dict_row
 
@@ -567,8 +570,9 @@ class BusinessGroupShareholderService:
                     )
                     ORDER BY group_code, company_name
                     LIMIT %s
+                    OFFSET %s
                     """,
-                    (limit,),
+                    (limit, offset),
                 )
                 return await cursor.fetchall()
 

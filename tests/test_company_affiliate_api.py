@@ -1150,10 +1150,16 @@ def test_shareholder_search_api_degrades_without_database_url(monkeypatch):
 def test_shareholder_api_exposes_sync_and_index_routes():
     with TestClient(app) as client:
         routes = set(client.get("/openapi.json").json()["paths"])
+        schema = client.get("/openapi.json").json()
 
     assert "/company/shareholders/search" in routes
     assert "/company/shareholders/sync_top_business_groups" in routes
     assert "/company/shareholders/index_dart_holdings" in routes
+    parameters = {
+        parameter["name"]
+        for parameter in schema["paths"]["/company/shareholders/index_dart_holdings"]["post"]["parameters"]
+    }
+    assert {"report_year", "report_code", "limit", "offset"}.issubset(parameters)
 
 
 def test_company_insight_normalizer_returns_stable_phase_one_shape():

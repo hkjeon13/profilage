@@ -740,6 +740,7 @@ async def index_dart_shareholder_holdings(
         str, Query(description="보고서 코드: 11011 사업보고서, 11012 반기, 11013 1분기, 11014 3분기")
     ] = "11011",
     limit: Annotated[int, Query(ge=1, le=1000)] = 200,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ):
     service = BusinessGroupShareholderService(
         transport=getattr(request.app.state, "http_transport", None)
@@ -748,4 +749,5 @@ async def index_dart_shareholder_holdings(
         report_year=report_year,
         report_code=report_code,
         limit=limit,
+        offset=offset,
     )
