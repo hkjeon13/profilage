@@ -938,7 +938,7 @@ class CompanyInfoService(OpenApiCompanyService):
                 disclosure_detail_type=None,
                 corporation_class=None,
                 page=1,
-                per_page=5,
+                per_page=8,
             )
         )
         dart_financial_reports = await dart_service.get_latest_financial_reports(

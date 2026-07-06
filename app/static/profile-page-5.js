@@ -1248,8 +1248,8 @@ function renderDisclosureEventTimeline(events) {
             const viewerItem = disclosureEventToViewerItem(event);
             return `
               <li>
-                <span class="disclosure-event-date">${escapeHtml(compactDate(event.date))}</span>
                 <span class="disclosure-event-badge disclosure-event-${attr(event.category)}">${escapeHtml(disclosureEventLabel(event.category))}</span>
+                <span class="disclosure-event-date">${escapeHtml(compactDate(event.date))}</span>
                 <span class="disclosure-event-title-row">
                   <span class="disclosure-event-title">
                     ${renderDisclosureViewerTrigger(viewerItem)}

@@ -1334,7 +1334,7 @@ a:hover {
 
 .disclosure-event-timeline li {
   display: grid;
-  grid-template-columns: 76px 84px minmax(0, 1fr);
+  grid-template-columns: 84px 76px minmax(0, 1fr);
   align-items: center;
   gap: 10px;
   border-bottom: 1px solid #eef0f6;
