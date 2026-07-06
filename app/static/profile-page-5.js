@@ -1857,12 +1857,12 @@ function renderCompanyInsightCards(insights) {
     <article class="info-block company-insight-summary-card" aria-label="기업 심화 정보" data-dart-insight-basis="${basisPayload}">
       <div class="block-heading company-insight-summary-heading">
         <h3>DART 핵심정보</h3>
-        ${renderDartInsightDetailButtons(insights)}
       </div>
       <div class="company-insight-card-grid">
         ${cards.join("")}
       </div>
       ${sourceMeta}
+      ${renderDartInsightDetailButtons(insights)}
     </article>
   `;
 }

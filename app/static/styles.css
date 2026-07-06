@@ -2702,7 +2702,9 @@ a:hover {
 .dart-insight-detail-actions {
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
+  margin-top: 2px;
   margin-left: auto;
 }
 
@@ -3452,15 +3454,6 @@ a:hover {
     flex-direction: column;
   }
 
-  .company-insight-summary-heading .dart-insight-detail-actions {
-    width: 100%;
-    margin-left: 0;
-  }
-
-  .company-insight-summary-heading .dart-insight-detail-actions button {
-    flex: 1 1 132px;
-  }
-
   .disclosure-event-timeline li {
     grid-template-columns: 84px minmax(0, 1fr);
     align-items: center;
@@ -3857,10 +3850,14 @@ a:hover {
   }
 
   .dart-insight-detail-actions {
+    width: 100%;
     gap: 7px;
+    margin-top: 2px;
+    margin-left: 0;
   }
 
   .dart-insight-detail-actions button {
+    flex: 1 1 132px;
     min-height: 40px;
     padding: 0 10px;
   }
