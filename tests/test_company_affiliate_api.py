@@ -298,11 +298,11 @@ def test_profile_page_serves_company_profile_frontend():
     assert '<a href="/openapi.json">OpenAPI</a>' not in response.text
     assert '<a href="/docs">문서</a>' not in response.text
     assert '<a href="/">새 검색</a>' not in response.text
-    assert "/styles.css?v=company-profile-60" in response.text
+    assert "/styles.css?v=company-profile-61" in response.text
     assert "/profile-chart-2.css?v=interactive-9" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-54" in response.text
+    assert "/profile-page-5.js?v=company-profile-55" in response.text
 
 
 def test_compare_page_serves_company_compare_frontend():
@@ -384,7 +384,7 @@ def test_profile_frontend_exposes_card_layout_assets():
     assert style_response.status_code == 200
     assert "company-canvas" in profile_response.text
     assert "company-profile-card" in script_response.text
-    assert "company-profile-info-section" in script_response.text
+    assert "profile-basic-card" in profile_response.text
     assert "company-side-panel" not in script_response.text
     assert ".company-background" in style_response.text
 
@@ -396,7 +396,6 @@ def test_profile_overview_groups_company_information_without_relationship_card()
 
     assert script_response.status_code == 200
     assert style_response.status_code == 200
-    assert "company-profile-info-section" in script_response.text
     assert "profileBasicCard" in script_response.text
     assert "기업 기본정보" in script_response.text
     assert "profile-basic-grid" in style_response.text
@@ -404,14 +403,14 @@ def test_profile_overview_groups_company_information_without_relationship_card()
     assert "<h3>관계 회사</h3>" not in script_response.text
     assert "network-row" not in script_response.text
     assert "side-list" not in script_response.text
-    assert ".company-profile-info-section" in style_response.text
-    assert ".company-summary" in style_response.text
-    assert "border-bottom: 1px solid #eef0f6;" in style_response.text
-    assert "companySummaryText" in script_response.text
-    assert "firstCompanyValue(info.corp_outline" in script_response.text
+    assert "company-profile-info-section" not in script_response.text
+    assert ".company-profile-info-section" not in style_response.text
+    assert ".company-summary" not in style_response.text
+    assert "companySummaryText" not in script_response.text
+    assert '<article id="section-basic" class="info-block company-about-card">' not in script_response.text
+    assert "company-about-card" not in style_response.text
     assert "DART 공시와 KRX 종목 정보를 한 화면에서 확인할 수 있습니다" not in script_response.text
-    assert 'class="homepage-icon-link"' in script_response.text
-    assert 'aria-label="홈페이지"' in script_response.text
+    assert 'class="homepage-icon-link"' not in script_response.text
     assert 'target="_blank" rel="noreferrer">홈페이지</a>' not in script_response.text
     assert "info.dart_company || {}" in script_response.text
     basic_card_section = script_response.text.split("function renderProfileBasicCard", 1)[1].split(
@@ -426,20 +425,11 @@ def test_profile_overview_groups_company_information_without_relationship_card()
     assert "ISIN" not in basic_card_section
     assert "상장일" in basic_card_section
     assert 'class="company-address-card"' not in script_response.text
-    assert "outline.enpTlno || dartCompany.phn_no" in script_response.text
     assert 'text(outline.enpBsadr, "주소 정보 없음")' in script_response.text
-    assert "function validIndustryName" in script_response.text
-    assert 'text(industry, "정보 없음")' in script_response.text
     assert 'text(outline.enpMainBizNm || listed.itmsNm, "정보 없음")' not in script_response.text
     assert "outline.enpEmpeCnt" in script_response.text
     assert "dartCompany.corp_code" in script_response.text
-    assert ".homepage-icon-link" in style_response.text
-    assert ".block-heading .homepage-icon-link {\n  display: inline-flex;\n  width: auto;" in style_response.text
-    homepage_link_rule = style_response.text.split(
-        ".block-heading .homepage-icon-link {", 1
-    )[1].split("}", 1)[0]
-    assert "border:" not in homepage_link_rule
-    assert "background:" not in homepage_link_rule
+    assert ".homepage-icon-link" not in style_response.text
 
 
 def test_profile_frontend_can_add_company_to_compare_list():
@@ -455,12 +445,14 @@ def test_profile_frontend_can_add_company_to_compare_list():
     assert "addCompanyToCompare" in script_response.text
     assert "setupCompareActions" in script_response.text
     assert "data-compare-add" in script_response.text
-    assert "비교에 추가" in script_response.text
-    assert "/profile-page-5.js?v=company-profile-54" in profile_response.text
-    assert ".block-heading .homepage-icon-link:hover {\n  color: #185abc;\n}" in style_response.text
-    assert ".company-facts dd {\n  min-width: 0;\n  margin: 0;\n  color: #111827;\n  font-weight: 500;" in style_response.text
-    assert ".profile-heading-actions {\n    align-items: center;\n    flex-direction: row;" in style_response.text
-    assert ".profile-heading-actions .compare-add-button,\n  .profile-heading-actions .compare-link-button {\n    width: auto;" in style_response.text
+    assert 'aria-label="${isCompareAdded ? "비교함에 추가됨" : "비교에 추가"}"' in script_response.text
+    assert 'title="${isCompareAdded ? "비교함에 추가됨" : "비교에 추가"}"' in script_response.text
+    assert 'data-compare-icon' in script_response.text
+    assert "/profile-page-5.js?v=company-profile-55" in profile_response.text
+    assert ".company-facts" not in style_response.text
+    assert ".summary-heading-actions" in style_response.text
+    assert ".summary-compare-button" in style_response.text
+    assert ".profile-heading-actions" not in style_response.text
     assert "font-weight: 780;" not in style_response.text
 
 
@@ -616,7 +608,7 @@ def test_financial_summary_cards_open_trend_modal_with_account_checks():
     assert ".financial-trend-chart" in style_response.text
     assert ".disclosure-summary-close,\n.disclosure-viewer-close,\n.financial-trend-close," in style_response.text
     assert "background: transparent;" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-54" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-55" in profile_response.text
 
 
 def test_financial_summary_more_link_is_in_card_heading():
@@ -760,7 +752,7 @@ def test_stock_window_tabs_expose_loading_error_and_refresh_metadata():
     assert "주가 정보를 불러오지 못했습니다" in script_response.text
     assert ".stock-window-status" in style_response.text
     assert ".company-market-card.is-loading-stock" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-54" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-55" in profile_response.text
 
 
 def test_profile_sections_render_source_and_basis_metadata():
@@ -774,7 +766,6 @@ def test_profile_sections_render_source_and_basis_metadata():
     assert "금융위원회 기업기본정보" in script_response.text
     assert "DART" in script_response.text
     assert "SearchAPI Google Finance" in script_response.text
-    assert "기준일" in script_response.text
     assert "캐시 만료" in script_response.text
     assert ".source-meta" in style_response.text
 
@@ -937,8 +928,8 @@ def test_relationship_summary_cards_open_company_list_modal():
     assert "relationship-list-modal" in script_response.text
     assert ".relationship-list-modal" in style_response.text
     assert ".relationship-list-items" in style_response.text
-    assert "/styles.css?v=company-profile-60" in profile_response.text
-    assert "/profile-page-5.js?v=company-profile-54" in profile_response.text
+    assert "/styles.css?v=company-profile-61" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-55" in profile_response.text
 
 
 def test_relationship_summary_terms_have_tooltips():
@@ -1004,8 +995,8 @@ def test_profile_frontend_renders_normalized_dart_insight_cards():
     assert ".ownership-stacked-bar" in style_response.text
     assert ".ownership-bar-segment" in style_response.text
     assert ".shareholder-detail-modal" in style_response.text
-    assert "/styles.css?v=company-profile-60" in profile_response.text
-    assert "/profile-page-5.js?v=company-profile-54" in profile_response.text
+    assert "/styles.css?v=company-profile-61" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-55" in profile_response.text
 
 
 def test_profile_frontend_exposes_lazy_dart_detail_modal():
@@ -1099,17 +1090,21 @@ def test_company_ai_summary_renders_as_single_full_width_section_above_overview(
         "`;",
         1,
     )[0]
-    summary_template = script.split("function renderCompanyProfileSummaryCard()", 1)[1].split(
+    summary_template = script.split("function renderCompanyProfileSummaryCard(", 1)[1].split(
         "function renderCompanyProfileSummaryList", 1
     )[0]
 
-    assert detail_template.index("${renderCompanyProfileSummaryCard()}") < detail_template.index(
-        '<div class="profile-dashboard-grid">'
+    assert detail_template.index("${renderCompanyProfileSummaryCard(") < detail_template.index(
+        "${renderCompanyStockCard"
     )
     assert 'id="section-summary"' in summary_template
     assert "<h3>AI 기업요약</h3>" in summary_template
+    assert "summary-heading-actions" in summary_template
+    assert "summary-compare-button" in summary_template
+    assert "data-compare-add" in summary_template
     assert "<h3>요약</h3>" not in summary_template
     assert "업무용 핵심 정보" not in summary_template
+    assert "section-basic" not in detail_template
 
 
 def test_disclosure_summary_loading_uses_pastel_shimmer_background_only():

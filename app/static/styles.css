@@ -636,22 +636,6 @@ a:hover {
   white-space: nowrap;
 }
 
-.block-heading .homepage-icon-link {
-  display: inline-flex;
-  width: auto;
-  height: auto;
-  align-items: center;
-  justify-content: center;
-  color: var(--accent);
-  font-size: 16px;
-  line-height: 1;
-  text-decoration: none;
-}
-
-.block-heading .homepage-icon-link:hover {
-  color: #185abc;
-}
-
 .kv {
   display: grid;
   grid-template-columns: 110px minmax(0, 1fr);
@@ -1871,15 +1855,6 @@ a:hover {
   font-weight: 850;
 }
 
-.company-summary {
-  margin: 0;
-  border-bottom: 1px solid #eef0f6;
-  padding-bottom: 18px;
-  color: #3f4757;
-  line-height: 1.75;
-  overflow-wrap: anywhere;
-}
-
 .profile-section-nav {
   position: sticky;
   top: 0;
@@ -1909,13 +1884,6 @@ a:hover {
   font-weight: 850;
   text-decoration: none;
   white-space: nowrap;
-}
-
-.profile-dashboard-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 14px;
-  align-items: stretch;
 }
 
 .profile-section-nav a:hover,
@@ -2053,60 +2021,6 @@ a:hover {
   display: none;
 }
 
-.company-profile-info-section {
-  margin-top: 18px;
-}
-
-.company-profile-info-section h3 {
-  margin-bottom: 14px;
-}
-
-.company-facts {
-  display: grid;
-  gap: 10px;
-  margin: 0;
-}
-
-.company-facts {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.company-overview-points .company-facts {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.company-overview-points .company-facts div {
-  border: 1px solid #eef0f6;
-  border-radius: 8px;
-  background: #f8fafc;
-  padding: 12px;
-}
-
-.company-facts div {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-
-.company-facts .company-fact-wide {
-  grid-column: 1 / -1;
-}
-
-.company-facts dt {
-  color: #7b8497;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.company-facts dd {
-  min-width: 0;
-  margin: 0;
-  color: #111827;
-  font-weight: 500;
-  word-break: break-word;
-}
-
 .market-pill {
   display: inline-flex;
   min-height: 28px;
@@ -2161,7 +2075,6 @@ a:hover {
 }
 
 .profile-page .financial-summary,
-.profile-page .company-about-card,
 .profile-page .company-market-card {
   grid-column: auto;
 }
@@ -2985,7 +2898,7 @@ a:hover {
   display: none;
 }
 
-.profile-heading-actions {
+.summary-heading-actions {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -2993,7 +2906,6 @@ a:hover {
 }
 
 .compare-add-button,
-.compare-link-button,
 .primary-link-button {
   display: inline-flex;
   align-items: center;
@@ -3014,6 +2926,14 @@ a:hover {
   border-color: #d6f3e7;
   background: #ecfdf5;
   color: #08734f;
+}
+
+.summary-compare-button {
+  width: 34px;
+  min-width: 34px;
+  padding: 0;
+  font-size: 18px;
+  line-height: 1;
 }
 
 .compare-shell {
@@ -3383,8 +3303,7 @@ a:hover {
     padding: 18px 0 42px;
   }
 
-  .profile-top-grid,
-  .profile-dashboard-grid {
+  .profile-top-grid {
     grid-template-columns: 1fr;
   }
 
@@ -3466,7 +3385,6 @@ a:hover {
   }
 
   .company-overview-grid,
-  .company-facts,
   .company-insight-row,
   .company-insight-cards,
   .compact-metric-grid,
@@ -3771,25 +3689,18 @@ a:hover {
     flex-direction: column;
   }
 
-  .profile-heading-actions {
-    align-items: center;
-    flex-direction: row;
-  }
-
   .compare-toolbar-actions {
     width: 100%;
     flex-direction: column;
   }
 
   .compare-add-button,
-  .compare-link-button,
   .compare-share-button,
   .primary-link-button {
     width: 100%;
   }
 
-  .profile-heading-actions .compare-add-button,
-  .profile-heading-actions .compare-link-button {
+  .summary-compare-button {
     width: auto;
   }
 

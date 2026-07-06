@@ -159,21 +159,6 @@ function text(value, fallback = "-") {
   return value === undefined || value === null || value === "" ? fallback : value;
 }
 
-function normalizedComparableText(value) {
-  return String(value || "").replace(/\s+/g, "").toLowerCase();
-}
-
-function validIndustryName(industry, { outline = {}, listed = {} } = {}) {
-  const normalizedIndustry = normalizedComparableText(industry);
-  if (!normalizedIndustry) return "";
-  const invalidNames = [
-    outline.corpNm,
-    outline.enpPbanCmpyNm,
-    listed.itmsNm,
-  ].map(normalizedComparableText);
-  return invalidNames.includes(normalizedIndustry) ? "" : industry;
-}
-
 function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -314,31 +299,6 @@ function shortFinancialAmount(value) {
   if (absolute >= 1_000_000_000_000) return `${sign}${(absolute / 1_000_000_000_000).toFixed(1)}조`;
   if (absolute >= 100_000_000) return `${sign}${(absolute / 100_000_000).toFixed(0)}억`;
   return `${sign}${absolute.toLocaleString("ko-KR")}`;
-}
-
-function companySummaryText({ info, outline, listed, market }) {
-  const corpName = text(outline.corpNm, "이 기업");
-  const industry = validIndustryName(
-    firstCompanyValue(info.corp_outline, ["enpMainBizNm", "sicNm"]),
-    { outline, listed },
-  );
-  const listedName = text(listed.itmsNm || outline.enpPbanCmpyNm, "상장 종목");
-  const ticker = listed.srtnCd ? `(${text(listed.srtnCd)})` : "";
-  const representative = outline.enpRprFnm ? ` 대표자는 ${text(outline.enpRprFnm)}입니다.` : "";
-  const isListed = Boolean(listed.srtnCd || listed.mrktCtg);
-
-  if (!isListed) {
-    if (industry) {
-      return `${corpName}은 ${text(industry)}을 중심으로 하는 기업입니다.${representative}`;
-    }
-    return `${corpName}의 상장 정보는 확인되지 않았습니다.${representative}`;
-  }
-
-  if (industry) {
-    return `${corpName}은 ${text(industry)}을 중심으로 하는 ${market} 상장 기업입니다. ${listedName}${ticker} 종목으로 거래됩니다.${representative}`;
-  }
-
-  return `${corpName}은 ${market} 시장에 상장된 ${listedName}${ticker} 기업입니다.${representative}`;
 }
 
 function formatChartDate(value) {
@@ -2315,7 +2275,10 @@ function setupCompareActions() {
         crno: button.dataset.compareCrno,
         name: button.dataset.compareName,
       });
-      button.textContent = "비교함에 추가됨";
+      const icon = button.querySelector("[data-compare-icon]");
+      if (icon) icon.textContent = "✓";
+      button.setAttribute("aria-label", "비교함에 추가됨");
+      button.setAttribute("title", "비교함에 추가됨");
       button.classList.add("is-added");
       const link = document.querySelector("[data-compare-link]");
       if (link) {
@@ -2553,7 +2516,6 @@ function refreshCompanyStockCard({ outline, listed, stock, stockWindow, market, 
 
 function renderProfileSectionNav() {
   const sections = [
-    ["basic", "기업개요"],
     ["summary", "핵심요약"],
     ["market", "주가정보"],
     ["financials", "재무요약"],
@@ -2571,12 +2533,23 @@ function renderProfileSectionNav() {
   `;
 }
 
-function renderCompanyProfileSummaryCard() {
+function renderCompanyProfileSummaryCard({ crno = "", compareName = "", isCompareAdded = false } = {}) {
   return `
     <article id="section-summary" class="info-block company-ai-summary-card is-collapsed-mobile" data-company-profile-summary-card>
       <div class="block-heading">
         <h3>AI 기업요약</h3>
-        <span class="summary-status-pill" data-company-profile-summary-status hidden>생성 중</span>
+        <div class="summary-heading-actions">
+          <button
+            type="button"
+            class="compare-add-button summary-compare-button ${isCompareAdded ? "is-added" : ""}"
+            data-compare-add
+            data-compare-crno="${attr(crno)}"
+            data-compare-name="${attr(compareName)}"
+            aria-label="${isCompareAdded ? "비교함에 추가됨" : "비교에 추가"}"
+            title="${isCompareAdded ? "비교함에 추가됨" : "비교에 추가"}"
+          ><span data-compare-icon aria-hidden="true">${isCompareAdded ? "✓" : "+"}</span></button>
+          <span class="summary-status-pill" data-company-profile-summary-status hidden>생성 중</span>
+        </div>
       </div>
       <div class="company-ai-summary-body company-ai-summary-skeleton" data-company-profile-summary-body aria-live="polite">
         <span class="skeleton-line skeleton-section-title"></span>
@@ -2660,7 +2633,7 @@ async function loadCompanyProfileSummary(crno) {
   }
 }
 
-function renderProfileBasicCard({ outline, dartCompany, listed, market, industry, crno, homepage }) {
+function renderProfileBasicCard({ outline, dartCompany, listed, market, crno, homepage }) {
   const rows = [
     ["CRNO", escapeHtml(text(outline.crno || dartCompany.jurir_no || crno))],
     ["대표자", escapeHtml(text(outline.enpRprFnm || dartCompany.ceo_nm))],
@@ -2694,8 +2667,6 @@ function renderCompanyDetail({ info, outline, listed, stock, stockWindow, stockL
   const dartCompany = info.dart_company || {};
   const homepage = homepageUrl(outline.enpHmpgUrl || dartCompany.hm_url);
   const market = text(listed.mrktCtg || outline.corpRegMrktDcdNm, "비상장/정보 없음");
-  const companySummary = companySummaryText({ info, outline, listed, market });
-  const industry = validIndustryName(outline.enpMainBizNm, { outline, listed });
   const logo = document.querySelector(".company-logo-box");
   const corpCode = info.dart_corp_code?.match?.corp_code || dartCompany.corp_code || "";
   const initialCompareItems = compareItems();
@@ -2714,7 +2685,6 @@ function renderCompanyDetail({ info, outline, listed, stock, stockWindow, stockL
       dartCompany,
       listed,
       market,
-      industry,
       crno,
       homepage,
     });
@@ -2725,41 +2695,11 @@ function renderCompanyDetail({ info, outline, listed, stock, stockWindow, stockL
       <div class="company-main-column">
         ${renderProfileSectionNav()}
 
-        ${renderCompanyProfileSummaryCard()}
-
-        <div class="profile-dashboard-grid">
-          <article id="section-basic" class="info-block company-about-card">
-            <div class="block-heading">
-              <h3>기업 개요</h3>
-              <div class="profile-heading-actions">
-                <button
-                  type="button"
-                  class="compare-add-button ${isCompareAdded ? "is-added" : ""}"
-                  data-compare-add
-                  data-compare-crno="${attr(crno)}"
-                  data-compare-name="${attr(outline.corpNm || listed.itmsNm)}"
-                >${isCompareAdded ? "비교함에 추가됨" : "비교에 추가"}</button>
-                <a class="compare-link-button" href="${attr(compareUrl(initialCompareItems))}" data-compare-link ${initialCompareItems.length >= 2 ? "" : "hidden"}>비교 보기</a>
-                ${homepage ? `<a class="homepage-icon-link" href="${homepage}" target="_blank" rel="noreferrer" aria-label="홈페이지" title="홈페이지"><span aria-hidden="true">↗</span></a>` : ""}
-              </div>
-            </div>
-            <p class="company-summary">
-              ${escapeHtml(companySummary)}
-            </p>
-            <section class="company-profile-info-section company-overview-points" aria-label="기업 정보">
-              <dl class="company-facts">
-                <div><dt>주요시장</dt><dd>${market}</dd></div>
-                <div><dt>업종</dt><dd>${text(industry, "정보 없음")}</dd></div>
-                <div><dt>사업자번호</dt><dd>${text(outline.bzno || dartCompany.bizr_no)}</dd></div>
-                <div><dt>전화번호</dt><dd>${text(outline.enpTlno || dartCompany.phn_no)}</dd></div>
-              </dl>
-              ${renderDataTrustMeta([
-                { label: "출처", value: "금융위원회 기업기본정보 · DART" },
-                { label: "기준일", value: compactDate(outline.basDt || listed.basDt) },
-              ])}
-            </section>
-          </article>
-        </div>
+        ${renderCompanyProfileSummaryCard({
+          crno,
+          compareName: outline.corpNm || listed.itmsNm,
+          isCompareAdded,
+        })}
 
         ${renderCompanyStockCard({ outline, listed, stock, stockWindow, market, crno, stockLoading, disclosureEvents: info.disclosure_events })}
 
