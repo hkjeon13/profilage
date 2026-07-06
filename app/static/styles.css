@@ -1137,6 +1137,15 @@ a:hover {
   min-width: 0;
 }
 
+.disclosure-event-title .disclosure-viewer-trigger,
+.disclosure-event-title .disclosure-title {
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .disclosure-summary-button {
   display: inline-flex;
   min-height: 28px;
@@ -3284,12 +3293,20 @@ a:hover {
   }
 
   .disclosure-event-timeline li {
-    grid-template-columns: 1fr;
+    grid-template-columns: auto minmax(0, 1fr);
     align-items: start;
     gap: 6px;
   }
 
+  .disclosure-event-badge {
+    min-width: 0;
+    width: fit-content;
+    justify-self: start;
+    padding: 3px 8px;
+  }
+
   .disclosure-event-title-row {
+    grid-column: 1 / -1;
     width: 100%;
   }
 
