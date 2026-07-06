@@ -1836,7 +1836,7 @@ a:hover {
 }
 
 .company-ai-summary-card .block-heading {
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
 }
 
