@@ -325,7 +325,7 @@ class BusinessGroupShareholderService:
                         SELECT MAX(designation_month) FROM business_groups
                      )
                     WHERE se.normalized_name = %s
-                      AND (%s IS NULL OR sh.held_company_corp_code IS DISTINCT FROM %s)
+                      AND (%s::text IS NULL OR sh.held_company_corp_code IS DISTINCT FROM %s::text)
                     ORDER BY
                         CASE se.confidence_basis
                             WHEN 'high' THEN 1
