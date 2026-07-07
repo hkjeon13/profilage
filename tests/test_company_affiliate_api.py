@@ -298,7 +298,7 @@ def test_profile_page_serves_company_profile_frontend():
     assert '<a href="/openapi.json">OpenAPI</a>' not in response.text
     assert '<a href="/docs">문서</a>' not in response.text
     assert '<a href="/">새 검색</a>' not in response.text
-    assert "/styles.css?v=company-profile-75" in response.text
+    assert "/styles.css?v=company-profile-76" in response.text
     assert "/profile-chart-2.css?v=interactive-10" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
@@ -954,7 +954,7 @@ def test_relationship_summary_cards_open_company_list_modal():
     assert "relationship-list-modal" in script_response.text
     assert ".relationship-list-modal" in style_response.text
     assert ".relationship-list-items" in style_response.text
-    assert "/styles.css?v=company-profile-75" in profile_response.text
+    assert "/styles.css?v=company-profile-76" in profile_response.text
     assert "/profile-page-5.js?v=company-profile-59" in profile_response.text
 
 
@@ -1025,7 +1025,7 @@ def test_profile_frontend_renders_normalized_dart_insight_cards():
     assert ".ownership-stacked-bar" in style_response.text
     assert ".ownership-bar-segment" in style_response.text
     assert ".shareholder-detail-modal" in style_response.text
-    assert "/styles.css?v=company-profile-75" in profile_response.text
+    assert "/styles.css?v=company-profile-76" in profile_response.text
     assert "/profile-page-5.js?v=company-profile-59" in profile_response.text
 
 
@@ -1235,7 +1235,11 @@ def test_profile_frontend_exposes_disclosure_summary_modal():
     assert ".disclosure-summary-modal" in style_response.text
     assert ".disclosure-summary-button" in style_response.text
     assert ".disclosure-summary-close" in style_response.text
-    assert ".disclosure-summary-modal {\n    align-items: center;\n    padding: 14px;" in style_response.text
+    mobile_rule = style_response.text.split("@media (max-width: 820px)", 1)[1]
+    assert ".disclosure-summary-modal {\n    align-items: end;\n    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));" in mobile_rule
+    assert ".disclosure-summary-dialog {\n    display: flex;\n    width: 100%;" in mobile_rule
+    assert "max-height: min(76dvh, calc(100dvh - 96px));" in mobile_rule
+    assert ".disclosure-summary-body {\n    flex: 1 1 auto;\n    overflow: auto;" in mobile_rule
     assert 'class="disclosure-summary-close" data-disclosure-summary-close aria-label="닫기">&times;</button>' in script_response.text
     assert "background: transparent;" in style_response.text
     assert ".disclosure-summary-loading-card" in style_response.text

@@ -3503,13 +3503,35 @@ a:hover {
   }
 
   .disclosure-summary-modal {
-    align-items: center;
-    padding: 14px;
+    align-items: end;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
   }
 
   .disclosure-summary-dialog {
-    max-height: calc(100vh - 28px);
-    border-radius: 10px;
+    display: flex;
+    width: 100%;
+    max-height: calc(100vh - 112px);
+    max-height: min(76dvh, calc(100dvh - 96px));
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 14px 14px 10px 10px;
+  }
+
+  .disclosure-summary-header {
+    flex: 0 0 auto;
+    padding: 14px 16px 12px;
+  }
+
+  .disclosure-summary-header h2 {
+    font-size: 18px;
+    line-height: 1.35;
+  }
+
+  .disclosure-summary-body {
+    flex: 1 1 auto;
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding: 14px 16px 16px;
   }
 
   .dart-insight-detail-body {
