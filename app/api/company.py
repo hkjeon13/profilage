@@ -1,8 +1,11 @@
+import re
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Header, HTTPException, Query, Request
 
-from app.api.auth import has_valid_full_response_jwt
+from app.api.auth import has_valid_full_response_jwt, require_admin_jwt
+from app.api.rate_limit import enforce_summary_rate_limit
+from app.core.config import get_app_settings
 from app.services.company_affiliate import (
     CompanyAffiliateQuery,
     CompanyAffiliateService,
@@ -50,6 +53,25 @@ router = APIRouter(prefix="/company", tags=["company"])
 
 
 SUMMARY_INTERNAL_KEYS = {"cached", "fingerprint", "model", "prompt_version"}
+RECEIPT_NO_RE = re.compile(r"^\d{14}$")
+CRNO_RE = re.compile(r"^\d{13}$")
+
+
+def _validate_receipt_no(receipt_no: str) -> str:
+    normalized = receipt_no.strip()
+    if not RECEIPT_NO_RE.fullmatch(normalized):
+        raise HTTPException(status_code=400, detail="receipt_no must be 14 digits")
+    return normalized
+
+
+def _validate_crno(value: str) -> str:
+    normalized = value.strip()
+    if not CRNO_RE.fullmatch(normalized):
+        raise HTTPException(
+            status_code=400,
+            detail="corporate_registration_number must be 13 digits",
+        )
+    return normalized
 
 
 def _public_summary_payload(payload: dict) -> dict:
@@ -547,10 +569,17 @@ async def get_dart_disclosures(
 async def get_dart_disclosure_summary(
     request: Request,
     receipt_no: Annotated[str, Query(description="DART 접수번호")],
-    viewer_url: Annotated[str, Query(description="DART viewer URL")],
+    viewer_url: Annotated[
+        str | None, Query(description="Deprecated. DART viewer URL is not fetched.")
+    ] = None,
     authorization: Annotated[str | None, Header()] = None,
     title: Annotated[str | None, Query(description="공시 제목")] = None,
 ):
+    enforce_summary_rate_limit(
+        request,
+        limit=get_app_settings().summary_rate_limit_per_minute,
+    )
+    receipt_no = _validate_receipt_no(receipt_no)
     service = DisclosureSummaryService(
         transport=getattr(request.app.state, "http_transport", None),
         data_group_store=get_default_data_group_store(),
@@ -575,6 +604,11 @@ async def get_company_profile_summary(
     ],
     authorization: Annotated[str | None, Header()] = None,
 ):
+    enforce_summary_rate_limit(
+        request,
+        limit=get_app_settings().summary_rate_limit_per_minute,
+    )
+    corporate_registration_number = _validate_crno(corporate_registration_number)
     transport = getattr(request.app.state, "http_transport", None)
     store = get_default_data_group_store()
     profile_service = CompanyInfoService(
@@ -717,10 +751,12 @@ async def search_shareholders(
 @router.post("/shareholders/sync_top_business_groups")
 async def sync_top_business_group_shareholders(
     request: Request,
+    authorization: Annotated[str | None, Header()] = None,
     designation_month: Annotated[
         str | None, Query(description="지정월(YYYYMM), 미입력 시 현재 연월")
     ] = None,
 ):
+    require_admin_jwt(authorization)
     service = BusinessGroupShareholderService(
         transport=getattr(request.app.state, "http_transport", None)
     )
@@ -736,12 +772,14 @@ async def sync_top_business_group_shareholders(
 async def index_dart_shareholder_holdings(
     request: Request,
     report_year: Annotated[str, Query(description="사업연도(YYYY)")],
+    authorization: Annotated[str | None, Header()] = None,
     report_code: Annotated[
         str, Query(description="보고서 코드: 11011 사업보고서, 11012 반기, 11013 1분기, 11014 3분기")
     ] = "11011",
     limit: Annotated[int, Query(ge=1, le=1000)] = 200,
     offset: Annotated[int, Query(ge=0)] = 0,
 ):
+    require_admin_jwt(authorization)
     service = BusinessGroupShareholderService(
         transport=getattr(request.app.state, "http_transport", None)
     )

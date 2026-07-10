@@ -2,8 +2,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 import hashlib
 from typing import Any
-from xml.etree import ElementTree
 
+from defusedxml import ElementTree
 from fastapi import HTTPException
 import httpx
 
@@ -123,7 +123,10 @@ def shareholder_entity_id(
 ) -> str:
     durable = legal_registration_number or dart_corp_code or stock_code
     basis = durable or normalize_shareholder_name(name)
-    digest = hashlib.sha1(str(basis).encode("utf-8")).hexdigest()[:16]
+    digest = hashlib.sha1(
+        str(basis).encode("utf-8"),
+        usedforsecurity=False,
+    ).hexdigest()[:16]
     return f"sh_{digest}"
 
 

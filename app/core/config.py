@@ -57,6 +57,35 @@ class JwtSettings:
     secret: str | None
 
 
+@dataclass(frozen=True)
+class AppSettings:
+    environment: str
+    enable_api_docs: bool
+    summary_rate_limit_per_minute: int
+
+
+def _env_flag(name: str, *, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def get_app_settings() -> AppSettings:
+    load_dotenv()
+
+    environment = os.getenv("APP_ENV", os.getenv("ENVIRONMENT", "development")).lower()
+    docs_default = environment not in {"prod", "production"}
+    return AppSettings(
+        environment=environment,
+        enable_api_docs=_env_flag("ENABLE_API_DOCS", default=docs_default),
+        summary_rate_limit_per_minute=max(
+            int(os.getenv("SUMMARY_RATE_LIMIT_PER_MINUTE", "30")),
+            1,
+        ),
+    )
+
+
 def get_open_api_settings() -> OpenApiSettings:
     load_dotenv()
 

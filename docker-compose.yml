@@ -8,11 +8,16 @@ services:
     env_file:
       - .env
     environment:
+      APP_ENV: ${APP_ENV:-production}
       DATABASE_URL: postgresql://${POSTGRES_USER:-profilage}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-profilage}
       VALKEY_URL: redis://valkey:6379/0
       PYTHONUNBUFFERED: "1"
     ports:
-      - "${API_PORT:-18000}:8000"
+      - "127.0.0.1:${API_PORT:-18000}:8000"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     depends_on:
       postgres:
         condition: service_healthy

@@ -4,9 +4,9 @@ import hashlib
 from io import BytesIO
 import json
 from typing import Any
-from xml.etree import ElementTree
 from zipfile import ZipFile
 
+from defusedxml import ElementTree
 from fastapi import HTTPException
 import httpx
 

@@ -70,3 +70,10 @@ def has_valid_full_response_jwt(authorization: str | None) -> bool:
             )
 
     return True
+
+
+def require_admin_jwt(authorization: str | None) -> None:
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authorization is required")
+    if not has_valid_full_response_jwt(authorization):
+        raise HTTPException(status_code=403, detail="Admin authorization is required")

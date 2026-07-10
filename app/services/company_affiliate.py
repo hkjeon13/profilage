@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 import hashlib
 import json
-import random
+import secrets
 from typing import Any, Awaitable, Callable
 
 from fastapi import HTTPException
@@ -562,7 +562,8 @@ class OpenApiCompanyService:
         return f"profilage:api:{digest}"
 
     async def _get_cached_json(self, cache_key: str) -> Any | None:
-        if random.random() < get_cache_settings().bypass_rate:
+        sample = secrets.randbelow(1_000_000) / 1_000_000
+        if sample < get_cache_settings().bypass_rate:
             return None
         return await self._cache.get_json(cache_key)
 

@@ -2,6 +2,7 @@ import os
 import base64
 import hashlib
 import hmac
+import importlib
 import json
 from datetime import UTC, datetime, timedelta
 from io import BytesIO
@@ -184,8 +185,35 @@ def test_root_serves_company_search_frontend():
     assert 'class="example-query-list"' in response.text
     assert "/api/company/get_corp_outline" in response.text
     assert "/profile?crno=" in response.text
+    assert "/docs" not in response.text
+    assert "/openapi.json" not in response.text
     assert "/styles.css?v=google-home-12" in response.text
     assert "/app.js?v=google-home-12" in response.text
+
+
+def test_security_headers_are_added_to_frontend_response():
+    with TestClient(app) as client:
+        response = client.get("/")
+
+    assert "default-src 'self'" in response.headers["content-security-policy"]
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["referrer-policy"] == "strict-origin-when-cross-origin"
+    assert "max-age=31536000" in response.headers["strict-transport-security"]
+
+
+def test_api_docs_can_be_disabled_for_production(monkeypatch):
+    import app.main as main_module
+
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.delenv("ENABLE_API_DOCS", raising=False)
+    production_module = importlib.reload(main_module)
+    try:
+        with TestClient(production_module.app) as client:
+            assert client.get("/docs").status_code == 404
+            assert client.get("/openapi.json").status_code == 404
+    finally:
+        monkeypatch.setenv("ENABLE_API_DOCS", "true")
+        importlib.reload(main_module)
 
 
 def test_search_results_status_has_breathing_room():
@@ -1362,7 +1390,20 @@ def test_shareholder_api_exposes_sync_and_index_routes():
         parameter["name"]
         for parameter in schema["paths"]["/company/shareholders/index_dart_holdings"]["post"]["parameters"]
     }
-    assert {"report_year", "report_code", "limit", "offset"}.issubset(parameters)
+    assert {"report_year", "report_code", "limit", "offset", "authorization"}.issubset(parameters)
+
+
+def test_shareholder_admin_write_routes_require_authorization(monkeypatch):
+    monkeypatch.setenv("PROFILAGE_JWT_SECRET", "test-secret")
+    with TestClient(app) as client:
+        sync_response = client.post("/company/shareholders/sync_top_business_groups")
+        index_response = client.post(
+            "/company/shareholders/index_dart_holdings",
+            params={"report_year": "2025"},
+        )
+
+    assert sync_response.status_code == 401
+    assert index_response.status_code == 401
 
 
 def test_company_insight_normalizer_returns_stable_phase_one_shape():
@@ -2115,6 +2156,17 @@ def test_get_dart_disclosure_summary_requires_openai_key(monkeypatch):
 
     assert response.status_code == 503
     assert response.json()["detail"] == "OPENAI_API_KEY is not configured"
+
+
+def test_get_dart_disclosure_summary_validates_receipt_no():
+    with TestClient(app) as client:
+        response = client.get(
+            "/company/get_dart_disclosure_summary",
+            params={"receipt_no": "https://example.test/internal"},
+        )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "receipt_no must be 14 digits"
 
 
 def test_company_api_is_available_under_api_prefix(monkeypatch):
