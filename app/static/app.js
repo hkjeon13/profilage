@@ -3,11 +3,17 @@ const queryInput = document.querySelector("#company-query");
 const statusEl = document.querySelector("#search-status");
 const resultList = document.querySelector("#result-list");
 const luckySearchButton = document.querySelector("#lucky-search");
+const searchSubmitButton = form?.querySelector(".search-submit");
+const exampleQueryButtons = Array.from(document.querySelectorAll("[data-example-query]"));
+const compareTray = document.querySelector("[data-compare-tray]");
+const compareTrayList = document.querySelector("[data-compare-tray-list]");
+const compareTrayLink = document.querySelector("[data-compare-tray-link]");
+const compareTrayStatus = document.querySelector("[data-compare-tray-status]");
 
 const outlineUrl = "/api/company/get_corp_outline";
 const listedUrl = "/api/company/get_krx_listed_item";
 const COMPARE_STORAGE_KEY = "profilage.compareCompanies";
-const MAX_COMPARE_COMPANIES = 4;
+const MAX_COMPARE_COMPANIES = 5;
 const SEARCH_RESULT_PAGE_SIZE = 20;
 const SEARCH_LOAD_MORE_OFFSET = 420;
 const searchState = {
@@ -17,6 +23,7 @@ const searchState = {
   listedCrnos: new Set(),
   renderedCount: 0,
   isLoadingMore: false,
+  controller: null,
 };
 
 function currentSearchQuery() {
@@ -75,7 +82,11 @@ function formatResultNumber(value) {
 function compareItems() {
   try {
     const parsed = JSON.parse(localStorage.getItem(COMPARE_STORAGE_KEY) || "[]");
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((item) => item?.crno)
+      .filter((item, index, items) => items.findIndex((candidate) => candidate.crno === item.crno) === index)
+      .slice(0, MAX_COMPARE_COMPANIES);
   } catch {
     return [];
   }
@@ -88,8 +99,108 @@ function saveCompareItems(items) {
   );
 }
 
+function compareUrl(items = compareItems()) {
+  const endpoint = new URL("/compare", window.location.origin);
+  items.forEach((item) => endpoint.searchParams.append("crno", item.crno));
+  return `${endpoint.pathname}${endpoint.search}`;
+}
+
+function updateCompareControls() {
+  const selectedCrnos = new Set(compareItems().map((item) => item.crno));
+  document.querySelectorAll("[data-result-compare-add]").forEach((button) => {
+    const isSelected = selectedCrnos.has(button.dataset.resultCompareAdd);
+    button.textContent = isSelected ? "추가됨" : "비교 추가";
+    button.disabled = isSelected;
+    button.setAttribute("aria-pressed", String(isSelected));
+  });
+}
+
+function updateCompareTray(message = "") {
+  const items = compareItems();
+  document.querySelectorAll("[data-compare-nav-count]").forEach((count) => {
+    count.hidden = items.length === 0;
+    count.textContent = String(items.length);
+  });
+  updateCompareControls();
+  if (!compareTray || !compareTrayList || !compareTrayLink || !compareTrayStatus) return;
+
+  compareTray.hidden = items.length === 0;
+  compareTrayList.innerHTML = items
+    .map(
+      (item) => `
+        <li>
+          <span>${escapeHtml(text(item.name, item.crno))}</span>
+          <button type="button" data-compare-tray-remove="${attr(item.crno)}" aria-label="${attr(text(item.name, item.crno))} 비교에서 제거">×</button>
+        </li>
+      `,
+    )
+    .join("");
+  compareTrayStatus.textContent =
+    message ||
+    (items.length >= 2
+      ? `${items.length}개 기업을 비교할 수 있습니다.`
+      : "기업을 1개 더 선택하면 비교할 수 있습니다.");
+  compareTrayLink.href = compareUrl(items);
+  compareTrayLink.setAttribute("aria-disabled", String(items.length < 2));
+  compareTrayLink.classList.toggle("is-disabled", items.length < 2);
+
+  compareTrayList.querySelectorAll("[data-compare-tray-remove]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const nextItems = compareItems().filter((item) => item.crno !== button.dataset.compareTrayRemove);
+      saveCompareItems(nextItems);
+      updateCompareTray(`${nextItems.length}개 기업이 선택되어 있습니다.`);
+    });
+  });
+}
+
+function addCompareItem(company) {
+  const items = compareItems();
+  if (items.some((item) => item.crno === company.crno)) {
+    updateCompareTray(`${text(company.name, "기업")}은 이미 비교함에 있습니다.`);
+    return true;
+  }
+  if (items.length >= MAX_COMPARE_COMPANIES) {
+    updateCompareTray(`최대 ${MAX_COMPARE_COMPANIES}개까지 비교할 수 있습니다. 기존 기업을 제거해주세요.`);
+    return false;
+  }
+  const nextItems = [...items, company];
+  saveCompareItems(nextItems);
+  updateCompareTray(`${text(company.name, "기업")}을 비교함에 추가했습니다.`);
+  return true;
+}
+
 function setStatus(message) {
   statusEl.textContent = message;
+}
+
+function setSearchBusy(isBusy) {
+  form?.setAttribute("aria-busy", String(isBusy));
+  if (searchSubmitButton) searchSubmitButton.disabled = isBusy;
+  exampleQueryButtons.forEach((button) => {
+    button.disabled = isBusy;
+  });
+}
+
+function renderSearchMessage(kind, title, message) {
+  clearResults();
+  const query = searchState.query;
+  const canRetry = kind === "error" && query;
+  resultList.innerHTML = `
+    <article class="search-message search-message-${attr(kind)}">
+      <span class="search-message-kicker">${kind === "error" ? "검색 오류" : "검색 결과"}</span>
+      <h2>${escapeHtml(title)}</h2>
+      <p>${escapeHtml(message)}</p>
+      <div class="search-message-actions">
+        ${canRetry ? '<button type="button" data-search-retry>다시 시도</button>' : ""}
+        <button type="button" data-search-focus>검색어 수정</button>
+      </div>
+    </article>
+  `;
+  resultList.querySelector("[data-search-retry]")?.addEventListener("click", () => searchCompanies(query));
+  resultList.querySelector("[data-search-focus]")?.addEventListener("click", () => {
+    queryInput.focus();
+    queryInput.select();
+  });
 }
 
 function clearResults() {
@@ -120,6 +231,7 @@ function renderResults(items, { append = false } = {}) {
     clearResults();
   }
   const fragment = document.createDocumentFragment();
+  const selectedCrnos = new Set(compareItems().map((item) => item.crno));
 
   items.forEach((company) => {
     const displayName = company.listedCorpName || company.corpNm || company.itmsNm;
@@ -143,7 +255,9 @@ function renderResults(items, { append = false } = {}) {
             type="button"
             data-result-compare-add="${attr(company.crno)}"
             data-result-name="${attr(displayName)}"
-          >비교 추가</button>
+            aria-pressed="${selectedCrnos.has(company.crno) ? "true" : "false"}"
+            ${selectedCrnos.has(company.crno) ? "disabled" : ""}
+          >${selectedCrnos.has(company.crno) ? "추가됨" : "비교 추가"}</button>
         </div>
       </div>
       <div class="result-meta-grid">
@@ -172,7 +286,7 @@ function shouldLoadMoreSearchResults() {
   );
 }
 
-async function enrichResultsForRender(items) {
+async function enrichResultsForRender(items, signal) {
   const crnos = items
     .map((item) => item.crno)
     .filter(
@@ -186,11 +300,18 @@ async function enrichResultsForRender(items) {
 
   const listedByCrnoPayloads = await Promise.all(
     crnos.map((crno) =>
-      fetchJson(listedUrl, {
-        corporate_registration_number: crno,
-        page: 1,
-        per_page: 1,
-      }).catch(() => null),
+      fetchJson(
+        listedUrl,
+        {
+          corporate_registration_number: crno,
+          page: 1,
+          per_page: 1,
+        },
+        { signal },
+      ).catch((error) => {
+        if (error.name === "AbortError") throw error;
+        return null;
+      }),
     ),
   );
   const listedItems = listedByCrnoPayloads.flatMap((payload) => normalizeItems(payload));
@@ -215,7 +336,7 @@ async function renderNextSearchResults(token) {
     if (append) {
       setStatus("더 불러오는 중...");
     }
-    const enrichedItems = await enrichResultsForRender(nextItems);
+    const enrichedItems = await enrichResultsForRender(nextItems, searchState.controller?.signal);
     if (token !== searchState.token) return;
     renderResults(enrichedItems, { append });
     searchState.renderedCount += nextItems.length;
@@ -237,38 +358,13 @@ function setupResultCompareButtons() {
     button.addEventListener("click", () => {
       const crno = button.dataset.resultCompareAdd;
       const name = button.dataset.resultName;
-      const nextItems = [
-        ...compareItems().filter((item) => item.crno !== crno),
-        { crno, name },
-      ].slice(0, MAX_COMPARE_COMPANIES);
-      saveCompareItems(nextItems);
+      const added = addCompareItem({ crno, name });
+      if (!added) return;
       button.textContent = "추가됨";
       button.disabled = true;
+      button.setAttribute("aria-pressed", "true");
     });
   });
-}
-
-function listedNameCandidates(query) {
-  const suffixes = [
-    "",
-    "전자",
-    "전기",
-    "물산",
-    "SDI",
-    "에스디에스",
-    "중공업",
-    "생명보험",
-    "화재해상보험",
-    "증권",
-    "카드",
-    "바이오로직스",
-    "하이닉스",
-    "화학",
-  ];
-
-  return suffixes
-    .map((suffix) => `${query}${suffix}`)
-    .filter((value, index, values) => value && values.indexOf(value) === index);
 }
 
 function mergeCompanyResults(outlineItems, listedItems) {
@@ -310,7 +406,7 @@ function mergeCompanyResults(outlineItems, listedItems) {
   });
 }
 
-async function fetchJson(url, params) {
+async function fetchJson(url, params, { signal } = {}) {
   const endpoint = new URL(url, window.location.origin);
   Object.entries(params).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== "") {
@@ -318,7 +414,7 @@ async function fetchJson(url, params) {
     }
   });
 
-  const response = await fetch(endpoint);
+  const response = await fetch(endpoint, { signal });
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
     throw new Error(error.detail || "요청에 실패했습니다.");
@@ -326,24 +422,32 @@ async function fetchJson(url, params) {
   return response.json();
 }
 
-async function loadCompanySearchResults(query) {
-  const listedRequests = listedNameCandidates(query).map((itemName) =>
-    fetchJson(listedUrl, {
-      item_name: itemName,
-      page: 1,
-      per_page: 1,
-    }).catch(() => null),
-  );
-  const [outlinePayload, ...listedPayloads] = await Promise.all([
-    fetchJson(outlineUrl, {
-      company_name: query,
-      page: 1,
-      per_page: 1000,
+async function loadCompanySearchResults(query, signal) {
+  const [outlinePayload, listedPayload] = await Promise.all([
+    fetchJson(
+      outlineUrl,
+      {
+        company_name: query,
+        page: 1,
+        per_page: 200,
+      },
+      { signal },
+    ),
+    fetchJson(
+      listedUrl,
+      {
+        item_name: query,
+        page: 1,
+        per_page: 20,
+      },
+      { signal },
+    ).catch((error) => {
+      if (error.name === "AbortError") throw error;
+      return null;
     }),
-    ...listedRequests,
   ]);
   const outlineItems = normalizeItems(outlinePayload);
-  const listedItems = listedPayloads.flatMap((payload) => normalizeItems(payload));
+  const listedItems = normalizeItems(listedPayload);
   const listedCrnos = new Set(listedItems.map((item) => item.crno).filter(Boolean));
   return {
     items: mergeCompanyResults(outlineItems, listedItems),
@@ -352,8 +456,11 @@ async function loadCompanySearchResults(query) {
 }
 
 async function searchCompanies(query) {
+  searchState.controller?.abort();
+  const controller = new AbortController();
   const token = searchState.token + 1;
   searchState.token = token;
+  searchState.controller = controller;
   searchState.query = query;
   searchState.items = [];
   searchState.listedCrnos = new Set();
@@ -362,16 +469,21 @@ async function searchCompanies(query) {
   document.body.classList.remove("is-idle");
   queryInput.value = query;
   syncSearchUrl(query);
+  setSearchBusy(true);
   setStatus("검색 중...");
   renderSearchSkeleton();
 
   try {
-    const { items, listedCrnos } = await loadCompanySearchResults(query);
+    const { items, listedCrnos } = await loadCompanySearchResults(query, controller.signal);
     if (token !== searchState.token) return;
 
     if (items.length === 0) {
       setStatus("검색 결과가 없습니다.");
-      clearResults();
+      renderSearchMessage(
+        "empty",
+        "일치하는 기업을 찾지 못했습니다",
+        "기업명 전체 또는 법인등록번호를 확인해 다시 검색해주세요.",
+      );
       return;
     }
 
@@ -382,9 +494,17 @@ async function searchCompanies(query) {
     await renderNextSearchResults(token);
     maybeLoadMoreSearchResults();
   } catch (error) {
-    if (token !== searchState.token) return;
-    setStatus(error.message);
-    clearResults();
+    if (error.name === "AbortError" || token !== searchState.token) return;
+    setStatus("기업 정보를 불러오지 못했습니다.");
+    renderSearchMessage(
+      "error",
+      "검색 결과를 불러오지 못했습니다",
+      "잠시 후 다시 시도하거나 다른 검색어를 입력해주세요.",
+    );
+  } finally {
+    if (token === searchState.token) {
+      setSearchBusy(false);
+    }
   }
 }
 
@@ -407,11 +527,20 @@ luckySearchButton?.addEventListener("click", () => {
   searchCompanies("삼성전자");
 });
 
-document.querySelectorAll("[data-example-query]").forEach((button) => {
+exampleQueryButtons.forEach((button) => {
   button.addEventListener("click", () => {
     searchCompanies(button.dataset.exampleQuery || "");
   });
 });
+
+compareTrayLink?.addEventListener("click", (event) => {
+  if (compareTrayLink.getAttribute("aria-disabled") === "true") {
+    event.preventDefault();
+    compareTrayStatus.textContent = "기업을 1개 더 선택해주세요.";
+  }
+});
+
+updateCompareTray();
 
 const restoredQuery = new URLSearchParams(window.location.search).get("q");
 if (restoredQuery) {

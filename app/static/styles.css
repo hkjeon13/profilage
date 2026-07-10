@@ -55,8 +55,8 @@ input {
 
 .profile-page .top-nav a {
   display: inline-flex;
-  min-width: 40px;
-  min-height: 40px;
+  min-width: 44px;
+  min-height: 44px;
   align-items: center;
 }
 
@@ -67,6 +67,24 @@ a {
 
 a:hover {
   text-decoration: underline;
+}
+
+.top-nav a[aria-current="page"] {
+  color: #175cd3;
+  font-weight: 800;
+}
+
+.compare-nav-count {
+  display: inline-grid;
+  min-width: 20px;
+  height: 20px;
+  margin-left: 3px;
+  place-items: center;
+  border-radius: 999px;
+  background: #e8f0fe;
+  color: #175cd3;
+  font-size: 11px;
+  font-weight: 850;
 }
 
 .shell {
@@ -152,7 +170,7 @@ a:hover {
 }
 
 .home-title {
-  max-width: 760px;
+  max-width: 900px;
   margin: 0;
   color: #101828;
   font-size: clamp(34px, 5vw, 58px);
@@ -160,6 +178,8 @@ a:hover {
   letter-spacing: 0;
   line-height: 1.12;
   text-align: center;
+  text-wrap: balance;
+  word-break: keep-all;
 }
 
 .home-subtitle {
@@ -176,7 +196,7 @@ a:hover {
   display: flex;
   align-items: center;
   width: min(584px, calc(100vw - 44px));
-  min-height: 46px;
+  min-height: 50px;
   border: 1px solid var(--line);
   border-radius: 24px;
   background: var(--panel);
@@ -208,13 +228,13 @@ a:hover {
 
 .search-submit {
   display: inline-flex;
-  width: 32px;
-  height: 32px;
-  flex: 0 0 32px;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
   align-items: center;
   justify-content: center;
   border: 0;
-  border-radius: 16px;
+  border-radius: 22px;
   background: #f8f9fa;
   color: #5f6368;
   cursor: pointer;
@@ -274,7 +294,7 @@ a:hover {
 }
 
 .example-query-list button {
-  min-height: 32px;
+  min-height: 44px;
   border: 1px solid #d0d5dd;
   border-radius: 999px;
   background: #ffffff;
@@ -289,6 +309,12 @@ a:hover {
 .example-query-list button:focus-visible {
   border-color: #84adff;
   color: #175cd3;
+}
+
+.example-query-list button:disabled,
+.search-submit:disabled {
+  cursor: wait;
+  opacity: 0.55;
 }
 
 .source-rail {
@@ -338,6 +364,127 @@ a:hover {
   gap: 10px;
 }
 
+.search-message {
+  display: grid;
+  gap: 10px;
+  border: 1px solid #dfe7f2;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 24px;
+}
+
+.search-message-error {
+  border-color: #f3c7c3;
+  background: #fffafa;
+}
+
+.search-message-kicker {
+  color: #175cd3;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.search-message h2,
+.search-message p {
+  margin: 0;
+}
+
+.search-message h2 {
+  color: #101828;
+  font-size: 20px;
+}
+
+.search-message p {
+  color: #667085;
+  line-height: 1.6;
+}
+
+.search-message-actions,
+.compare-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.search-message-actions button {
+  min-height: 44px;
+  border: 1px solid #d8e5ff;
+  border-radius: 8px;
+  background: #f6f9ff;
+  color: #175cd3;
+  padding: 0 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.compare-tray {
+  position: sticky;
+  z-index: 30;
+  bottom: 16px;
+  display: grid;
+  grid-template-columns: minmax(180px, auto) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  width: min(980px, 100%);
+  margin: 0 0 20px;
+  border: 1px solid #c7d7fe;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 16px 42px rgba(31, 64, 128, 0.18);
+  padding: 14px 16px;
+  backdrop-filter: blur(12px);
+}
+
+.compare-tray[hidden] {
+  display: none;
+}
+
+.compare-tray strong,
+.compare-tray p {
+  margin: 0;
+}
+
+.compare-tray p {
+  margin-top: 3px;
+  color: #667085;
+  font-size: 12px;
+}
+
+.compare-tray ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.compare-tray li {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 5px;
+  border-radius: 999px;
+  background: #eff4ff;
+  color: #344054;
+  padding: 0 4px 0 11px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.compare-tray li button {
+  display: inline-grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #667085;
+  cursor: pointer;
+}
+
 .result-card {
   display: grid;
   gap: 10px;
@@ -348,7 +495,7 @@ a:hover {
   color: var(--text);
   padding: 16px;
   text-align: left;
-  cursor: pointer;
+  cursor: default;
   text-decoration: none;
 }
 
@@ -438,7 +585,7 @@ a:hover {
 .result-profile-link,
 .result-actions button {
   display: inline-flex;
-  min-height: 28px;
+  min-height: 44px;
   align-items: center;
   justify-content: center;
   border: 1px solid #d8e5ff;
@@ -690,7 +837,7 @@ a:hover {
 
 .disclosure-viewer-trigger {
   width: 100%;
-  min-height: 40px;
+  min-height: 44px;
   border: 0;
   background: transparent;
   cursor: pointer;
@@ -938,7 +1085,7 @@ a:hover {
 }
 
 .summary-tabs button {
-  min-height: 40px;
+  min-height: 44px;
   border: 0;
   border-radius: 4px;
   background: transparent;
@@ -1000,8 +1147,8 @@ a:hover {
 
 .financial-more-link {
   display: inline-flex;
-  min-width: 40px;
-  min-height: 40px;
+  min-width: 44px;
+  min-height: 44px;
   align-items: center;
   flex: 0 0 auto;
   color: var(--accent);
@@ -1173,7 +1320,7 @@ a:hover {
 
 .disclosure-summary-button {
   display: inline-flex;
-  min-height: 40px;
+  min-height: 44px;
   align-items: center;
   justify-content: center;
   border: 1px solid #d6e4ff;
@@ -1600,7 +1747,7 @@ a:hover {
 .back-link {
   display: inline-flex;
   align-items: center;
-  min-height: 40px;
+  min-height: 44px;
   margin-bottom: 14px;
   color: #4c5b76;
   font-size: 13px;
@@ -1733,6 +1880,11 @@ a:hover {
   line-height: 1.5;
 }
 
+.profile-hero.has-error .profile-rating-card,
+.profile-hero.has-error .profile-hero-badges {
+  display: none;
+}
+
 .profile-basic-card {
   min-width: 0;
   border: 1px solid #eceef4;
@@ -1748,6 +1900,24 @@ a:hover {
   place-items: center;
   color: #667085;
   font-weight: 800;
+}
+
+.profile-basic-error {
+  display: grid;
+  min-height: 220px;
+  place-content: center;
+  gap: 8px;
+  color: #667085;
+  text-align: center;
+}
+
+.profile-basic-error strong {
+  color: #344054;
+}
+
+.profile-basic-error p {
+  margin: 0;
+  line-height: 1.55;
 }
 
 .profile-basic-heading {
@@ -1824,7 +1994,7 @@ a:hover {
 .profile-basic-grid a {
   display: inline-flex;
   max-width: 100%;
-  min-height: 40px;
+  min-height: 44px;
   align-items: center;
   overflow: hidden;
   color: #1a73e8;
@@ -1903,7 +2073,7 @@ a:hover {
 
 .profile-section-nav a {
   display: inline-flex;
-  min-height: 40px;
+  min-height: 44px;
   align-items: center;
   justify-content: center;
   border-radius: 7px;
@@ -1974,6 +2144,46 @@ a:hover {
 .company-ai-summary-card .block-heading {
   align-items: center;
   gap: 12px;
+}
+
+.profile-compare-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.profile-compare-status {
+  min-height: 18px;
+  margin: -8px 0 0;
+  color: #667085;
+  font-size: 12px;
+}
+
+.profile-error-state {
+  min-height: 260px;
+  border: 1px solid #f0d0cc;
+  border-radius: 12px;
+  background: #fffafa;
+}
+
+.profile-error-state h2 {
+  margin: 0;
+  color: #101828;
+  font-size: 20px;
+}
+
+.profile-error-state p {
+  margin: 0;
+}
+
+.profile-error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .company-ai-summary-body {
@@ -2108,8 +2318,8 @@ a:hover {
 
 .stock-range-tabs button {
   display: inline-flex;
-  min-width: 40px;
-  min-height: 40px;
+  min-width: 44px;
+  min-height: 44px;
   align-items: center;
   justify-content: center;
   border: 1px solid transparent;
@@ -2281,8 +2491,8 @@ a:hover {
 .dart-insight-detail-close,
 .relationship-list-close {
   display: inline-grid;
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   flex: 0 0 auto;
   place-items: center;
   border: 1px solid #e7ebf3;
@@ -2382,6 +2592,47 @@ a:hover {
   border-radius: 999px;
 }
 
+.financial-trend-data {
+  margin-top: 16px;
+  border-top: 1px solid #eef0f6;
+  padding-top: 12px;
+}
+
+.financial-trend-data summary {
+  width: fit-content;
+  color: #175cd3;
+  font-size: 13px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.financial-trend-table-wrap {
+  margin-top: 10px;
+  overflow-x: auto;
+}
+
+.financial-trend-table-wrap table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.financial-trend-table-wrap th,
+.financial-trend-table-wrap td {
+  border: 1px solid #e7ebf3;
+  padding: 9px 10px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.financial-trend-table-wrap th:first-child {
+  position: sticky;
+  left: 0;
+  background: #ffffff;
+  text-align: left;
+}
+
 .disclosure-filter-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -2391,6 +2642,7 @@ a:hover {
 }
 
 .disclosure-filter-tabs button {
+  min-height: 44px;
   border: 1px solid #e7ebf3;
   border-radius: 999px;
   background: #fff;
@@ -2513,7 +2765,7 @@ a:hover {
 
 .ownership-holder-button {
   display: inline-flex;
-  min-height: 40px;
+  min-height: 44px;
   align-items: center;
   min-width: 0;
   padding: 0;
@@ -2768,7 +3020,7 @@ a:hover {
 }
 
 .dart-insight-detail-actions button {
-  min-height: 40px;
+  min-height: 44px;
   border: 1px solid #d8e4f5;
   border-radius: 8px;
   background: #fff;
@@ -2975,7 +3227,7 @@ a:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 32px;
+  min-height: 44px;
   border: 1px solid #d8e5ff;
   border-radius: 8px;
   background: #f6f9ff;
@@ -2985,6 +3237,18 @@ a:hover {
   font-weight: 850;
   text-decoration: none;
   cursor: pointer;
+}
+
+.primary-link-button.secondary {
+  border-color: #d0d5dd;
+  background: #ffffff;
+  color: #475467;
+}
+
+.primary-link-button.is-disabled,
+.primary-link-button[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .compare-add-button.is-added {
@@ -2999,6 +3263,15 @@ a:hover {
 
 .compare-hero {
   min-height: auto;
+}
+
+.compare-hero .back-link,
+.compare-hero .back-link-icon {
+  color: #ffffff;
+}
+
+.compare-hero .back-link-icon {
+  background: rgba(255, 255, 255, 0.18);
 }
 
 .compare-toolbar {
@@ -3026,7 +3299,7 @@ a:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 36px;
+  min-height: 44px;
   border: 1px solid #d0d5dd;
   border-radius: 8px;
   background: #ffffff;
@@ -3034,6 +3307,30 @@ a:hover {
   padding: 8px 12px;
   font-weight: 850;
   cursor: pointer;
+}
+
+.compare-partial-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-color: #fedf89 !important;
+  background: #fffcf5 !important;
+}
+
+.compare-partial-error strong {
+  color: #93370d;
+}
+
+.compare-partial-error p {
+  margin: 4px 0 0;
+  color: #b54708;
+  font-size: 13px;
+}
+
+.compare-load-error {
+  border-color: #f3c7c3 !important;
+  background: #fffafa !important;
 }
 
 .compare-share-button:hover,
@@ -3086,6 +3383,15 @@ a:hover {
 
 .compare-table-wrap {
   overflow-x: auto;
+  border: 1px solid #eef0f6;
+  border-radius: 8px;
+  overscroll-behavior-x: contain;
+}
+
+.compare-scroll-hint {
+  margin: 0 0 8px;
+  color: #667085;
+  font-size: 12px;
 }
 
 .compare-table {
@@ -3105,6 +3411,10 @@ a:hover {
 }
 
 .compare-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #ffffff;
   color: #667085;
   font-weight: 850;
 }
@@ -3142,8 +3452,8 @@ a:hover {
 .compare-remove-button {
   display: inline-grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: 44px;
+  height: 44px;
   border: 0;
   border-radius: 50%;
   background: transparent;
@@ -3162,7 +3472,11 @@ a:hover {
 }
 
 .compare-table tbody th {
+  position: sticky;
+  left: 0;
+  z-index: 1;
   width: 150px;
+  background: #ffffff;
   color: #344054;
   font-weight: 850;
 }
@@ -3175,6 +3489,23 @@ a:hover {
 .compare-table td.compare-best {
   background: #ecfdf5;
   color: #08734f;
+}
+
+.compare-value {
+  display: block;
+}
+
+.compare-value-indicator {
+  display: inline-flex;
+  min-height: 22px;
+  align-items: center;
+  margin-top: 5px;
+  border-radius: 999px;
+  background: #d1fadf;
+  color: #05603a;
+  padding: 0 7px;
+  font-size: 10px;
+  font-weight: 850;
 }
 
 .compare-empty {
@@ -3252,6 +3583,7 @@ a:hover {
 }
 
 .relationship-list-filters button {
+  min-height: 44px;
   border: 1px solid #e7ebf3;
   border-radius: 999px;
   background: #fff;
@@ -3780,7 +4112,7 @@ a:hover {
 
   .profile-section-nav a {
     flex: 0 0 auto;
-    min-height: 40px;
+    min-height: 44px;
     padding: 0 4px;
     font-size: 12px;
   }
@@ -3880,7 +4212,7 @@ a:hover {
 
   .dart-insight-detail-actions button {
     flex: 1 1 132px;
-    min-height: 40px;
+    min-height: 44px;
     padding: 0 10px;
   }
 
@@ -3975,5 +4307,68 @@ a:hover {
   .shareholder-detail-grid,
   .shareholder-match-list dl {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 820px) {
+  .compare-tray {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .compare-tray .primary-link-button,
+  .compare-partial-error .primary-link-button {
+    width: 100%;
+  }
+
+  .compare-partial-error {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 560px) {
+  .search-message {
+    padding: 18px;
+  }
+
+  .search-message-actions,
+  .profile-error-actions,
+  .profile-compare-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .search-message-actions button,
+  .profile-error-actions .primary-link-button,
+  .profile-compare-actions > * {
+    width: 100%;
+  }
+
+  .profile-error-state,
+  .profile-basic-error {
+    min-height: 0;
+    padding: 24px 16px;
+  }
+
+  .compare-scroll-hint {
+    display: block;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .skeleton-line::after,
+  .skeleton-chart::after,
+  .disclosure-summary-loading-card::before {
+    display: none;
   }
 }

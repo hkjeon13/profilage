@@ -24,7 +24,7 @@ const metricGroups = [
       { label: "시장", key: "market" },
       { label: "업종", key: "industry" },
       { label: "설립일", key: "founded" },
-      { label: "직원 수", key: "employees", numeric: true, higherIsBetter: false },
+      { label: "직원 수", key: "employees", numeric: true, highlight: false },
     ],
   },
   {
@@ -50,7 +50,7 @@ const metricGroups = [
   {
     title: "주가",
     rows: [
-      { label: "현재가", key: "stockPrice", numeric: true },
+      { label: "현재가", key: "stockPrice", numeric: true, highlight: false },
       { label: "1개월 수익률", key: "stockReturn1M", numeric: true },
       { label: "6개월 수익률", key: "stockReturn6M", numeric: true },
     ],
@@ -194,7 +194,8 @@ function requestedCrnos() {
   const params = new URLSearchParams(window.location.search);
   const fromUrl = params.getAll("crno").flatMap((value) => value.split(",")).map((value) => value.trim());
   const fromStorage = compareStorageItems().map((item) => item.crno);
-  return Array.from(new Set([...fromUrl, ...fromStorage].filter(Boolean))).slice(0, MAX_COMPARE_COMPANIES);
+  const source = fromUrl.some(Boolean) ? fromUrl : fromStorage;
+  return Array.from(new Set(source.filter(Boolean))).slice(0, MAX_COMPARE_COMPANIES);
 }
 
 function compareUrlForCrnos(crnos) {
@@ -350,7 +351,7 @@ function basisLabel(company) {
 }
 
 function bestCompanyCrnos(companies, row) {
-  if (!row.numeric) return new Set();
+  if (!row.numeric || row.highlight === false) return new Set();
   const scored = companies
     .map((company) => ({ crno: company.crno, value: numeric(metricValue(company, row)) }))
     .filter((item) => item.value !== null);
@@ -359,6 +360,10 @@ function bestCompanyCrnos(companies, row) {
     ? Math.min(...scored.map((item) => item.value))
     : Math.max(...scored.map((item) => item.value));
   return new Set(scored.filter((item) => item.value === best).map((item) => item.crno));
+}
+
+function comparisonIndicatorLabel(row) {
+  return row.higherIsBetter === false ? "가장 낮음" : "가장 큼";
 }
 
 function bestCompanyForKey(companies, key, { source, higherIsBetter = true } = {}) {
@@ -434,20 +439,22 @@ function renderCompareSummary(companies) {
 function renderCompareTable(companies) {
   return metricGroups
     .map(
-      (group) => `
+      (group, groupIndex) => `
         <article class="info-block compare-block">
           <div class="block-heading">
             <h3>${escapeHtml(group.title)}</h3>
           </div>
+          <p class="compare-scroll-hint" id="compare-scroll-hint-${groupIndex}">표를 좌우로 이동해 기업별 값을 비교할 수 있습니다.</p>
           <div class="compare-table-wrap">
-            <table class="compare-table">
+            <table class="compare-table" aria-describedby="compare-scroll-hint-${groupIndex}">
+              <caption class="visually-hidden">${escapeHtml(group.title)} 기업 비교표</caption>
               <thead>
                 <tr>
-                  <th>항목</th>
+                  <th scope="col">항목</th>
                   ${companies
                     .map(
                       (company) => `
-                        <th>
+                        <th scope="col">
                           <span class="compare-column-head">
                             <span class="compare-column-title">
                               <span class="compare-column-name">${escapeHtml(company.name)}</span>
@@ -467,14 +474,18 @@ function renderCompareTable(companies) {
                     const bestCrnos = bestCompanyCrnos(companies, row);
                     return `
                       <tr>
-                        <th>${escapeHtml(row.label)}</th>
+                        <th scope="row">${escapeHtml(row.label)}</th>
                         ${companies
                           .map(
-                            (company) => `
-                              <td class="${bestCrnos.has(company.crno) ? "compare-best" : ""}">
-                                ${escapeHtml(formattedMetricValue(company, row))}
-                              </td>
-                            `,
+                            (company) => {
+                              const isHighlighted = bestCrnos.has(company.crno);
+                              return `
+                                <td class="${isHighlighted ? "compare-best" : ""}">
+                                  <span class="compare-value">${escapeHtml(formattedMetricValue(company, row))}</span>
+                                  ${isHighlighted ? `<span class="compare-value-indicator">${comparisonIndicatorLabel(row)}</span>` : ""}
+                                </td>
+                              `;
+                            },
                           )
                           .join("")}
                       </tr>
@@ -490,7 +501,31 @@ function renderCompareTable(companies) {
     .join("");
 }
 
-function renderComparePage(companies) {
+function renderCompareFailureNames(failures) {
+  return failures.map((failure) => failure.name || failure.crno).filter(Boolean).join(", ");
+}
+
+function setupCompareRetryButton() {
+  document.querySelector("[data-compare-retry]")?.addEventListener("click", loadComparePage);
+}
+
+function renderComparePage(companies, failures = []) {
+  if (failures.length && companies.length < 2) {
+    const failedNames = renderCompareFailureNames(failures);
+    compareDetail.innerHTML = `
+      <article class="info-block compare-empty compare-load-error" role="alert">
+        <span class="empty-kicker">비교 오류</span>
+        <h3>선택한 기업 정보를 충분히 불러오지 못했습니다</h3>
+        <p>${escapeHtml(failedNames ? `${failedNames} 조회에 실패했습니다.` : "기업 조회에 실패했습니다.")}</p>
+        <div class="compare-empty-actions">
+          <button type="button" class="primary-link-button" data-compare-retry>다시 시도</button>
+          <a class="primary-link-button secondary" href="/">기업 검색하기</a>
+        </div>
+      </article>
+    `;
+    setupCompareRetryButton();
+    return;
+  }
   if (companies.length < 2) {
     compareDetail.innerHTML = `
       <article class="info-block compare-empty">
@@ -501,7 +536,19 @@ function renderComparePage(companies) {
     `;
     return;
   }
+  const partialFailure = failures.length
+    ? `
+      <section class="compare-partial-error info-block" role="status">
+        <div>
+          <strong>${failures.length}개 기업을 불러오지 못했습니다</strong>
+          <p>${escapeHtml(renderCompareFailureNames(failures))}</p>
+        </div>
+        <button type="button" class="primary-link-button" data-compare-retry>누락 기업 다시 시도</button>
+      </section>
+    `
+    : "";
   compareDetail.innerHTML = `
+    ${partialFailure}
     <section class="compare-toolbar info-block">
       <div>
         <h3>선택한 기업 ${companies.length}개</h3>
@@ -516,6 +563,7 @@ function renderComparePage(companies) {
     ${renderCompareSummary(companies)}
     ${renderCompareTable(companies)}
   `;
+  setupCompareRetryButton();
   setupCompareRemoveButtons();
   setupCompareShareButton(companies);
 }
@@ -528,15 +576,36 @@ async function loadComparePage() {
   }
   compareDetail.innerHTML = `
     <div class="empty-state">
-      <span class="empty-kicker">Loading</span>
+      <span class="empty-kicker">불러오는 중</span>
       <p>비교할 기업 ${crnos.length}개를 불러오는 중입니다.</p>
     </div>
   `;
   try {
-    const companies = (await Promise.all(crnos.map((crno) => loadCompany(crno).catch(() => null)))).filter(Boolean);
-    renderComparePage(companies);
+    const settled = await Promise.allSettled(crnos.map((crno) => loadCompany(crno)));
+    const companies = [];
+    const failures = [];
+    settled.forEach((result, index) => {
+      if (result.status === "fulfilled") {
+        companies.push(result.value);
+      } else {
+        const stored = compareStorageItems().find((item) => item.crno === crnos[index]);
+        failures.push({
+          crno: crnos[index],
+          name: stored?.name || crnos[index],
+          message: result.reason?.message || "조회 실패",
+        });
+      }
+    });
+    renderComparePage(companies, failures);
   } catch (error) {
-    compareDetail.innerHTML = `<article class="info-block compare-empty"><p>${escapeHtml(error.message || "비교 정보를 불러오지 못했습니다.")}</p></article>`;
+    compareDetail.innerHTML = `
+      <article class="info-block compare-empty compare-load-error" role="alert">
+        <h3>비교 정보를 불러오지 못했습니다</h3>
+        <p>${escapeHtml(error.message || "잠시 후 다시 시도해주세요.")}</p>
+        <button type="button" class="primary-link-button" data-compare-retry>다시 시도</button>
+      </article>
+    `;
+    setupCompareRetryButton();
   }
 }
 

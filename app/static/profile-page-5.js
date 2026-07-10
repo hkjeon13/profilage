@@ -42,6 +42,65 @@ const DISCLOSURE_EVENT_LABELS = {
   other: "기타",
 };
 const STOCK_MARKER_EVENT_CATEGORIES = new Set(["periodic", "ownership", "capital", "dividend", "audit"]);
+const MODAL_FOCUSABLE_SELECTOR = [
+  "a[href]",
+  "button:not([disabled])",
+  "input:not([disabled])",
+  "select:not([disabled])",
+  "textarea:not([disabled])",
+  '[tabindex]:not([tabindex="-1"])',
+].join(",");
+
+function modalFocusableElements(modal) {
+  return Array.from(modal.querySelectorAll(MODAL_FOCUSABLE_SELECTOR)).filter(
+    (element) => !element.hidden && !element.className?.includes?.("backdrop"),
+  );
+}
+
+function bindModalAccessibility(modal, closeHandler) {
+  if (modal.dataset.accessibilityBound === "true") return;
+  modal.dataset.accessibilityBound = "true";
+  modal.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeHandler();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const focusable = modalFocusableElements(modal);
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable.at(-1);
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
+}
+
+function openAccessibleModal(modal, trigger, bodyClass, initialFocusSelector) {
+  modal._returnFocus = trigger || document.activeElement;
+  modal.hidden = false;
+  document.body.classList.add(bodyClass);
+  const canvas = document.querySelector(".company-canvas");
+  if (canvas) canvas.inert = true;
+  const focusTarget = modal.querySelector(initialFocusSelector) || modalFocusableElements(modal)[0];
+  window.requestAnimationFrame(() => focusTarget?.focus());
+}
+
+function closeAccessibleModal(modal, bodyClass) {
+  if (!modal) return;
+  modal.hidden = true;
+  document.body.classList.remove(bodyClass);
+  const canvas = document.querySelector(".company-canvas");
+  if (canvas) canvas.inert = false;
+  const returnFocus = modal._returnFocus;
+  modal._returnFocus = null;
+  window.requestAnimationFrame(() => returnFocus?.focus?.());
+}
 
 function normalizeItems(payload) {
   if (Array.isArray(payload?.items)) return payload.items;
@@ -186,17 +245,37 @@ function saveCompareItems(items) {
 }
 
 function addCompanyToCompare(company) {
-  if (!company.crno) return [];
-  const items = compareItems().filter((item) => item.crno !== company.crno);
-  const nextItems = [company, ...items].slice(0, MAX_COMPARE_COMPANIES);
+  const items = compareItems();
+  if (!company.crno) return { items, added: false, reason: "기업 식별정보가 없습니다." };
+  if (items.some((item) => item.crno === company.crno)) {
+    return { items, added: true, alreadyAdded: true };
+  }
+  if (items.length >= MAX_COMPARE_COMPANIES) {
+    return {
+      items,
+      added: false,
+      reason: `최대 ${MAX_COMPARE_COMPANIES}개까지 비교할 수 있습니다.`,
+    };
+  }
+  const nextItems = [company, ...items];
   saveCompareItems(nextItems);
-  return nextItems;
+  return { items: nextItems, added: true, alreadyAdded: false };
 }
 
 function compareUrl(items = compareItems()) {
   const endpoint = new URL("/compare", window.location.origin);
   items.slice(0, MAX_COMPARE_COMPANIES).forEach((item) => endpoint.searchParams.append("crno", item.crno));
   return `${endpoint.pathname}${endpoint.search}`;
+}
+
+function updateProfileCompareNav(items = compareItems()) {
+  document.querySelectorAll("[data-profile-compare-count]").forEach((count) => {
+    count.hidden = items.length === 0;
+    count.textContent = String(items.length);
+  });
+  document.querySelectorAll("[data-profile-compare-nav]").forEach((link) => {
+    link.href = compareUrl(items);
+  });
 }
 
 function setupReturnSearchLink(searchParams) {
@@ -502,9 +581,9 @@ function stockUpdatedLabel(stock) {
 
 function renderStockChart(stock, activeWindow = "1D", statusText = stockUpdatedLabel(stock), disclosureEvents = []) {
   const tabs = `
-    <div class="stock-range-tabs" role="tablist" aria-label="주가 기간">
+    <div class="stock-range-tabs" role="group" aria-label="주가 기간">
       ${STOCK_WINDOWS
-        .map((rangeLabel) => `<button type="button" class="${rangeLabel === activeWindow ? "is-active" : ""}" role="tab" data-stock-window="${rangeLabel}" ${rangeLabel === activeWindow ? 'aria-selected="true"' : 'aria-selected="false"'}>${rangeLabel}</button>`)
+        .map((rangeLabel) => `<button type="button" class="${rangeLabel === activeWindow ? "is-active" : ""}" data-stock-window="${rangeLabel}" aria-pressed="${rangeLabel === activeWindow ? "true" : "false"}">${rangeLabel}</button>`)
         .join("")}
     </div>
     <p class="stock-window-status" role="status">
@@ -805,15 +884,29 @@ function renderProfileSkeleton() {
 
 function renderError(message) {
   profileCard?.classList.remove("is-loading");
+  profileCard?.classList.add("has-error");
   profileTitle.textContent = "기업 프로필을 열 수 없습니다";
   profileSubtitle.textContent = message;
+  if (profileBasicCard) {
+    profileBasicCard.innerHTML = `
+      <div class="profile-basic-error">
+        <strong>기업 기본정보를 불러오지 못했습니다.</strong>
+        <p>잠시 후 다시 시도하거나 다른 기업을 검색해주세요.</p>
+      </div>
+    `;
+  }
   profileDetail.innerHTML = `
-    <div class="empty-state">
-      <span class="empty-kicker">Error</span>
-      <p>${message}</p>
+    <div class="empty-state profile-error-state" role="alert">
+      <span class="empty-kicker">프로필 오류</span>
+      <h2>기업 정보를 불러오지 못했습니다</h2>
+      <p>${escapeHtml(message || "잠시 후 다시 시도해주세요.")}</p>
+      <div class="profile-error-actions">
+        <button type="button" class="primary-link-button" data-profile-retry>다시 시도</button>
+        <a class="primary-link-button secondary" href="/">다른 기업 검색</a>
+      </div>
     </div>
   `;
-  setupStockChartInteractions();
+  profileDetail.querySelector("[data-profile-retry]")?.addEventListener("click", () => window.location.reload());
 }
 
 function disclosureMeta(item, includeReceiptNo = false) {
@@ -894,17 +987,14 @@ function ensureDisclosureSummaryModal() {
   modal.querySelectorAll("[data-disclosure-summary-close]").forEach((button) => {
     button.addEventListener("click", closeDisclosureSummaryModal);
   });
-  window.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !modal.hidden) closeDisclosureSummaryModal();
-  });
+  bindModalAccessibility(modal, closeDisclosureSummaryModal);
   return modal;
 }
 
 function closeDisclosureSummaryModal() {
   const modal = document.querySelector(".disclosure-summary-modal");
   if (!modal) return;
-  modal.hidden = true;
-  document.body.classList.remove("has-disclosure-summary-open");
+  closeAccessibleModal(modal, "has-disclosure-summary-open");
 }
 
 function renderDisclosureSummaryPayload(payload) {
@@ -930,8 +1020,7 @@ function renderDisclosureSummaryPayload(payload) {
 
 async function openDisclosureSummary(button) {
   const modal = ensureDisclosureSummaryModal();
-  modal.hidden = false;
-  document.body.classList.add("has-disclosure-summary-open");
+  openAccessibleModal(modal, button, "has-disclosure-summary-open", ".disclosure-summary-close");
   modal.querySelector("#disclosure-summary-title").textContent =
     button.dataset.disclosureTitle || "공시 요약";
   modal.querySelector("[data-disclosure-summary-body]").innerHTML =
@@ -989,9 +1078,7 @@ function ensureDisclosureViewerModal() {
   modal.querySelectorAll("[data-disclosure-viewer-close]").forEach((control) => {
     control.addEventListener("click", closeDisclosureViewer);
   });
-  window.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !modal.hidden) closeDisclosureViewer();
-  });
+  bindModalAccessibility(modal, closeDisclosureViewer);
   return modal;
 }
 
@@ -999,8 +1086,7 @@ function closeDisclosureViewer() {
   const modal = document.querySelector(".disclosure-viewer-modal");
   if (!modal) return;
   const frame = modal.querySelector(".disclosure-viewer-frame");
-  modal.hidden = true;
-  document.body.classList.remove("has-disclosure-viewer-open");
+  closeAccessibleModal(modal, "has-disclosure-viewer-open");
   if (frame) frame.removeAttribute("src");
 }
 
@@ -1012,15 +1098,12 @@ function openDisclosureViewer(control) {
   const title = modal.querySelector("#disclosure-viewer-title");
   const meta = modal.querySelector("#disclosure-viewer-meta");
   const external = modal.querySelector(".disclosure-viewer-external");
-  const close = modal.querySelector(".disclosure-viewer-close");
 
   title.textContent = control.dataset.disclosureTitle || "공시";
   meta.textContent = control.dataset.disclosureMeta || "DART 공시";
   external.href = url;
   frame.src = url;
-  modal.hidden = false;
-  document.body.classList.add("has-disclosure-viewer-open");
-  close?.focus();
+  openAccessibleModal(modal, control, "has-disclosure-viewer-open", ".disclosure-viewer-close");
 }
 
 function setupDisclosureViewer() {
@@ -1150,11 +1233,11 @@ function setupInfiniteDisclosureScroll({ corpCode, disclosureType, initialPage, 
 
 function renderDisclosureFilters(activeType) {
   return `
-    <div class="disclosure-filter-tabs" role="tablist" aria-label="공시 유형">
+    <div class="disclosure-filter-tabs" role="group" aria-label="공시 유형">
       ${DISCLOSURE_FILTERS
         .map(
           ([value, label]) => `
-            <button type="button" class="${value === activeType ? "is-active" : ""}" data-disclosure-type="${attr(value)}" aria-selected="${value === activeType ? "true" : "false"}">
+            <button type="button" class="${value === activeType ? "is-active" : ""}" data-disclosure-type="${attr(value)}" aria-pressed="${value === activeType ? "true" : "false"}">
               ${label}
             </button>
           `,
@@ -1340,7 +1423,7 @@ function ensureFinancialTrendModal() {
             <button type="button" class="financial-trend-toggle" data-financial-trend-toggle>계정 선택</button>
             <div class="financial-trend-account-menu" data-financial-trend-menu hidden></div>
           </div>
-          <div class="financial-trend-chart" data-financial-trend-chart role="img" aria-label="재무 항목 추이"></div>
+          <div class="financial-trend-chart" data-financial-trend-chart></div>
         </section>
       </div>
     `,
@@ -1349,9 +1432,7 @@ function ensureFinancialTrendModal() {
   modal.querySelectorAll("[data-financial-trend-close]").forEach((control) => {
     control.addEventListener("click", closeFinancialTrendModal);
   });
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !modal.hidden) closeFinancialTrendModal();
-  });
+  bindModalAccessibility(modal, closeFinancialTrendModal);
   modal.querySelector("[data-financial-trend-toggle]").addEventListener("click", () => {
     const menu = modal.querySelector("[data-financial-trend-menu]");
     menu.hidden = !menu.hidden;
@@ -1362,8 +1443,7 @@ function ensureFinancialTrendModal() {
 function closeFinancialTrendModal() {
   const modal = document.querySelector(".financial-trend-modal");
   if (!modal) return;
-  modal.hidden = true;
-  document.body.classList.remove("has-financial-trend-open");
+  closeAccessibleModal(modal, "has-financial-trend-open");
 }
 
 function trendSeries(periods, accountName) {
@@ -1401,7 +1481,7 @@ function renderFinancialTrendChart(modal, trendPayload, selectedAccounts) {
   const xFor = (index) => paddingX + (index / Math.max(periods.length - 1, 1)) * plotWidth;
   const yFor = (value) => paddingY + ((max - value) / range) * plotHeight;
   chart.innerHTML = `
-    <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+    <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="선택한 재무 항목의 최근 ${periods.length}개년 추이">
       <path class="financial-trend-grid" d="M ${paddingX} ${paddingY} H ${width - paddingX} M ${paddingX} ${height / 2} H ${width - paddingX} M ${paddingX} ${height - paddingY} H ${width - paddingX}" />
       ${series
         .map((item) => {
@@ -1424,6 +1504,32 @@ function renderFinancialTrendChart(modal, trendPayload, selectedAccounts) {
         })
         .join("")}
     </div>
+    <details class="financial-trend-data">
+      <summary>데이터 표 보기</summary>
+      <div class="financial-trend-table-wrap">
+        <table>
+          <caption class="visually-hidden">선택한 재무 항목의 연도별 값</caption>
+          <thead>
+            <tr>
+              <th scope="col">항목</th>
+              ${periods.map((period) => `<th scope="col">${escapeHtml(period.business_year)}</th>`).join("")}
+            </tr>
+          </thead>
+          <tbody>
+            ${series
+              .map(
+                (item) => `
+                  <tr>
+                    <th scope="row">${escapeHtml(item.accountName)}</th>
+                    ${item.points.map((point) => `<td>${point.value === null ? "-" : escapeHtml(formatNumber(point.value))}</td>`).join("")}
+                  </tr>
+                `,
+              )
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+    </details>
   `;
 }
 
@@ -1453,8 +1559,7 @@ async function openFinancialTrendModal(button) {
   const panelPayload = JSON.parse(panel.dataset.financialTrendPayload || "{}");
   const accountName = button.dataset.financialTrendAccount;
   const modal = ensureFinancialTrendModal();
-  modal.hidden = false;
-  document.body.classList.add("has-financial-trend-open");
+  openAccessibleModal(modal, button, "has-financial-trend-open", ".financial-trend-close");
   modal.querySelector("#financial-trend-title").textContent = `${accountName} 추이`;
   modal.querySelector("#financial-trend-meta").textContent = "최근 5개년";
   modal.querySelector("[data-financial-trend-chart]").innerHTML = `<p class="empty-copy">재무 추이를 불러오는 중입니다.</p>`;
@@ -1505,15 +1610,15 @@ function renderDartFinancialAccounts(info) {
   const activeDetailUrl = financialDetailUrl(new URLSearchParams(window.location.search).get("crno"), activeReport?.selected);
 
   return `
-    <article class="info-block financial-summary">
+    <article id="section-financials" class="info-block financial-summary">
       <div class="block-heading financial-summary-heading">
         <h3>재무 요약</h3>
         <a class="text-link financial-more-link" href="${activeDetailUrl}">더보기</a>
-        <div class="summary-tabs" role="tablist" aria-label="재무제표 기간">
-          <button type="button" class="${activeKey === "quarter" ? "is-active" : ""}" data-financial-tab="quarter" ${hasQuarter ? "" : "disabled"}>
+        <div class="summary-tabs" role="group" aria-label="재무제표 기간">
+          <button type="button" class="${activeKey === "quarter" ? "is-active" : ""}" data-financial-tab="quarter" aria-pressed="${activeKey === "quarter" ? "true" : "false"}" ${hasQuarter ? "" : "disabled"}>
             분기
           </button>
-          <button type="button" class="${activeKey === "annual" ? "is-active" : ""}" data-financial-tab="annual" ${hasAnnual ? "" : "disabled"}>
+          <button type="button" class="${activeKey === "annual" ? "is-active" : ""}" data-financial-tab="annual" aria-pressed="${activeKey === "annual" ? "true" : "false"}" ${hasAnnual ? "" : "disabled"}>
             연간
           </button>
         </div>
@@ -1530,7 +1635,7 @@ function renderCompanyInsightRow(info) {
   if (!financialSummary && !disclosureEvents) return "";
 
   return `
-    <div id="section-financials" class="company-insight-row">
+    <div class="company-insight-row">
       ${financialSummary}
       ${disclosureEvents}
     </div>
@@ -1735,26 +1840,21 @@ function ensureShareholderDetailModal() {
   const modal = wrapper.firstElementChild;
   document.body.appendChild(modal);
   modal.querySelectorAll("[data-shareholder-detail-close]").forEach((button) => {
-    button.addEventListener("click", () => {
-      modal.hidden = true;
-      document.body.classList.remove("has-shareholder-detail-open");
-    });
+    button.addEventListener("click", closeShareholderDetailModal);
   });
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !modal.hidden) {
-      modal.hidden = true;
-      document.body.classList.remove("has-shareholder-detail-open");
-    }
-  });
+  bindModalAccessibility(modal, closeShareholderDetailModal);
   return modal;
+}
+
+function closeShareholderDetailModal() {
+  closeAccessibleModal(document.querySelector(".shareholder-detail-modal"), "has-shareholder-detail-open");
 }
 
 async function openShareholderDetail(button) {
   const holder = JSON.parse(button.dataset.shareholderDetail || "{}");
   const modal = ensureShareholderDetailModal();
   const body = modal.querySelector("[data-shareholder-detail-body]");
-  modal.hidden = false;
-  document.body.classList.add("has-shareholder-detail-open");
+  openAccessibleModal(modal, button, "has-shareholder-detail-open", ".shareholder-detail-close");
   modal.querySelector("#shareholder-detail-title").textContent = holder.name || "주주 상세";
   body.innerHTML = `
     ${renderShareholderCurrentDetail(holder)}
@@ -1783,8 +1883,6 @@ function setupShareholderDetailButtons() {
     button.addEventListener("click", () => {
       openShareholderDetail(button).catch((error) => {
         const modal = ensureShareholderDetailModal();
-        modal.hidden = false;
-        document.body.classList.add("has-shareholder-detail-open");
         modal.querySelector("[data-shareholder-detail-body]").innerHTML = `<p class="empty-copy">${escapeHtml(error.message || "주주 정보를 불러오지 못했습니다.")}</p>`;
       });
     });
@@ -1977,18 +2075,14 @@ function ensureDartInsightDetailModal() {
   const modal = wrapper.firstElementChild;
   document.body.appendChild(modal);
   modal.querySelectorAll("[data-dart-insight-detail-close]").forEach((button) => {
-    button.addEventListener("click", () => {
-      modal.hidden = true;
-      document.body.classList.remove("has-dart-insight-detail-open");
-    });
+    button.addEventListener("click", closeDartInsightDetailModal);
   });
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !modal.hidden) {
-      modal.hidden = true;
-      document.body.classList.remove("has-dart-insight-detail-open");
-    }
-  });
+  bindModalAccessibility(modal, closeDartInsightDetailModal);
   return modal;
+}
+
+function closeDartInsightDetailModal() {
+  closeAccessibleModal(document.querySelector(".dart-insight-detail-modal"), "has-dart-insight-detail-open");
 }
 
 async function openDartInsightDetailModal(button) {
@@ -1996,8 +2090,7 @@ async function openDartInsightDetailModal(button) {
   const basis = JSON.parse(button.closest("[data-dart-insight-basis]")?.dataset.dartInsightBasis || "{}");
   const corpCode = profileDetail.dataset.dartCorpCode;
   const modal = ensureDartInsightDetailModal();
-  modal.hidden = false;
-  document.body.classList.add("has-dart-insight-detail-open");
+  openAccessibleModal(modal, button, "has-dart-insight-detail-open", ".dart-insight-detail-close");
   modal.querySelector("#dart-insight-detail-title").textContent = kind === "capital" ? "주식 구조" : "임직원";
   modal.querySelector("[data-dart-insight-detail-body]").innerHTML = `<p class="empty-copy">불러오는 중입니다.</p>`;
   const payload = await fetchJson("/api/company/get_dart_company_insight_detail", {
@@ -2085,11 +2178,11 @@ function renderRelationshipFilters(activeFilter = "all") {
     ["foreign", "해외"],
   ];
   return `
-    <div class="relationship-list-filters" role="tablist" aria-label="관계회사 필터">
+    <div class="relationship-list-filters" role="group" aria-label="관계회사 필터">
       ${filters
         .map(
           ([value, label]) => `
-            <button type="button" class="${value === activeFilter ? "is-active" : ""}" data-relationship-filter="${value}" aria-selected="${value === activeFilter ? "true" : "false"}">${label}</button>
+            <button type="button" class="${value === activeFilter ? "is-active" : ""}" data-relationship-filter="${value}" aria-pressed="${value === activeFilter ? "true" : "false"}">${label}</button>
           `,
         )
         .join("")}
@@ -2214,17 +2307,14 @@ function ensureRelationshipListModal() {
   modal.querySelectorAll("[data-relationship-list-close]").forEach((button) => {
     button.addEventListener("click", closeRelationshipListModal);
   });
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && !modal.hidden) closeRelationshipListModal();
-  });
+  bindModalAccessibility(modal, closeRelationshipListModal);
   return modal;
 }
 
 function closeRelationshipListModal() {
   const modal = document.querySelector(".relationship-list-modal");
   if (!modal) return;
-  modal.hidden = true;
-  document.body.classList.remove("has-relationship-list-open");
+  closeAccessibleModal(modal, "has-relationship-list-open");
 }
 
 function openRelationshipListModal(button) {
@@ -2232,8 +2322,7 @@ function openRelationshipListModal(button) {
   const type = button.dataset.relationshipListType || "affiliates";
   const label = button.dataset.relationshipListLabel || "관계회사";
   const modal = ensureRelationshipListModal();
-  modal.hidden = false;
-  document.body.classList.add("has-relationship-list-open");
+  openAccessibleModal(modal, button, "has-relationship-list-open", ".relationship-list-close");
   modal.querySelector("#relationship-list-title").textContent = label;
   modal.querySelector("#relationship-list-meta").textContent = `총 ${items.length.toLocaleString("ko-KR")}개 · 출처 금융위원회 기업기본정보`;
   modal.querySelector("[data-relationship-list-body]").innerHTML = renderRelationshipListBody(items, type);
@@ -2276,20 +2365,36 @@ function setupCompareActions() {
     if (button.dataset.compareBound === "true") return;
     button.dataset.compareBound = "true";
     button.addEventListener("click", () => {
-      const nextItems = addCompanyToCompare({
+      const result = addCompanyToCompare({
         crno: button.dataset.compareCrno,
         name: button.dataset.compareName,
       });
+      const status = document.querySelector("[data-profile-compare-status]");
+      if (!result.added) {
+        if (status) status.textContent = result.reason;
+        return;
+      }
       const icon = button.querySelector("[data-compare-icon]");
       if (icon) icon.textContent = "✓";
       button.setAttribute("aria-label", "비교함에 추가됨");
       button.setAttribute("title", "비교함에 추가됨");
+      button.setAttribute("aria-pressed", "true");
       button.classList.add("is-added");
+      button.disabled = true;
+      button.childNodes.forEach((node) => {
+        if (node.nodeType === Node.TEXT_NODE) node.textContent = " 비교함에 추가됨";
+      });
       const link = document.querySelector("[data-compare-link]");
       if (link) {
-        link.href = compareUrl(nextItems);
-        link.hidden = nextItems.length < 2;
+        link.href = compareUrl(result.items);
+        link.hidden = result.items.length < 2;
       }
+      if (status) {
+        status.textContent = result.alreadyAdded
+          ? "이미 비교함에 있는 기업입니다."
+          : `${button.dataset.compareName || "기업"}을 비교함에 추가했습니다.`;
+      }
+      updateProfileCompareNav(result.items);
     });
   });
 }
@@ -2301,7 +2406,11 @@ function setupFinancialSummaryTabs() {
     tabs.forEach((tab) => {
       tab.addEventListener("click", () => {
         const key = tab.dataset.financialTab;
-        tabs.forEach((item) => item.classList.toggle("is-active", item === tab));
+        tabs.forEach((item) => {
+          const isActive = item === tab;
+          item.classList.toggle("is-active", isActive);
+          item.setAttribute("aria-pressed", String(isActive));
+        });
         panels.forEach((panel) => {
           const isActive = panel.dataset.financialPanel === key;
           panel.classList.toggle("is-active", isActive);
@@ -2538,12 +2647,40 @@ function renderProfileSectionNav() {
   `;
 }
 
+function setupProfileSectionNav() {
+  const nav = document.querySelector(".profile-section-nav");
+  if (!nav) return;
+  nav.querySelectorAll("[data-profile-section]").forEach((link) => {
+    const targetId = `section-${link.dataset.profileSection}`;
+    if (!document.getElementById(targetId)) link.remove();
+  });
+}
+
 function renderCompanyProfileSummaryCard({ crno = "", compareName = "", isCompareAdded = false } = {}) {
+  const selectedItems = compareItems();
   return `
     <article id="section-summary" class="info-block company-ai-summary-card" data-company-profile-summary-card>
       <div class="block-heading">
         <h3>AI 기업요약</h3>
+        <div class="profile-compare-actions">
+          <button
+            type="button"
+            class="compare-add-button ${isCompareAdded ? "is-added" : ""}"
+            data-compare-add
+            data-compare-crno="${attr(crno)}"
+            data-compare-name="${attr(compareName)}"
+            aria-pressed="${isCompareAdded ? "true" : "false"}"
+            ${isCompareAdded ? "disabled" : ""}
+          ><span data-compare-icon aria-hidden="true">${isCompareAdded ? "✓" : "+"}</span> ${isCompareAdded ? "비교함에 추가됨" : "비교 추가"}</button>
+          <a
+            class="primary-link-button"
+            data-compare-link
+            href="${attr(compareUrl(selectedItems))}"
+            ${selectedItems.length < 2 ? "hidden" : ""}
+          >선택 기업 비교</a>
+        </div>
       </div>
+      <p class="profile-compare-status" data-profile-compare-status role="status"></p>
       <div class="company-ai-summary-body company-ai-summary-skeleton" data-company-profile-summary-body aria-live="polite">
         <span class="skeleton-line skeleton-section-title"></span>
         <span class="skeleton-line skeleton-wide"></span>
@@ -2638,23 +2775,16 @@ function renderProfileBasicCard({ outline, dartCompany, listed, market, crno, ho
   `;
 }
 
-function renderCompanyDetail({ info, outline, listed, stock, stockWindow, stockLoading = false }) {
-  const crno = new URLSearchParams(window.location.search).get("crno");
+function completeProfileHeader({ info, outline, listed, crno }) {
   const dartCompany = info.dart_company || {};
   const homepage = homepageUrl(outline.enpHmpgUrl || dartCompany.hm_url);
   const market = text(listed.mrktCtg || outline.corpRegMrktDcdNm, "비상장/정보 없음");
   const logo = document.querySelector(".company-logo-box");
-  const corpCode = info.dart_corp_code?.match?.corp_code || dartCompany.corp_code || "";
-  const initialCompareItems = compareItems();
-  const isCompareAdded = initialCompareItems.some((item) => item.crno === crno);
-
+  profileCard?.classList.remove("is-loading", "has-error");
   profileTitle.textContent = text(outline.corpNm, "기업명 정보 없음");
   profileSubtitle.textContent = text(outline.corpEnsnNm || dartCompany.corp_name_eng, "영문명 정보 없음");
-  profileDetail.dataset.dartCorpCode = corpCode;
-  profileCard?.classList.remove("is-loading");
-  if (logo) {
-    logo.textContent = initials(outline.corpNm);
-  }
+  profileDetail.dataset.dartCorpCode = info.dart_corp_code?.match?.corp_code || dartCompany.corp_code || "";
+  if (logo) logo.textContent = initials(outline.corpNm);
   if (profileBasicCard) {
     profileBasicCard.innerHTML = renderProfileBasicCard({
       outline,
@@ -2665,6 +2795,17 @@ function renderCompanyDetail({ info, outline, listed, stock, stockWindow, stockL
       homepage,
     });
   }
+}
+
+function renderCompanyDetail({ info, outline, listed, stock, stockWindow, stockLoading = false }) {
+  const crno = new URLSearchParams(window.location.search).get("crno");
+  const dartCompany = info.dart_company || {};
+  const market = text(listed.mrktCtg || outline.corpRegMrktDcdNm, "비상장/정보 없음");
+  const corpCode = info.dart_corp_code?.match?.corp_code || dartCompany.corp_code || "";
+  const initialCompareItems = compareItems();
+  const isCompareAdded = initialCompareItems.some((item) => item.crno === crno);
+
+  profileDetail.dataset.dartCorpCode = corpCode;
 
   profileDetail.innerHTML = `
     <div class="company-overview-grid">
@@ -2690,6 +2831,7 @@ function renderCompanyDetail({ info, outline, listed, stock, stockWindow, stockL
 
     </div>
   `;
+  setupProfileSectionNav();
   setupStockChartInteractions();
   setupStockWindowTabs();
   setupFinancialSummaryTabs();
@@ -2724,6 +2866,7 @@ async function loadProfile() {
     }));
     const outline = firstItem(info.corp_outline);
     const listed = firstItem(info.krx_listed_item);
+    completeProfileHeader({ info, outline, listed, crno });
 
     if (view === "financials") {
       const selected = getSelectedFinancialQuery(searchParams);
@@ -2798,4 +2941,5 @@ async function loadProfile() {
   }
 }
 
+updateProfileCompareNav();
 loadProfile();

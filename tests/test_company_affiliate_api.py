@@ -187,8 +187,8 @@ def test_root_serves_company_search_frontend():
     assert "/profile?crno=" in response.text
     assert "/docs" not in response.text
     assert "/openapi.json" not in response.text
-    assert "/styles.css?v=google-home-12" in response.text
-    assert "/app.js?v=google-home-12" in response.text
+    assert "/styles.css?v=google-home-13" in response.text
+    assert "/app.js?v=google-home-13" in response.text
 
 
 def test_security_headers_are_added_to_frontend_response():
@@ -326,11 +326,11 @@ def test_profile_page_serves_company_profile_frontend():
     assert '<a href="/openapi.json">OpenAPI</a>' not in response.text
     assert '<a href="/docs">문서</a>' not in response.text
     assert '<a href="/">새 검색</a>' not in response.text
-    assert "/styles.css?v=company-profile-76" in response.text
-    assert "/profile-chart-2.css?v=interactive-10" in response.text
+    assert "/styles.css?v=company-profile-77" in response.text
+    assert "/profile-chart-2.css?v=interactive-11" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-59" in response.text
+    assert "/profile-page-5.js?v=company-profile-60" in response.text
 
 
 def test_compare_page_serves_company_compare_frontend():
@@ -342,8 +342,8 @@ def test_compare_page_serves_company_compare_frontend():
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
     assert 'id="compare-root"' in response.text
-    assert "/styles.css?v=company-profile-45" in response.text
-    assert "/compare-page.js?v=company-compare-6" in response.text
+    assert "/styles.css?v=company-profile-46" in response.text
+    assert "/compare-page.js?v=company-compare-7" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "COMPARE_STORAGE_KEY" in script_response.text
     assert "renderCompareTable" in script_response.text
@@ -475,11 +475,11 @@ def test_profile_frontend_can_add_company_to_compare_list():
     summary_template = script_response.text.split("function renderCompanyProfileSummaryCard(", 1)[1].split(
         "function renderCompanyProfileSummaryList", 1
     )[0]
-    assert "data-compare-add" not in summary_template
-    assert 'aria-label="${isCompareAdded ? "비교함에 추가됨" : "비교에 추가"}"' not in summary_template
-    assert 'title="${isCompareAdded ? "비교함에 추가됨" : "비교에 추가"}"' not in summary_template
-    assert 'data-compare-icon' not in summary_template
-    assert "/profile-page-5.js?v=company-profile-59" in profile_response.text
+    assert "data-compare-add" in summary_template
+    assert "data-compare-link" in summary_template
+    assert "data-profile-compare-status" in summary_template
+    assert 'aria-pressed="${isCompareAdded ? "true" : "false"}"' in summary_template
+    assert "/profile-page-5.js?v=company-profile-60" in profile_response.text
     assert ".company-facts" not in style_response.text
     assert ".summary-heading-actions" not in style_response.text
     assert ".summary-compare-button" not in style_response.text
@@ -662,7 +662,7 @@ def test_financial_summary_cards_open_trend_modal_with_account_checks():
     assert ".financial-trend-chart" in style_response.text
     assert ".disclosure-summary-close,\n.disclosure-viewer-close,\n.financial-trend-close," in style_response.text
     assert "background: transparent;" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-59" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-60" in profile_response.text
 
 
 def test_financial_summary_more_link_is_in_card_heading():
@@ -806,7 +806,7 @@ def test_stock_window_tabs_expose_loading_error_and_refresh_metadata():
     assert "주가 정보를 불러오지 못했습니다" in script_response.text
     assert ".stock-window-status" in style_response.text
     assert ".company-market-card.is-loading-stock" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-59" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-60" in profile_response.text
 
 
 def test_profile_sections_render_source_and_basis_metadata():
@@ -908,7 +908,7 @@ def test_stock_chart_tooltip_is_compact_on_mobile():
     assert "padding: 8px 9px;" in chart_style_response.text
     assert ".stock-chart-tooltip strong {\n    font-size: 13px;" in chart_style_response.text
     assert ".stock-chart-tooltip span {\n    margin-top: 3px;\n    font-size: 11px;" in chart_style_response.text
-    assert "/profile-chart-2.css?v=interactive-10" in profile_response.text
+    assert "/profile-chart-2.css?v=interactive-11" in profile_response.text
 
 
 def test_profile_mobile_layout_prevents_horizontal_overflow():
@@ -982,8 +982,8 @@ def test_relationship_summary_cards_open_company_list_modal():
     assert "relationship-list-modal" in script_response.text
     assert ".relationship-list-modal" in style_response.text
     assert ".relationship-list-items" in style_response.text
-    assert "/styles.css?v=company-profile-76" in profile_response.text
-    assert "/profile-page-5.js?v=company-profile-59" in profile_response.text
+    assert "/styles.css?v=company-profile-77" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-60" in profile_response.text
 
 
 def test_relationship_summary_terms_have_tooltips():
@@ -1053,8 +1053,8 @@ def test_profile_frontend_renders_normalized_dart_insight_cards():
     assert ".ownership-stacked-bar" in style_response.text
     assert ".ownership-bar-segment" in style_response.text
     assert ".shareholder-detail-modal" in style_response.text
-    assert "/styles.css?v=company-profile-76" in profile_response.text
-    assert "/profile-page-5.js?v=company-profile-59" in profile_response.text
+    assert "/styles.css?v=company-profile-77" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-60" in profile_response.text
 
 
 def test_profile_frontend_exposes_lazy_dart_detail_modal():
@@ -1135,7 +1135,7 @@ def test_profile_mobile_styles_reduce_dense_profile_sections():
     assert ".dart-insight-detail-close {\n    width: 44px;" in mobile_rule
     dart_action_button_rule = mobile_rule.split(".dart-insight-detail-actions button {", 1)[1].split("}", 1)[0]
     assert "flex: 1 1 132px;" in dart_action_button_rule
-    assert "min-height: 40px;" in dart_action_button_rule
+    assert "min-height: 44px;" in dart_action_button_rule
 
 
 def test_profile_mobile_interactive_targets_use_touch_friendly_sizes():
@@ -1147,25 +1147,25 @@ def test_profile_mobile_interactive_targets_use_touch_friendly_sizes():
     assert chart_style_response.status_code == 200
     mobile_rule = style_response.text.split("@media (max-width: 560px)", 1)[1]
     assert ".profile-page .top-nav a" in style_response.text
-    assert "min-width: 40px;" in style_response.text.split(".profile-page .top-nav a", 1)[1].split("}", 1)[0]
-    assert ".back-link {\n  display: inline-flex;\n  align-items: center;\n  min-height: 40px;" in style_response.text
-    assert "min-height: 40px;" in style_response.text.split(".profile-basic-grid a", 1)[1].split("}", 1)[0]
-    assert ".profile-section-nav a {\n    flex: 0 0 auto;\n    min-height: 40px;" in mobile_rule
+    assert "min-width: 44px;" in style_response.text.split(".profile-page .top-nav a", 1)[1].split("}", 1)[0]
+    assert ".back-link {\n  display: inline-flex;\n  align-items: center;\n  min-height: 44px;" in style_response.text
+    assert "min-height: 44px;" in style_response.text.split(".profile-basic-grid a", 1)[1].split("}", 1)[0]
+    assert ".profile-section-nav a {\n    flex: 0 0 auto;\n    min-height: 44px;" in mobile_rule
     assert "padding: 0 4px;" in mobile_rule.split(".profile-section-nav a {", 1)[1].split("}", 1)[0]
     assert ".stock-range-tabs button" in style_response.text
-    assert "min-height: 40px;" in style_response.text.split(".stock-range-tabs button", 1)[1].split("}", 1)[0]
-    assert "min-height: 40px;" in chart_style_response.text.split(".stock-range-tabs button", 1)[1].split("}", 1)[0]
+    assert "min-height: 44px;" in style_response.text.split(".stock-range-tabs button", 1)[1].split("}", 1)[0]
+    assert "min-height: 44px;" in chart_style_response.text.split(".stock-range-tabs button", 1)[1].split("}", 1)[0]
     assert ".summary-tabs button" in style_response.text
-    assert "min-height: 40px;" in style_response.text.split(".summary-tabs button", 1)[1].split("}", 1)[0]
+    assert "min-height: 44px;" in style_response.text.split(".summary-tabs button", 1)[1].split("}", 1)[0]
     assert ".financial-more-link" in style_response.text
-    assert "min-height: 40px;" in style_response.text.split(".financial-more-link", 1)[1].split("}", 1)[0]
-    assert "min-width: 40px;" in style_response.text.split(".financial-more-link", 1)[1].split("}", 1)[0]
-    assert "min-height: 40px;" in style_response.text.split(".ownership-holder-button", 1)[1].split("}", 1)[0]
-    assert "min-height: 40px;" in style_response.text.split(".dart-insight-detail-actions button", 1)[1].split("}", 1)[0]
+    assert "min-height: 44px;" in style_response.text.split(".financial-more-link", 1)[1].split("}", 1)[0]
+    assert "min-width: 44px;" in style_response.text.split(".financial-more-link", 1)[1].split("}", 1)[0]
+    assert "min-height: 44px;" in style_response.text.split(".ownership-holder-button", 1)[1].split("}", 1)[0]
+    assert "min-height: 44px;" in style_response.text.split(".dart-insight-detail-actions button", 1)[1].split("}", 1)[0]
     disclosure_summary_button_rule = style_response.text.split(".disclosure-summary-button {\n  display: inline-flex;", 1)[1].split("}", 1)[0]
-    assert "min-height: 40px;" in disclosure_summary_button_rule
+    assert "min-height: 44px;" in disclosure_summary_button_rule
     disclosure_viewer_trigger_rule = style_response.text.split(".disclosure-viewer-trigger {\n  width: 100%;", 1)[1].split("}", 1)[0]
-    assert "min-height: 40px;" in disclosure_viewer_trigger_rule
+    assert "min-height: 44px;" in disclosure_viewer_trigger_rule
 
 
 def test_profile_frontend_exposes_disclosure_events_and_risk_signals():
@@ -1223,7 +1223,8 @@ def test_company_ai_summary_renders_as_single_full_width_section_above_overview(
     assert "<h3>AI 기업요약</h3>" in summary_template
     assert "summary-heading-actions" not in summary_template
     assert "summary-compare-button" not in summary_template
-    assert "data-compare-add" not in summary_template
+    assert "data-compare-add" in summary_template
+    assert "data-compare-link" in summary_template
     assert "summary-status-pill" not in summary_template
     assert "is-collapsed-mobile" not in summary_template
     assert "<h3>요약</h3>" not in summary_template

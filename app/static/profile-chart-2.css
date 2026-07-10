@@ -148,8 +148,8 @@
 
 .stock-range-tabs button {
   display: inline-flex;
-  min-width: 40px;
-  min-height: 40px;
+  min-width: 44px;
+  min-height: 44px;
   align-items: center;
   justify-content: center;
   border: 1px solid transparent;
