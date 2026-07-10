@@ -187,7 +187,7 @@ def test_root_serves_company_search_frontend():
     assert "/profile?crno=" in response.text
     assert "/docs" not in response.text
     assert "/openapi.json" not in response.text
-    assert "/styles.css?v=google-home-13" in response.text
+    assert "/styles.css?v=google-home-14" in response.text
     assert "/app.js?v=google-home-13" in response.text
 
 
@@ -295,6 +295,10 @@ def test_search_results_render_dense_business_rows_with_entity_type():
     assert "justify-content: center;" in badge_rule
     assert "line-height: 1;" in badge_rule
     assert ".result-card .result-market-badge" in style_response.text
+    mobile_rule = style_response.text.split("@media (max-width: 560px)", 1)[1]
+    assert ".result-card {\n    gap: 9px;\n    padding: 14px;" in mobile_rule
+    assert ".result-meta-grid {\n    grid-template-columns: repeat(2, minmax(0, 1fr));" in mobile_rule
+    assert "grid-template-columns: minmax(0, 1fr) auto auto;" in mobile_rule
 
 
 def test_search_results_load_more_on_scroll_without_count_status():
@@ -326,7 +330,7 @@ def test_profile_page_serves_company_profile_frontend():
     assert '<a href="/openapi.json">OpenAPI</a>' not in response.text
     assert '<a href="/docs">문서</a>' not in response.text
     assert '<a href="/">새 검색</a>' not in response.text
-    assert "/styles.css?v=company-profile-77" in response.text
+    assert "/styles.css?v=company-profile-78" in response.text
     assert "/profile-chart-2.css?v=interactive-11" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
@@ -342,7 +346,7 @@ def test_compare_page_serves_company_compare_frontend():
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
     assert 'id="compare-root"' in response.text
-    assert "/styles.css?v=company-profile-46" in response.text
+    assert "/styles.css?v=company-profile-47" in response.text
     assert "/compare-page.js?v=company-compare-7" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "COMPARE_STORAGE_KEY" in script_response.text
@@ -388,7 +392,11 @@ def test_compare_page_serves_company_compare_frontend():
     assert ".compare-company-chips" not in style_response.text
     assert ".compare-table-wrap {\n  overflow-x: auto;" in style_response.text
     assert ".compare-toolbar {\n    align-items: stretch;\n    flex-direction: column;" in style_response.text
-    assert ".compare-table {\n    min-width: 560px;" in style_response.text
+    mobile_rule = style_response.text.split("@media (max-width: 560px)", 1)[1]
+    assert ".compare-hero {\n    min-height: 196px;" in mobile_rule
+    assert ".compare-toolbar-actions {\n    display: grid;" in mobile_rule
+    assert ".compare-summary-list {\n    grid-template-columns: repeat(2, minmax(0, 1fr));" in mobile_rule
+    assert ".compare-table {\n    min-width: 520px;" in style_response.text
 
 
 def test_profile_back_link_preserves_return_search_query():
@@ -493,10 +501,10 @@ def test_profile_mobile_layout_keeps_summary_near_first_viewport():
 
     assert style_response.status_code == 200
     mobile_css = style_response.text.split("@media (max-width: 560px)", 1)[1]
-    assert ".profile-hero {\n    min-height: 256px;" in mobile_css
+    assert ".profile-hero {\n    min-height: 236px;" in mobile_css
     assert ".profile-hero-badges {\n    display: none;" in mobile_css
     assert ".profile-rating-card {\n    left: 16px;\n    bottom: 16px;\n    width: min(205px, calc(100% - 32px));" in mobile_css
-    assert ".profile-basic-card {\n    border-radius: 10px;\n    padding: 16px;" in mobile_css
+    assert ".profile-basic-card {\n    border-radius: 10px;\n    padding: 14px;" in mobile_css
     assert ".profile-basic-heading {\n    margin-bottom: 12px;" in mobile_css
     assert ".profile-basic-grid div {\n    padding-top: 10px;\n    padding-bottom: 10px;" in mobile_css
     assert ".profile-basic-grid .profile-basic-wide {\n    grid-column: 1 / -1;" in mobile_css
@@ -982,7 +990,7 @@ def test_relationship_summary_cards_open_company_list_modal():
     assert "relationship-list-modal" in script_response.text
     assert ".relationship-list-modal" in style_response.text
     assert ".relationship-list-items" in style_response.text
-    assert "/styles.css?v=company-profile-77" in profile_response.text
+    assert "/styles.css?v=company-profile-78" in profile_response.text
     assert "/profile-page-5.js?v=company-profile-60" in profile_response.text
 
 
@@ -1053,7 +1061,7 @@ def test_profile_frontend_renders_normalized_dart_insight_cards():
     assert ".ownership-stacked-bar" in style_response.text
     assert ".ownership-bar-segment" in style_response.text
     assert ".shareholder-detail-modal" in style_response.text
-    assert "/styles.css?v=company-profile-77" in profile_response.text
+    assert "/styles.css?v=company-profile-78" in profile_response.text
     assert "/profile-page-5.js?v=company-profile-60" in profile_response.text
 
 
@@ -1116,7 +1124,7 @@ def test_profile_mobile_styles_reduce_dense_profile_sections():
 
     assert style_response.status_code == 200
     mobile_rule = style_response.text.split("@media (max-width: 560px)", 1)[1]
-    assert ".profile-basic-grid {\n    grid-template-columns: 1fr;" in mobile_rule
+    assert ".profile-basic-grid {\n    grid-template-columns: repeat(2, minmax(0, 1fr));" in mobile_rule
     assert ".profile-basic-grid div:nth-child(even) {\n    border-left: 0;" in mobile_rule
     assert ".profile-section-nav {\n    display: flex;" in mobile_rule
     assert ".company-ai-summary-card.is-collapsed-mobile" not in mobile_rule
