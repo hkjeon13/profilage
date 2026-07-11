@@ -4,7 +4,7 @@
   max-width: 100%;
   margin-top: 24px;
   padding-right: 42px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .stock-chart svg {
@@ -84,6 +84,14 @@
   pointer-events: none;
   text-align: right;
   transform: translate(-50%, -50%);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 120ms ease, visibility 120ms ease;
+}
+
+.stock-chart.is-active .stock-chart-tooltip {
+  opacity: 1;
+  visibility: visible;
 }
 
 .stock-chart-tooltip strong,
@@ -182,6 +190,18 @@
 }
 
 @media (max-width: 560px) {
+  .stock-range-tabs {
+    flex-wrap: nowrap;
+    gap: 2px;
+  }
+
+  .stock-range-tabs button {
+    min-width: 0;
+    flex: 1 1 0;
+    padding: 0 2px;
+    font-size: 10px;
+  }
+
   .stock-chart-tooltip {
     min-width: 104px;
     max-width: min(138px, calc(100% - 14px));

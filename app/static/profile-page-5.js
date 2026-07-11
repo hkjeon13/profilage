@@ -215,7 +215,9 @@ function normalizeCompanyInfoPayload(info) {
 }
 
 function text(value, fallback = "-") {
-  return value === undefined || value === null || value === "" ? fallback : value;
+  if (value === undefined || value === null || value === "") return fallback;
+  if (typeof value === "string" && value.trim() === "") return fallback;
+  return value;
 }
 
 function escapeHtml(value) {
@@ -313,9 +315,15 @@ function formatDateTime(value) {
 }
 
 function homepageUrl(value) {
-  const url = text(value, "");
-  if (!url) return "";
-  return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+  const source = String(text(value, "")).trim();
+  if (!source) return "";
+  const normalized = /^https?:\/\//i.test(source) ? source : `https://${source}`;
+  try {
+    const parsed = new URL(normalized);
+    return ["http:", "https:"].includes(parsed.protocol) && parsed.hostname ? parsed.href : "";
+  } catch {
+    return "";
+  }
 }
 
 function formatNumber(value) {
@@ -731,6 +739,7 @@ function setupStockChartInteractions() {
     };
 
     updateStockChartSelection(chart, points.at(-1));
+    chart.classList.remove("is-active");
 
     chart.addEventListener("pointermove", (event) => {
       selectNearestPoint(event.clientX);
@@ -745,6 +754,9 @@ function setupStockChartInteractions() {
     });
     chart.addEventListener("mousemove", (event) => {
       selectNearestPoint(event.clientX);
+    });
+    chart.addEventListener("pointerleave", () => {
+      chart.classList.remove("is-active");
     });
     chart.addEventListener("mousedown", (event) => {
       selectNearestPoint(event.clientX);
@@ -860,6 +872,7 @@ async function fetchJson(url, params) {
 
 function renderProfileSkeleton() {
   profileCard?.classList.add("is-loading");
+  profileSubtitle.hidden = false;
   profileTitle.innerHTML = `<span class="skeleton-line skeleton-hero-title"></span>`;
   profileSubtitle.innerHTML = `<span class="skeleton-line skeleton-hero-subtitle"></span>`;
   profileDetail.innerHTML = `
@@ -885,7 +898,10 @@ function renderProfileSkeleton() {
 function renderError(message) {
   profileCard?.classList.remove("is-loading");
   profileCard?.classList.add("has-error");
+  const logo = document.querySelector(".company-logo-box");
+  if (logo) logo.textContent = "P";
   profileTitle.textContent = "기업 프로필을 열 수 없습니다";
+  profileSubtitle.hidden = false;
   profileSubtitle.textContent = message;
   if (profileBasicCard) {
     profileBasicCard.innerHTML = `
@@ -1292,8 +1308,8 @@ function renderDisclosureEventTimeline(events) {
             const viewerItem = disclosureEventToViewerItem(event);
             return `
               <li>
-                <span class="disclosure-event-badge disclosure-event-${attr(event.category)}">${escapeHtml(disclosureEventLabel(event.category))}</span>
                 <span class="disclosure-event-date">${escapeHtml(compactDate(event.date))}</span>
+                <span class="disclosure-event-badge disclosure-event-${attr(event.category)}">${escapeHtml(disclosureEventLabel(event.category))}</span>
                 <span class="disclosure-event-title-row">
                   <span class="disclosure-event-title">
                     ${renderDisclosureViewerTrigger(viewerItem)}
@@ -1892,10 +1908,9 @@ function setupShareholderDetailButtons() {
 function renderDartInsightDetailButtons(insights) {
   if (!insights?.basis?.business_year || !insights?.basis?.report_code) return "";
   return `
-    <div class="dart-insight-detail-actions">
-      <button type="button" data-dart-insight-detail-kind="capital">주식구조 더보기</button>
-      <button type="button" data-dart-insight-detail-kind="people">임직원 더보기</button>
-    </div>
+    <button class="dart-insight-more-button" type="button" data-dart-insight-detail-kind="all" aria-label="DART 상세정보 더보기" title="DART 상세정보 더보기">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="19" cy="12" r="1.5"></circle></svg>
+    </button>
   `;
 }
 
@@ -1903,28 +1918,16 @@ function renderCompanyInsightCards(insights) {
   if (!insights) return "";
   const ratioItems = insights.ratios?.items || [];
   const basisPayload = attr(JSON.stringify(insights.basis || {}));
-  const cards = [
-    insights.ownership
-      ? `
+  const ownershipCard = insights.ownership
+    ? `
         <section class="company-insight-card">
           <div class="block-heading"><h3>최대주주</h3></div>
           ${renderOwnershipStackedBar(insights.ownership)}
         </section>
       `
-      : "",
-    insights.dividend
-      ? `
-        <section class="company-insight-card">
-          <div class="block-heading"><h3>배당</h3></div>
-          <dl class="compact-metric-grid">
-            ${renderInsightMetric("주당배당금", insights.dividend.dividend_per_share)}
-            ${renderInsightMetric("배당성향", insights.dividend.payout_ratio)}
-          </dl>
-        </section>
-      `
-      : "",
-    insights.audit
-      ? `
+    : "";
+  const auditCard = insights.audit
+    ? `
         <section class="company-insight-card">
           <div class="block-heading"><h3>감사의견</h3></div>
           <dl class="compact-metric-grid">
@@ -1933,9 +1936,20 @@ function renderCompanyInsightCards(insights) {
           </dl>
         </section>
       `
-      : "",
-    ratioItems.length
-      ? `
+    : "";
+  const dividendCard = insights.dividend
+    ? `
+        <section class="company-insight-card">
+          <div class="block-heading"><h3>배당</h3></div>
+          <dl class="compact-metric-grid">
+            ${renderInsightMetric("주당배당금", insights.dividend.dividend_per_share)}
+            ${renderInsightMetric("배당성향", insights.dividend.payout_ratio)}
+          </dl>
+        </section>
+      `
+    : "";
+  const ratioCard = ratioItems.length
+    ? `
         <section class="company-insight-card">
           <div class="block-heading"><h3>재무비율</h3></div>
           <dl class="compact-metric-grid">
@@ -1943,11 +1957,15 @@ function renderCompanyInsightCards(insights) {
           </dl>
         </section>
       `
-      : "",
-  ].filter(Boolean);
-  if (!cards.length) {
+    : "";
+  const columns = [
+    { side: "left", cards: [ownershipCard, auditCard].filter(Boolean) },
+    { side: "right", cards: [dividendCard, ratioCard].filter(Boolean) },
+  ].filter((column) => column.cards.length);
+  if (!columns.length) {
     return `<article class="info-block company-insight-empty"><p class="empty-copy">표시할 심화 정보가 없습니다.</p></article>`;
   }
+  const gridClass = columns.length === 1 ? " is-single-column" : "";
   const sourceMeta = insights.basis
     ? `<p class="company-insight-source">출처 DART 정기보고서 · ${escapeHtml(insights.basis.business_year || "")} ${escapeHtml(insights.basis.report_name || "")} · 정정 공시가 있으면 수치가 바뀔 수 있습니다.</p>`
     : `<p class="company-insight-source">출처 DART 정기보고서 · 정정 공시가 있으면 수치가 바뀔 수 있습니다.</p>`;
@@ -1955,12 +1973,20 @@ function renderCompanyInsightCards(insights) {
     <article class="info-block company-insight-summary-card" aria-label="기업 심화 정보" data-dart-insight-basis="${basisPayload}">
       <div class="block-heading company-insight-summary-heading">
         <h3>DART 핵심정보</h3>
+        ${renderDartInsightDetailButtons(insights)}
       </div>
-      <div class="company-insight-card-grid">
-        ${cards.join("")}
+      <div class="company-insight-card-grid${gridClass}">
+        ${columns
+          .map(
+            (column) => `
+              <div class="company-insight-column company-insight-column-${column.side}">
+                ${column.cards.join("")}
+              </div>
+            `,
+          )
+          .join("")}
       </div>
       ${sourceMeta}
-      ${renderDartInsightDetailButtons(insights)}
     </article>
   `;
 }
@@ -2091,8 +2117,20 @@ async function openDartInsightDetailModal(button) {
   const corpCode = profileDetail.dataset.dartCorpCode;
   const modal = ensureDartInsightDetailModal();
   openAccessibleModal(modal, button, "has-dart-insight-detail-open", ".dart-insight-detail-close");
-  modal.querySelector("#dart-insight-detail-title").textContent = kind === "capital" ? "주식 구조" : "임직원";
+  modal.querySelector("#dart-insight-detail-title").textContent = kind === "all" ? "DART 상세정보" : kind === "capital" ? "주식 구조" : "임직원";
   modal.querySelector("[data-dart-insight-detail-body]").innerHTML = `<p class="empty-copy">불러오는 중입니다.</p>`;
+  if (kind === "all") {
+    const [capital, people] = await Promise.all(["capital", "people"].map((detailKind) => fetchJson("/api/company/get_dart_company_insight_detail", {
+      corp_code: corpCode,
+      business_year: basis.business_year,
+      report_code: basis.report_code,
+      kind: detailKind,
+    })));
+    modal.querySelector("[data-dart-insight-detail-body]").innerHTML = `
+      <section class="dart-insight-combined-section"><h4>주식 구조</h4>${renderDartInsightDetailRows(capital)}</section>
+      <section class="dart-insight-combined-section"><h4>임직원</h4>${renderDartInsightDetailRows(people)}</section>`;
+    return;
+  }
   const payload = await fetchJson("/api/company/get_dart_company_insight_detail", {
     corp_code: corpCode,
     business_year: basis.business_year,
@@ -2746,27 +2784,106 @@ async function loadCompanyProfileSummary(crno) {
   }
 }
 
-function renderProfileBasicCard({ outline, dartCompany, listed, market, crno, homepage }) {
+function setProfileFieldTooltipState(button, open) {
+  if (!button) return;
+  button.setAttribute("aria-expanded", String(open));
+}
+
+function closeProfileFieldTooltips(except = null) {
+  profileBasicCard?.querySelectorAll(".profile-field-info[aria-expanded=\"true\"]").forEach((button) => {
+    if (button !== except) setProfileFieldTooltipState(button, false);
+  });
+}
+
+function setupProfileFieldTooltips() {
+  if (!profileBasicCard || profileBasicCard.dataset.tooltipBound === "true") return;
+  profileBasicCard.dataset.tooltipBound = "true";
+
+  profileBasicCard.addEventListener("pointerdown", (event) => {
+    const button = event.target.closest(".profile-field-info");
+    if (button) button.dataset.pointerType = event.pointerType || "mouse";
+  });
+
+  profileBasicCard.addEventListener("pointerover", (event) => {
+    if (event.pointerType && event.pointerType !== "mouse") return;
+    const button = event.target.closest(".profile-field-info");
+    if (!button || button.contains(event.relatedTarget)) return;
+    closeProfileFieldTooltips(button);
+    setProfileFieldTooltipState(button, true);
+  });
+
+  profileBasicCard.addEventListener("pointerout", (event) => {
+    if (event.pointerType && event.pointerType !== "mouse") return;
+    const button = event.target.closest(".profile-field-info");
+    if (!button || button.contains(event.relatedTarget) || document.activeElement === button) return;
+    setProfileFieldTooltipState(button, false);
+  });
+
+  profileBasicCard.addEventListener("focusin", (event) => {
+    const button = event.target.closest(".profile-field-info");
+    if (!button) return;
+    closeProfileFieldTooltips(button);
+    setProfileFieldTooltipState(button, true);
+  });
+
+  profileBasicCard.addEventListener("focusout", (event) => {
+    const button = event.target.closest(".profile-field-info");
+    if (!button || button.contains(event.relatedTarget)) return;
+    setProfileFieldTooltipState(button, false);
+  });
+
+  profileBasicCard.addEventListener("click", (event) => {
+    const button = event.target.closest(".profile-field-info");
+    if (!button) return;
+    const pointerType = button.dataset.pointerType || (event.detail === 0 ? "keyboard" : "mouse");
+    delete button.dataset.pointerType;
+    const shouldToggle = pointerType === "touch" || pointerType === "pen" || pointerType === "keyboard";
+    const nextOpen = shouldToggle ? button.getAttribute("aria-expanded") !== "true" : true;
+    closeProfileFieldTooltips(button);
+    setProfileFieldTooltipState(button, nextOpen);
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    const button = profileBasicCard.querySelector(".profile-field-info[aria-expanded=\"true\"]");
+    if (!button) return;
+    event.preventDefault();
+    setProfileFieldTooltipState(button, false);
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest(".profile-field-info")) closeProfileFieldTooltips();
+  });
+}
+
+function renderProfileBasicCard({ outline, dartCompany, listed, crno, homepage }) {
+  const employeeCount = Number(String(outline.enpEmpeCnt ?? "").replaceAll(",", ""));
+  const hasEmployeeCount = Number.isFinite(employeeCount) && employeeCount > 0;
+  const employeeBasis = hasEmployeeCount && outline.basDt ? compactDate(outline.basDt) : "";
+  const employeeText = hasEmployeeCount
+    ? employeeCount.toLocaleString("ko-KR")
+    : "-";
+  const employeeTooltipId = "profile-employee-basis-tooltip";
   const rows = [
     ["CRNO", escapeHtml(text(outline.crno || dartCompany.jurir_no || crno))],
     ["대표자", escapeHtml(text(outline.enpRprFnm || dartCompany.ceo_nm))],
-    ["법인구분", escapeHtml(text(dartCompany.corp_cls ? `DART ${dartCompany.corp_cls}` : market))],
     ["설립일", escapeHtml(compactDate(outline.enpEstbDt || dartCompany.est_dt))],
     ["상장일", escapeHtml(compactDate(listed.lstgDt || outline.fstOpegDt))],
-    ["종업원수", escapeHtml(`${formatNumber(outline.enpEmpeCnt)}${outline.basDt ? ` (${compactDate(outline.basDt)} 기준)` : ""}`)],
-    ["본사주소", escapeHtml(text(outline.enpBsadr, "주소 정보 없음"))],
-    ["홈페이지", homepage ? `<a href="${attr(homepage)}" target="_blank" rel="noreferrer">${escapeHtml(homepage.replace(/^https?:\/\//, ""))} ↗</a>` : "정보 없음"],
+    [employeeBasis
+      ? `종업원수 <button type="button" class="profile-field-info" aria-label="종업원 수 기준일 ${attr(employeeBasis)}" aria-describedby="${employeeTooltipId}" aria-expanded="false"><span class="profile-field-info-mark" aria-hidden="true">i</span><span id="${employeeTooltipId}" class="profile-field-tooltip" role="tooltip">${escapeHtml(employeeBasis)} 기준</span></button>`
+      : "종업원수", escapeHtml(employeeText), Boolean(employeeBasis)],
+    ["본사주소", escapeHtml(text(outline.enpBsadr, "-"))],
+    ["홈페이지", homepage ? `<a href="${attr(homepage)}" target="_blank" rel="noreferrer" aria-label="${attr(homepage.replace(/^https?:\/\//, ""))} 새 창에서 열기">${escapeHtml(homepage.replace(/^https?:\/\//, ""))} ↗</a>` : "-"],
   ];
   return `
     <div class="profile-basic-heading">
       <h2>기업 기본정보</h2>
-      <span>${escapeHtml(market)}</span>
     </div>
     <dl class="profile-basic-grid">
       ${rows
-        .map(([label, value], index) => `
-          <div class="${index >= 6 ? "profile-basic-wide" : ""}">
-            <dt>${escapeHtml(label)}</dt>
+        .map(([label, value, labelIsHtml], index) => `
+          <div class="${index >= 5 ? "profile-basic-wide" : ""}">
+            <dt>${labelIsHtml ? label : escapeHtml(label)}</dt>
             <dd>${value}</dd>
           </div>
         `)
@@ -2778,11 +2895,12 @@ function renderProfileBasicCard({ outline, dartCompany, listed, market, crno, ho
 function completeProfileHeader({ info, outline, listed, crno }) {
   const dartCompany = info.dart_company || {};
   const homepage = homepageUrl(outline.enpHmpgUrl || dartCompany.hm_url);
-  const market = text(listed.mrktCtg || outline.corpRegMrktDcdNm, "비상장/정보 없음");
   const logo = document.querySelector(".company-logo-box");
+  const englishName = String(text(outline.corpEnsnNm || dartCompany.corp_name_eng, "")).trim();
   profileCard?.classList.remove("is-loading", "has-error");
   profileTitle.textContent = text(outline.corpNm, "기업명 정보 없음");
-  profileSubtitle.textContent = text(outline.corpEnsnNm || dartCompany.corp_name_eng, "영문명 정보 없음");
+  profileSubtitle.textContent = englishName;
+  profileSubtitle.hidden = !englishName;
   profileDetail.dataset.dartCorpCode = info.dart_corp_code?.match?.corp_code || dartCompany.corp_code || "";
   if (logo) logo.textContent = initials(outline.corpNm);
   if (profileBasicCard) {
@@ -2790,7 +2908,6 @@ function completeProfileHeader({ info, outline, listed, crno }) {
       outline,
       dartCompany,
       listed,
-      market,
       crno,
       homepage,
     });
@@ -2942,4 +3059,5 @@ async function loadProfile() {
 }
 
 updateProfileCompareNav();
+setupProfileFieldTooltips();
 loadProfile();

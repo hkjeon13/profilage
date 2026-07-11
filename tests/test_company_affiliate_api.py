@@ -182,13 +182,14 @@ def test_root_serves_company_search_frontend():
     assert "Profilage" in response.text
     assert '<body class="is-idle google-like-home">' in response.text
     assert 'class="home-title"' in response.text
-    assert 'class="example-query-list"' in response.text
+    assert 'class="recent-query-list"' in response.text
+    assert 'aria-label="최근 검색"' in response.text
     assert "/api/company/get_corp_outline" in response.text
     assert "/profile?crno=" in response.text
     assert "/docs" not in response.text
     assert "/openapi.json" not in response.text
-    assert "/styles.css?v=google-home-14" in response.text
-    assert "/app.js?v=google-home-13" in response.text
+    assert "/styles.css?v=google-home-15" in response.text
+    assert "/app.js?v=google-home-14" in response.text
 
 
 def test_security_headers_are_added_to_frontend_response():
@@ -250,12 +251,14 @@ def test_homepage_positions_as_b2b_company_data_platform():
     assert "기업 정보를 빠르게 찾고 비교하세요" in response.text
     assert "금융위원회, DART, 주가 데이터를 기반" in response.text
     assert "기업명, 종목코드, 법인등록번호로 검색" in response.text
-    assert "data-example-query" in response.text
+    assert "data-recent-query-list" in response.text
     assert "data-source-rail" in response.text
     assert "B2B 기업 데이터 플랫폼" in response.text
     assert "인물명" not in response.text
-    assert "[data-example-query]" in script_response.text
+    assert "RECENT_SEARCH_STORAGE_KEY" in script_response.text
+    assert "[data-recent-query]" in script_response.text
     assert ".home-title" in style_response.text
+    assert "white-space: nowrap;" in style_response.text
     assert ".source-rail" in style_response.text
 
 
@@ -270,7 +273,7 @@ def test_homepage_search_submit_uses_icon_and_matches_result_width():
     assert 'class="search-submit-icon"' in response.text
     assert 'class="visually-hidden">검색</span>' in response.text
     assert '<button class="search-submit" type="submit">검색</button>' not in response.text
-    assert ".google-like-home:not(.is-idle) .search-form {\n  width: min(760px, 100%);" in style_response.text
+    assert ".google-like-home:not(.is-idle) .search-form {\n  width: min(980px, 100%);" in style_response.text
     assert ".content-grid {\n  display: grid;\n  grid-template-columns: minmax(0, 760px);" in style_response.text
 
 
@@ -281,15 +284,26 @@ def test_search_results_render_dense_business_rows_with_entity_type():
 
     assert script_response.status_code == 200
     assert style_response.status_code == 200
-    assert "result-card-main" in script_response.text
-    assert "result-meta-grid" in script_response.text
+    assert "result-company-cell" in script_response.text
+    assert "result-list-header" in script_response.text
+    assert 'data-label="법인등록번호"' in script_response.text
+    assert "result-column" in script_response.text
     assert "data-result-compare-add" in script_response.text
     assert "entity-type-badge" in script_response.text
+    assert "result-badge-row" in script_response.text
+    assert 'aria-label="프로필 보기"' in script_response.text
+    assert '"비교 추가"' in script_response.text
+    assert 'aria-pressed="${selectedCrnos.has(company.crno) ? "true" : "false"}"' in script_response.text
+    assert 'class="result-profile-link result-action-icon"' in script_response.text
     assert "setupResultCompareButtons" in script_response.text
-    assert ".result-card-main" in style_response.text
-    assert ".result-meta-grid" in style_response.text
+    assert ".result-company-cell" in style_response.text
+    assert ".result-list-header" in style_response.text
+    assert ".entity-result-row" in style_response.text
+    assert ".result-column" in style_response.text
     assert ".result-data-badges" in style_response.text
     assert ".entity-type-badge" in style_response.text
+    assert ".result-badge-row" in style_response.text
+    assert ".result-actions .result-action-icon" in style_response.text
     badge_rule = style_response.text.split(".entity-type-badge,\n.result-market-badge,", 1)[1].split("}", 1)[0]
     assert "align-items: center;" in badge_rule
     assert "justify-content: center;" in badge_rule
@@ -330,11 +344,11 @@ def test_profile_page_serves_company_profile_frontend():
     assert '<a href="/openapi.json">OpenAPI</a>' not in response.text
     assert '<a href="/docs">문서</a>' not in response.text
     assert '<a href="/">새 검색</a>' not in response.text
-    assert "/styles.css?v=company-profile-78" in response.text
-    assert "/profile-chart-2.css?v=interactive-11" in response.text
+    assert "/styles.css?v=company-profile-84" in response.text
+    assert "/profile-chart-2.css?v=interactive-13" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-60" in response.text
+    assert "/profile-page-5.js?v=company-profile-66" in response.text
 
 
 def test_compare_page_serves_company_compare_frontend():
@@ -453,6 +467,15 @@ def test_profile_overview_groups_company_information_without_relationship_card()
         "function renderCompanyDetail", 1
     )[0]
     assert "종업원수" in basic_card_section
+    assert "profile-field-info" in basic_card_section
+    assert '<button type="button" class="profile-field-info"' in basic_card_section
+    assert 'aria-describedby="${employeeTooltipId}"' in basic_card_section
+    assert 'aria-expanded="false"' in basic_card_section
+    assert "profile-field-tooltip" in basic_card_section
+    assert "종업원 수 기준일" in basic_card_section
+    assert "hasEmployeeCount && outline.basDt" in basic_card_section
+    assert "setupProfileFieldTooltips" in script_response.text
+    assert 'document.querySelector("#profile-market-badge")' not in script_response.text
     assert "본사주소" in basic_card_section
     assert "홈페이지" in basic_card_section
     assert "DART 고유번호" not in basic_card_section
@@ -461,7 +484,7 @@ def test_profile_overview_groups_company_information_without_relationship_card()
     assert "ISIN" not in basic_card_section
     assert "상장일" in basic_card_section
     assert 'class="company-address-card"' not in script_response.text
-    assert 'text(outline.enpBsadr, "주소 정보 없음")' in script_response.text
+    assert 'text(outline.enpBsadr, "-")' in script_response.text
     assert 'text(outline.enpMainBizNm || listed.itmsNm, "정보 없음")' not in script_response.text
     assert "outline.enpEmpeCnt" in script_response.text
     assert "dartCompany.corp_code" in script_response.text
@@ -487,7 +510,7 @@ def test_profile_frontend_can_add_company_to_compare_list():
     assert "data-compare-link" in summary_template
     assert "data-profile-compare-status" in summary_template
     assert 'aria-pressed="${isCompareAdded ? "true" : "false"}"' in summary_template
-    assert "/profile-page-5.js?v=company-profile-60" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-66" in profile_response.text
     assert ".company-facts" not in style_response.text
     assert ".summary-heading-actions" not in style_response.text
     assert ".summary-compare-button" not in style_response.text
@@ -500,14 +523,16 @@ def test_profile_mobile_layout_keeps_summary_near_first_viewport():
         style_response = client.get("/styles.css")
 
     assert style_response.status_code == 200
-    mobile_css = style_response.text.split("@media (max-width: 560px)", 1)[1]
-    assert ".profile-hero {\n    min-height: 236px;" in mobile_css
-    assert ".profile-hero-badges {\n    display: none;" in mobile_css
-    assert ".profile-rating-card {\n    left: 16px;\n    bottom: 16px;\n    width: min(205px, calc(100% - 32px));" in mobile_css
-    assert ".profile-basic-card {\n    border-radius: 10px;\n    padding: 14px;" in mobile_css
-    assert ".profile-basic-heading {\n    margin-bottom: 12px;" in mobile_css
-    assert ".profile-basic-grid div {\n    padding-top: 10px;\n    padding-bottom: 10px;" in mobile_css
-    assert ".profile-basic-grid .profile-basic-wide {\n    grid-column: 1 / -1;" in mobile_css
+    assert "/* Unified company identity and basic-information header. */" in style_response.text
+    assert ".profile-top-grid {\n  grid-template-columns: minmax(0, .54fr) minmax(0, 1fr);" in style_response.text
+    assert ".company-logo-box {\n  width: 72px;\n  height: 72px;\n  flex: 0 0 72px;" in style_response.text
+    assert "width: 64px;\n    height: 64px;\n    flex-basis: 64px;" in style_response.text
+    assert "width: 56px;\n    height: 56px;\n    flex-basis: 56px;" in style_response.text
+    assert ".profile-field-info {\n  display: inline-grid;\n  position: relative;\n  width: 24px;\n  height: 24px;" in style_response.text
+    assert ".profile-field-info-mark {\n  display: grid;\n  width: 12px;\n  height: 12px;" in style_response.text
+    assert '.profile-field-info[aria-expanded="true"] .profile-field-tooltip' in style_response.text
+    assert ".profile-hero::after,\n.profile-hero-badges,\n.profile-rating-card {\n  display: none;" in style_response.text
+    assert "@media (max-width: 360px) {\n  .profile-basic-grid {\n    grid-template-columns: 1fr;" in style_response.text
     assert ".profile-basic-grid a {\n  display: inline-flex;\n  max-width: 100%;" in style_response.text
     assert "text-overflow: ellipsis;" in style_response.text
 
@@ -576,11 +601,12 @@ def test_profile_hero_uses_single_arrow_back_action_without_api_cta():
     assert ".profile-search-action" not in style_response.text
     assert 'class="profile-identity-row"' in response.text
     assert 'class="profile-title-block"' in response.text
+    assert 'id="profile-market-badge"' not in response.text
     assert ".profile-identity-row {\n  display: flex;" in style_response.text
     assert "profile-top-grid" in response.text
     assert "profile-basic-card" in response.text
     assert "padding: 28px 28px 24px;" in style_response.text
-    assert ".company-logo-box {\n  display: grid;\n  width: 48px;" in style_response.text
+    assert ".company-logo-box {\n  width: 72px;\n  height: 72px;" in style_response.text
     assert ".company-logo-box {\n  display: grid;\n  position: absolute;" not in style_response.text
     assert "overflow-wrap: anywhere;" in style_response.text
     assert ".profile-hero.is-loading .profile-title-block" in style_response.text
@@ -670,7 +696,7 @@ def test_financial_summary_cards_open_trend_modal_with_account_checks():
     assert ".financial-trend-chart" in style_response.text
     assert ".disclosure-summary-close,\n.disclosure-viewer-close,\n.financial-trend-close," in style_response.text
     assert "background: transparent;" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-60" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-66" in profile_response.text
 
 
 def test_financial_summary_more_link_is_in_card_heading():
@@ -814,7 +840,7 @@ def test_stock_window_tabs_expose_loading_error_and_refresh_metadata():
     assert "주가 정보를 불러오지 못했습니다" in script_response.text
     assert ".stock-window-status" in style_response.text
     assert ".company-market-card.is-loading-stock" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-60" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-66" in profile_response.text
 
 
 def test_profile_sections_render_source_and_basis_metadata():
@@ -861,7 +887,8 @@ def test_stock_chart_keeps_endpoint_axis_labels_visible():
     assert script_response.status_code == 200
     assert chart_style_response.status_code == 200
     assert "stock-chart-meta-end" in script_response.text
-    assert "visibility: hidden" not in chart_style_response.text
+    assert "visibility: hidden;" in chart_style_response.text
+    assert ".stock-chart.is-active .stock-chart-tooltip" in chart_style_response.text
 
 
 def test_stock_chart_uses_wide_mobile_aspect_ratio():
@@ -916,7 +943,7 @@ def test_stock_chart_tooltip_is_compact_on_mobile():
     assert "padding: 8px 9px;" in chart_style_response.text
     assert ".stock-chart-tooltip strong {\n    font-size: 13px;" in chart_style_response.text
     assert ".stock-chart-tooltip span {\n    margin-top: 3px;\n    font-size: 11px;" in chart_style_response.text
-    assert "/profile-chart-2.css?v=interactive-11" in profile_response.text
+    assert "/profile-chart-2.css?v=interactive-13" in profile_response.text
 
 
 def test_profile_mobile_layout_prevents_horizontal_overflow():
@@ -990,8 +1017,8 @@ def test_relationship_summary_cards_open_company_list_modal():
     assert "relationship-list-modal" in script_response.text
     assert ".relationship-list-modal" in style_response.text
     assert ".relationship-list-items" in style_response.text
-    assert "/styles.css?v=company-profile-78" in profile_response.text
-    assert "/profile-page-5.js?v=company-profile-60" in profile_response.text
+    assert "/styles.css?v=company-profile-84" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-66" in profile_response.text
 
 
 def test_relationship_summary_terms_have_tooltips():
@@ -1056,13 +1083,23 @@ def test_profile_frontend_renders_normalized_dart_insight_cards():
     assert "DART 핵심정보" in script_response.text
     assert "company-insight-summary-card" in script_response.text
     assert "company-insight-card-grid" in script_response.text
+    assert 'company-insight-column-${column.side}' in script_response.text
+    assert '{ side: "left", cards:' in script_response.text
+    assert '{ side: "right", cards:' in script_response.text
+    assert 'cards: [ownershipCard, auditCard].filter(Boolean)' in script_response.text
+    assert 'cards: [dividendCard, ratioCard].filter(Boolean)' in script_response.text
+    assert 'columns.length === 1 ? " is-single-column" : ""' in script_response.text
     assert ".company-insight-summary-card" in style_response.text
     assert ".company-insight-card-grid" in style_response.text
+    assert ".company-insight-column-left {\n  padding-right: 28px;" in style_response.text
+    assert ".company-insight-column-right {\n  min-height: 100%;\n  padding-left: 28px;\n  border-left: 1px solid #eaecf0;" in style_response.text
+    assert ".company-insight-card-grid.is-single-column .company-insight-column" in style_response.text
+    assert ".company-insight-column {\n    gap: 24px;\n    padding-right: 0;\n    padding-left: 0;\n    border-left: 0;" in style_response.text
     assert ".ownership-stacked-bar" in style_response.text
     assert ".ownership-bar-segment" in style_response.text
     assert ".shareholder-detail-modal" in style_response.text
-    assert "/styles.css?v=company-profile-78" in profile_response.text
-    assert "/profile-page-5.js?v=company-profile-60" in profile_response.text
+    assert "/styles.css?v=company-profile-84" in profile_response.text
+    assert "/profile-page-5.js?v=company-profile-66" in profile_response.text
 
 
 def test_profile_frontend_exposes_lazy_dart_detail_modal():
@@ -1076,15 +1113,22 @@ def test_profile_frontend_exposes_lazy_dart_detail_modal():
     assert "openDartInsightDetailModal" in script_response.text
     assert "/api/company/get_dart_company_insight_detail" in script_response.text
     assert "data-dart-insight-detail-kind" in script_response.text
-    assert "주식구조 더보기" in script_response.text
-    assert "임직원 더보기" in script_response.text
+    assert "DART 상세정보 더보기" in script_response.text
+    assert '<section class="dart-insight-combined-section"><h4>주식 구조</h4>' in script_response.text
+    assert '<section class="dart-insight-combined-section"><h4>임직원</h4>' in script_response.text
     assert ".dart-insight-detail-modal" in style_response.text
     insight_template = script_response.text.split("function renderCompanyInsightCards", 1)[1].split(
         "function renderRiskSignalCards", 1
     )[0]
+    assert insight_template.index("renderDartInsightDetailButtons") < insight_template.index("company-insight-card-grid")
     assert insight_template.index("company-insight-card-grid") < insight_template.index("${sourceMeta}")
-    assert insight_template.index("${sourceMeta}") < insight_template.index("renderDartInsightDetailButtons")
-    assert ".dart-insight-detail-actions {\n  display: flex;\n  flex-wrap: wrap;\n  justify-content: flex-end;" in style_response.text
+    assert ".dart-insight-more-button" in style_response.text
+    more_button_rule = style_response.text.split(".dart-insight-more-button {", 1)[1].split("}", 1)[0]
+    assert "border: 0;" in more_button_rule
+    assert "background: transparent;" in more_button_rule
+    assert ".dart-insight-more-button:hover {\n  background: #f2f4f7;" in style_response.text
+    assert ".dart-insight-more-button:active {\n  background: #e4e7ec;" in style_response.text
+    assert ".dart-insight-more-button:focus-visible {\n  outline: 2px solid #1570ef;" in style_response.text
 
 
 def test_dart_detail_modal_formats_rows_with_human_labels():
@@ -1190,13 +1234,14 @@ def test_profile_frontend_exposes_disclosure_events_and_risk_signals():
     assert 'class="disclosure-title-row"' in script_response.text
     assert 'class="disclosure-title-cell"' in script_response.text
     event_row_template = script_response.text.split('class="disclosure-event-timeline"', 1)[1].split("</li>", 1)[0]
-    assert event_row_template.index("disclosure-event-badge") < event_row_template.index("disclosure-event-date")
+    assert event_row_template.index("disclosure-event-date") < event_row_template.index("disclosure-event-badge")
     assert "renderRiskSignalCards" in script_response.text
     assert "상장/주가 정보를 찾을 수 없습니다" in script_response.text
     assert "renderRelationshipFilters" in script_response.text
     assert "data-relationship-filter" in script_response.text
     assert ".disclosure-event-timeline" in style_response.text
-    assert "grid-template-columns: 84px 76px minmax(0, 1fr);" in style_response.text
+    assert "grid-template-columns: 76px 84px minmax(0, 1fr);" in style_response.text
+    assert "grid-template-columns: 76px minmax(84px, 1fr);" in style_response.text
     assert "justify-content: center;" in style_response.text
     assert ".disclosure-event-title .disclosure-viewer-trigger" in style_response.text
     assert "text-overflow: ellipsis;" in style_response.text
