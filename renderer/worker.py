@@ -122,7 +122,7 @@ async def render_job(client, browser, envelope: dict) -> None:
 
 
 async def main() -> None:
-    client = redis.from_url(VALKEY_URL, decode_responses=True)
+    client = redis.from_url(VALKEY_URL, decode_responses=True, socket_connect_timeout=5, socket_timeout=10)
     async with async_playwright() as playwright:
         browser = await playwright.chromium.launch(headless=True, args=["--disable-dev-shm-usage", "--no-sandbox"])
         try:

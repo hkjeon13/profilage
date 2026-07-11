@@ -51,6 +51,7 @@ def test_fetch_ticket_rejects_tampering(monkeypatch):
     monkeypatch.setenv("PERSON_HEADLESS_ALLOWED_DOMAINS", "example.com")
     monkeypatch.setenv("PERSON_HEADLESS_ENABLED", "true")
     ticket = issue_fetch_ticket("https://example.com/profile", job_id="paj_test")
-    replacement = "A" if ticket.token[-1] != "A" else "B"
+    body, signature = ticket.token.split(".", 1)
+    replacement = "A" if signature[0] != "A" else "B"
     with pytest.raises(PermissionError, match="invalid_ticket"):
-        verify_fetch_ticket(ticket.token[:-1] + replacement)
+        verify_fetch_ticket(f"{body}.{replacement}{signature[1:]}")
