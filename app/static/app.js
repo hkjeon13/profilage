@@ -9,11 +9,14 @@ const compareTray = document.querySelector("[data-compare-tray]");
 const compareTrayList = document.querySelector("[data-compare-tray-list]");
 const compareTrayLink = document.querySelector("[data-compare-tray-link]");
 const compareTrayStatus = document.querySelector("[data-compare-tray-status]");
+const recentQueryList = document.querySelector("[data-recent-query-list]");
 
 const outlineUrl = "/api/company/get_corp_outline";
 const listedUrl = "/api/company/get_krx_listed_item";
 const COMPARE_STORAGE_KEY = "profilage.compareCompanies";
 const MAX_COMPARE_COMPANIES = 5;
+const RECENT_SEARCH_STORAGE_KEY = "profilage.recentSearches";
+const MAX_RECENT_SEARCHES = 5;
 const SEARCH_RESULT_PAGE_SIZE = 20;
 const SEARCH_LOAD_MORE_OFFSET = 420;
 const searchState = {
@@ -109,7 +112,15 @@ function updateCompareControls() {
   const selectedCrnos = new Set(compareItems().map((item) => item.crno));
   document.querySelectorAll("[data-result-compare-add]").forEach((button) => {
     const isSelected = selectedCrnos.has(button.dataset.resultCompareAdd);
-    button.textContent = isSelected ? "추가됨" : "비교 추가";
+    const label = isSelected ? "비교에 추가됨" : "비교 추가";
+    button.setAttribute("aria-label", label);
+    button.setAttribute("title", label);
+    button.innerHTML = `
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        ${isSelected ? '<path d="m6 12 4 4 8-9"></path>' : '<path d="M8 5H5v14h3M16 5h3v14h-3M12 8v8M8 12h8"></path>'}
+      </svg>
+      <span class="visually-hidden">${label}</span>
+    `;
     button.disabled = isSelected;
     button.setAttribute("aria-pressed", String(isSelected));
   });
@@ -167,6 +178,41 @@ function addCompareItem(company) {
   saveCompareItems(nextItems);
   updateCompareTray(`${text(company.name, "기업")}을 비교함에 추가했습니다.`);
   return true;
+}
+
+function recentSearches() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(RECENT_SEARCH_STORAGE_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed.filter(Boolean).map(String) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveRecentSearch(query) {
+  const normalizedQuery = query.trim();
+  if (!normalizedQuery) return;
+  try {
+    const next = [
+      normalizedQuery,
+      ...recentSearches().filter((item) => item !== normalizedQuery),
+    ].slice(0, MAX_RECENT_SEARCHES);
+    localStorage.setItem(RECENT_SEARCH_STORAGE_KEY, JSON.stringify(next));
+    renderRecentSearches();
+  } catch {
+    // Recent searches are a convenience; search should still work if storage is unavailable.
+  }
+}
+
+function renderRecentSearches() {
+  if (!recentQueryList) return;
+  const searches = recentSearches();
+  recentQueryList.innerHTML = searches
+    .map(
+      (query) =>
+        `<button type="button" data-recent-query="${attr(query)}">${escapeHtml(query)}</button>`,
+    )
+    .join("");
 }
 
 function setStatus(message) {
@@ -233,6 +279,21 @@ function renderResults(items, { append = false } = {}) {
   const fragment = document.createDocumentFragment();
   const selectedCrnos = new Set(compareItems().map((item) => item.crno));
 
+  if (!append) {
+    const header = document.createElement("div");
+    header.className = "result-list-header";
+    header.setAttribute("aria-hidden", "true");
+    header.innerHTML = `
+      <span>기업</span>
+      <span>법인등록번호</span>
+      <span>업종</span>
+      <span>대표자</span>
+      <span>직원 수</span>
+      <span>작업</span>
+    `;
+    fragment.appendChild(header);
+  }
+
   items.forEach((company) => {
     const displayName = company.listedCorpName || company.corpNm || company.itmsNm;
     const market = company.mrktCtg || company.corpRegMrktDcdNm;
@@ -240,36 +301,35 @@ function renderResults(items, { append = false } = {}) {
     card.className = "result-card entity-result-row";
     card.dataset.crno = company.crno;
     card.innerHTML = `
-      <div class="result-card-main">
-        <div class="result-title-stack">
-          <span class="entity-type-badge">기업</span>
+      <div class="result-company-cell">
+        <div class="result-title-stack" data-label="기업">
+          <div class="result-badge-row">
+            <span class="entity-type-badge">기업</span>
+            <span class="result-market-badge">${escapeHtml(company.isListed ? text(market, "상장") : "비상장/확인 필요")}</span>
+          </div>
           <a class="result-title-link" href="${attr(profileUrl(company.crno))}">
             <strong>${escapeHtml(text(displayName, "기업명 정보 없음"))}</strong>
           </a>
           <span class="result-subtitle">${escapeHtml(text(company.corpEnsnNm || company.listedItemName || company.enpRprFnm, "보조 정보 없음"))}</span>
         </div>
-        <div class="result-actions">
-          <span class="result-market-badge">${escapeHtml(company.isListed ? text(market, "상장") : "비상장/확인 필요")}</span>
-          <a class="result-profile-link" href="${attr(profileUrl(company.crno))}">프로필 보기</a>
-          <button
-            type="button"
-            data-result-compare-add="${attr(company.crno)}"
-            data-result-name="${attr(displayName)}"
-            aria-pressed="${selectedCrnos.has(company.crno) ? "true" : "false"}"
-            ${selectedCrnos.has(company.crno) ? "disabled" : ""}
-          >${selectedCrnos.has(company.crno) ? "추가됨" : "비교 추가"}</button>
+        <div class="result-data-badges">
+          <span>${company.isListed ? "주가 가능" : "주가 미제공"}</span>
+          ${company.isListed ? `<span>${escapeHtml(text(company.srtnCd, "종목코드"))}</span>` : ""}
         </div>
       </div>
-      <div class="result-meta-grid">
-        <span><b>법인등록번호</b>${escapeHtml(text(company.crno))}</span>
-        <span><b>업종</b>${escapeHtml(text(company.enpMainBizNm || company.itmsNm, "정보 없음"))}</span>
-        <span><b>대표자</b>${escapeHtml(text(company.enpRprFnm, "정보 없음"))}</span>
-        <span><b>직원 수</b>${escapeHtml(formatResultNumber(company.enpEmpeCnt))}</span>
-      </div>
-      <div class="result-data-badges">
-        <span>${company.isListed ? "주가 가능" : "주가 미제공"}</span>
-        <span>기본정보</span>
-        ${company.isListed ? `<span>${escapeHtml(text(company.srtnCd, "종목코드"))}</span>` : ""}
+      <span class="result-column" data-label="법인등록번호">${escapeHtml(text(company.crno))}</span>
+      <span class="result-column" data-label="업종">${escapeHtml(text(company.enpMainBizNm || company.itmsNm, "정보 없음"))}</span>
+      <span class="result-column" data-label="대표자">${escapeHtml(text(company.enpRprFnm, "정보 없음"))}</span>
+      <span class="result-column" data-label="직원 수">${escapeHtml(formatResultNumber(company.enpEmpeCnt))}</span>
+      <div class="result-actions" data-label="작업">
+        <a class="result-profile-link result-action-icon" href="${attr(profileUrl(company.crno))}" aria-label="프로필 보기" title="프로필 보기">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="8" r="3.25"></circle><path d="M5.5 19c.7-3.4 3-5.25 6.5-5.25s5.8 1.85 6.5 5.25"></path></svg>
+          <span class="visually-hidden">프로필 보기</span>
+        </a>
+        <button class="result-action-icon" type="button" data-result-compare-add="${attr(company.crno)}" data-result-name="${attr(displayName)}" aria-label="${selectedCrnos.has(company.crno) ? "비교에 추가됨" : "비교 추가"}" title="${selectedCrnos.has(company.crno) ? "비교에 추가됨" : "비교 추가"}" aria-pressed="${selectedCrnos.has(company.crno) ? "true" : "false"}" ${selectedCrnos.has(company.crno) ? "disabled" : ""}>
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${selectedCrnos.has(company.crno) ? '<path d="m6 12 4 4 8-9"></path>' : '<path d="M8 5H5v14h3M16 5h3v14h-3M12 8v8M8 12h8"></path>'}</svg>
+          <span class="visually-hidden">${selectedCrnos.has(company.crno) ? "비교에 추가됨" : "비교 추가"}</span>
+        </button>
       </div>
     `;
     fragment.appendChild(card);
@@ -360,7 +420,14 @@ function setupResultCompareButtons() {
       const name = button.dataset.resultName;
       const added = addCompareItem({ crno, name });
       if (!added) return;
-      button.textContent = "추가됨";
+      button.setAttribute("aria-label", "비교에 추가됨");
+      button.setAttribute("title", "비교에 추가됨");
+      button.innerHTML = `
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="m6 12 4 4 8-9"></path>
+        </svg>
+        <span class="visually-hidden">비교에 추가됨</span>
+      `;
       button.disabled = true;
       button.setAttribute("aria-pressed", "true");
     });
@@ -468,6 +535,7 @@ async function searchCompanies(query) {
   searchState.isLoadingMore = false;
   document.body.classList.remove("is-idle");
   queryInput.value = query;
+  saveRecentSearch(query);
   syncSearchUrl(query);
   setSearchBusy(true);
   setStatus("검색 중...");
@@ -541,6 +609,14 @@ compareTrayLink?.addEventListener("click", (event) => {
 });
 
 updateCompareTray();
+
+recentQueryList?.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-recent-query]");
+  if (!button) return;
+  searchCompanies(button.dataset.recentQuery || "");
+});
+
+renderRecentSearches();
 
 const restoredQuery = new URLSearchParams(window.location.search).get("q");
 if (restoredQuery) {
