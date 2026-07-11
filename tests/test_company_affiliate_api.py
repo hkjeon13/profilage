@@ -188,8 +188,8 @@ def test_root_serves_company_search_frontend():
     assert "/profile?crno=" in response.text
     assert "/docs" not in response.text
     assert "/openapi.json" not in response.text
-    assert "/styles.css?v=person-search-layout-3" in response.text
-    assert "/app.js?v=person-search-3" in response.text
+    assert "/styles.css?v=person-search-layout-5" in response.text
+    assert "/app.js?v=person-search-4" in response.text
 
 
 def test_security_headers_are_added_to_frontend_response():
@@ -248,13 +248,13 @@ def test_homepage_positions_as_b2b_company_data_platform():
         style_response = client.get("/styles.css")
 
     assert response.status_code == 200
-    assert "기업 정보를 빠르게 찾고 비교하세요" in response.text
-    assert "금융위원회, DART, 주가 데이터를 기반" in response.text
+    assert "기업과 인물을 더 빠르게 탐색하세요" in response.text
+    assert "검증된 기업 데이터와 공개 출처를 한곳에서 검색하세요" in response.text
     assert "기업명, 종목코드, 법인등록번호로 검색" in response.text
     assert "data-recent-query-list" in response.text
     assert "data-source-rail" in response.text
-    assert "B2B 기업 데이터 플랫폼" in response.text
-    assert "인물명" not in response.text
+    assert 'data-search-mode="company"' in response.text
+    assert 'data-search-mode="person"' in response.text
     assert "RECENT_SEARCH_STORAGE_KEY" in script_response.text
     assert "[data-recent-query]" in script_response.text
     assert ".home-title" in style_response.text
@@ -269,10 +269,9 @@ def test_homepage_search_submit_uses_icon_and_matches_result_width():
 
     assert response.status_code == 200
     assert style_response.status_code == 200
-    assert '<button class="search-submit" type="submit" aria-label="검색">' in response.text
-    assert 'class="search-submit-icon"' in response.text
-    assert 'class="visually-hidden">검색</span>' in response.text
-    assert '<button class="search-submit" type="submit">검색</button>' not in response.text
+    assert '<span class="search-leading-icon" aria-hidden="true">' in response.text
+    assert '<button class="search-submit" type="submit">검색</button>' in response.text
+    assert 'class="search-submit-icon"' not in response.text
     assert ".google-like-home:not(.is-idle) .search-form {\n  width: min(980px, 100%);" in style_response.text
     assert ".content-grid {\n  display: grid;\n  grid-template-columns: minmax(0, 760px);" in style_response.text
 

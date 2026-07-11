@@ -3,16 +3,22 @@
 ## Comparison target
 
 - Source visual truth:
+  - `/Users/psyche/Desktop/스크린샷 2026-07-12 오전 8.34.18.png`
   - `docs/ui-audit-assets-2026-07-11/03-main-desktop-1440.png`
   - `docs/ui-audit-assets-2026-07-11/04-company-profile-desktop-1440.png`
 - Implementation screenshots:
+  - `docs/ui-polish-assets-2026-07-12/06-main-reference-redesign-desktop.png`
+  - `docs/ui-polish-assets-2026-07-12/07-main-reference-redesign-mobile.png`
   - `docs/ui-audit-assets-2026-07-11/06-main-improved-desktop-1440.png`
   - `docs/ui-audit-assets-2026-07-11/07-company-profile-improved-desktop-1440.png`
   - `docs/ui-audit-assets-2026-07-11/08-main-improved-mobile-390.png`
   - `docs/ui-audit-assets-2026-07-11/09-company-profile-improved-mobile-390.png`
+  - `docs/ui-polish-assets-2026-07-12/04-search-controls-desktop-after.png`
 - Combined full-view evidence:
+  - `docs/ui-polish-assets-2026-07-12/08-main-reference-comparison.png`
   - `docs/ui-audit-assets-2026-07-11/10-main-before-after.png`
   - `docs/ui-audit-assets-2026-07-11/11-profile-before-after.png`
+  - `docs/ui-polish-assets-2026-07-12/05-search-controls-before-after.png`
 - Viewports: 1440 × 1000 desktop, 390 × 844 mobile
 - State: idle main page; LG전자 company profile; local compare list empty
 
@@ -58,6 +64,18 @@
 - [P2] Company identity header remained approximately 408px high after the first token pass because the basic-information rows still controlled the stretched grid height.
 - Fix: reduced basic-card padding and row padding while keeping 44px interactive targets unchanged.
 - Post-fix evidence: `07-company-profile-improved-desktop-1440.png`; header height reduced to approximately 356px.
+
+### Iteration 3
+
+- [P2] The native search-type arrow sat too close to the visual divider, while the query placeholder started immediately against the same divider.
+- Fix: separated the select from the divider with a 12px buffer, moved the divider to the input edge, and added 16px input padding. Main navigation links and compare-item remove buttons now also meet the 44px target-size baseline.
+- Post-fix evidence: `docs/ui-polish-assets-2026-07-12/04-search-controls-desktop-after.png`; the select arrow, divider, placeholder, and search icon now have distinct breathing room without changing the 50px control height.
+
+### Iteration 4
+
+- [P1] The original home composition did not match the selected visual target: the search-type dropdown occupied the input, the submit action was icon-only, and the supporting filters read as data-source badges rather than a deliberate browsing row.
+- Fix: rebuilt the hero around a large editorial headline, two-line description, 820px capsule search with leading icon and text action, AI helper line, and purple active search-mode chips. The hidden native select remains synchronized for existing application behavior.
+- Post-fix evidence: `docs/ui-polish-assets-2026-07-12/08-main-reference-comparison.png` and `07-main-reference-redesign-mobile.png`. Desktop hierarchy and control proportions closely follow the source; mobile reflows to 390px without horizontal overflow.
 
 ## Known state differences
 

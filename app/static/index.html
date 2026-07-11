@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Profilage | 기업·인물 데이터 검색</title>
-    <link rel="stylesheet" href="/styles.css?v=person-search-layout-3" />
+    <link rel="stylesheet" href="/styles.css?v=person-search-layout-5" />
   </head>
   <body class="is-idle google-like-home">
     <header class="top-nav" aria-label="상단 메뉴">
@@ -23,17 +23,23 @@
         data-outline-url="/api/company/get_corp_outline"
         data-profile-url="/profile?crno="
       >
-        <div class="home-kicker">B2B 기업 데이터 플랫폼</div>
-        <h1 id="page-title" class="home-title">기업 정보를 빠르게 찾고 비교하세요</h1>
+        <h1 id="page-title" class="home-title">기업과 인물을 더 빠르게 탐색하세요</h1>
         <p class="home-subtitle">
-          금융위원회, DART, 주가 데이터를 기반으로 기업을 비교하고, 공개 인물 자료는 출처와 함께 구분해 탐색합니다.
+          검증된 기업 데이터와 공개 출처를 한곳에서 검색하세요.<br />
+          비교와 분석에 필요한 정보를 매일 더 선명하게 연결합니다.
         </p>
         <form class="search-form" id="search-form" aria-describedby="search-status">
           <label class="visually-hidden" for="search-type">검색 종류</label>
-          <select id="search-type" class="search-type-select" aria-label="검색 종류">
+          <select id="search-type" class="visually-hidden" aria-label="검색 종류">
             <option value="company">기업</option>
             <option value="person">인물</option>
           </select>
+          <span class="search-leading-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <circle cx="11" cy="11" r="7"></circle>
+              <path d="m16.5 16.5 4 4"></path>
+            </svg>
+          </span>
           <label class="visually-hidden" for="company-query">기업명, 종목코드, 법인등록번호</label>
           <input
             id="company-query"
@@ -43,28 +49,24 @@
             placeholder="기업명, 종목코드, 법인등록번호로 검색"
             minlength="1"
           />
-          <button class="search-submit" type="submit" aria-label="검색">
-            <svg
-              class="search-submit-icon"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-              focusable="false"
-            >
-              <circle cx="11" cy="11" r="7"></circle>
-              <path d="m16.5 16.5 4 4"></path>
-            </svg>
-            <span class="visually-hidden">검색</span>
-          </button>
+          <button class="search-submit" type="submit">검색</button>
         </form>
+        <p class="home-search-assistant">AI 검색 도우미가 기업과 인물 탐색을 도와드립니다.</p>
         <p class="person-search-help" data-person-search-help hidden>
           공개 출처의 후보를 보여드립니다. 동명이인은 소속·직책과 원문을 확인해 주세요. 인물 검색어는 최근 검색이나 URL에 저장하지 않습니다.
         </p>
         <div class="recent-query-list" data-recent-query-list aria-label="최근 검색"></div>
-        <div class="source-rail" data-source-rail aria-label="데이터 출처">
-          <span>금융위원회 기업기본정보</span>
-          <span>DART 공시/재무</span>
-          <span>SearchAPI Google Finance</span>
-          <span>OpenAI 요약</span>
+        <div class="home-filter-row">
+          <div class="search-mode-tabs" role="group" aria-label="검색 대상">
+            <button class="search-mode-chip is-active" type="button" data-search-mode="company" aria-pressed="true">기업</button>
+            <button class="search-mode-chip" type="button" data-search-mode="person" aria-pressed="false">인물</button>
+          </div>
+          <div class="source-rail" data-source-rail aria-label="데이터 범위">
+            <span>상장·주가</span>
+            <span>공시·재무</span>
+            <span>관계회사</span>
+            <span>공개 출처</span>
+          </div>
         </div>
         <p class="status" id="search-status" role="status"></p>
       </section>
@@ -91,6 +93,6 @@
         <a href="/compare" data-compare-nav>비교 <span class="compare-nav-count" data-compare-nav-count hidden></span></a>
       </nav>
     </footer>
-    <script src="/app.js?v=person-search-3" defer></script>
+    <script src="/app.js?v=person-search-4" defer></script>
   </body>
 </html>

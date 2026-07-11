@@ -11,6 +11,7 @@ const compareTrayLink = document.querySelector("[data-compare-tray-link]");
 const compareTrayStatus = document.querySelector("[data-compare-tray-status]");
 const recentQueryList = document.querySelector("[data-recent-query-list]");
 const searchTypeSelect = document.querySelector("#search-type");
+const searchModeButtons = Array.from(document.querySelectorAll("[data-search-mode]"));
 const personSearchHelp = document.querySelector("[data-person-search-help]");
 
 const outlineUrl = "/api/company/get_corp_outline";
@@ -754,6 +755,12 @@ async function waitForPersonAnalysisJob(jobId, container) {
 function applySearchMode(type) {
   searchState.type = type === "person" ? "person" : "company";
   const personMode = isPersonMode();
+  if (searchTypeSelect) searchTypeSelect.value = searchState.type;
+  searchModeButtons.forEach((button) => {
+    const active = button.dataset.searchMode === searchState.type;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
   queryInput.placeholder = personMode ? "인물명과 소속·직책을 함께 입력" : "기업명, 종목코드, 법인등록번호로 검색";
   queryInput.setAttribute("aria-label", personMode ? "인물명과 소속·직책" : "기업명, 종목코드, 법인등록번호");
   personSearchHelp.hidden = !personMode;
@@ -782,6 +789,10 @@ form.addEventListener("submit", (event) => {
 });
 
 searchTypeSelect?.addEventListener("change", () => applySearchMode(searchTypeSelect.value));
+
+searchModeButtons.forEach((button) => {
+  button.addEventListener("click", () => applySearchMode(button.dataset.searchMode));
+});
 
 luckySearchButton?.addEventListener("click", () => {
   queryInput.value = "삼성전자";
