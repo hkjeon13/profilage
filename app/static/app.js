@@ -10,6 +10,8 @@ const compareTrayList = document.querySelector("[data-compare-tray-list]");
 const compareTrayLink = document.querySelector("[data-compare-tray-link]");
 const compareTrayStatus = document.querySelector("[data-compare-tray-status]");
 const recentQueryList = document.querySelector("[data-recent-query-list]");
+const searchTypeSelect = document.querySelector("#search-type");
+const personSearchHelp = document.querySelector("[data-person-search-help]");
 
 const outlineUrl = "/api/company/get_corp_outline";
 const listedUrl = "/api/company/get_krx_listed_item";
@@ -20,6 +22,7 @@ const MAX_RECENT_SEARCHES = 5;
 const SEARCH_RESULT_PAGE_SIZE = 20;
 const SEARCH_LOAD_MORE_OFFSET = 420;
 const searchState = {
+  type: "company",
   token: 0,
   query: "",
   items: [],
@@ -28,6 +31,21 @@ const searchState = {
   isLoadingMore: false,
   controller: null,
 };
+
+function personSessionId() {
+  const key = "profilage.personSession";
+  let value = sessionStorage.getItem(key);
+  if (!value) {
+    const bytes = crypto.getRandomValues(new Uint8Array(24));
+    value = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+    sessionStorage.setItem(key, value);
+  }
+  return value;
+}
+
+function isPersonMode() {
+  return searchState.type === "person";
+}
 
 function currentSearchQuery() {
   return queryInput.value.trim();
@@ -242,7 +260,10 @@ function renderSearchMessage(kind, title, message) {
       </div>
     </article>
   `;
-  resultList.querySelector("[data-search-retry]")?.addEventListener("click", () => searchCompanies(query));
+  resultList.querySelector("[data-search-retry]")?.addEventListener("click", () => {
+    if (isPersonMode()) searchPeople(query);
+    else searchCompanies(query);
+  });
   resultList.querySelector("[data-search-focus]")?.addEventListener("click", () => {
     queryInput.focus();
     queryInput.select();
@@ -576,19 +597,140 @@ async function searchCompanies(query) {
   }
 }
 
+function renderPersonResults(payload) {
+  clearResults();
+  const notices = Array.isArray(payload.notices) ? payload.notices : [];
+  const items = Array.isArray(payload.items) ? payload.items : [];
+  if (!items.length) {
+    renderSearchMessage("empty", "확인 가능한 인물 후보가 없습니다", "이름과 소속 또는 직책을 함께 입력해 보세요.");
+    return;
+  }
+  resultList.innerHTML = items.map((person) => `
+    <article class="result-card person-result-card">
+      <div class="person-result-head">
+        <div>
+          <div class="result-badge-row"><span class="entity-type-badge">인물</span><span class="result-market-badge">${escapeHtml(text(person.identity_status, "확인 필요"))}</span></div>
+          <h3>${escapeHtml(text(person.display_name, "이름 미상"))}</h3>
+          <p>${escapeHtml(text(person.subtitle, "공개 출처를 확인해 주세요."))}</p>
+        </div>
+        <span>${(person.source_badges || []).map((badge) => `<span class="result-market-badge">${escapeHtml(badge)}</span>`).join(" ")}</span>
+      </div>
+      <div class="person-source-list">
+        ${(person.pages || []).map((page) => `
+          <section class="person-source-card" data-person-source>
+            <div class="person-source-head">
+              <strong>${escapeHtml(text(page.title, page.domain))}</strong>
+              <span>${escapeHtml(text(page.domain))} · ${escapeHtml(text(page.page_type))}</span>
+            </div>
+            <p>${page.analysis_capability === "external_view_only" ? "플랫폼 권한 정책상 자동 수집하지 않고 링크 후보만 표시합니다." : page.analysis_capability === "policy_review_required" ? "원문 링크는 확인할 수 있지만 서버 분석은 도메인 검토가 필요합니다." : "사용자가 요청할 때 이 공개 페이지 한 건만 분석합니다."}</p>
+            <div class="person-source-actions">
+              ${page.open_url ? `<a href="${attr(page.open_url)}" target="_blank" rel="noopener noreferrer nofollow">원문 열기</a>` : ""}
+              ${page.analysis_capability === "server_public" ? `<button type="button" data-person-page-analyze data-candidate-id="${attr(person.candidate_id)}" data-source-ref="${attr(page.source_ref)}">이 페이지 분석</button>` : ""}
+              ${page.analysis_capability === "external_view_only" ? "<span>외부 보기만 가능</span>" : ""}
+            </div>
+            <div data-person-analysis-result></div>
+          </section>
+        `).join("")}
+      </div>
+    </article>
+  `).join("");
+  resultList.querySelectorAll("[data-person-page-analyze]").forEach((button) => {
+    button.addEventListener("click", () => analyzePersonPage(button));
+  });
+  setStatus(notices.join(" "));
+}
+
+async function searchPeople(query) {
+  searchState.controller?.abort();
+  const controller = new AbortController();
+  const token = ++searchState.token;
+  searchState.controller = controller;
+  searchState.query = query;
+  document.body.classList.remove("is-idle");
+  setSearchBusy(true);
+  setStatus("공개 출처에서 인물 후보를 확인하는 중...");
+  renderSearchSkeleton(3);
+  try {
+    const response = await fetch("/api/person/search", {
+      method: "POST",
+      headers: {"Content-Type": "application/json", "X-Profilage-Session": personSessionId()},
+      body: JSON.stringify({query, limit: 10, purpose_code: "business_research"}),
+      signal: controller.signal,
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.detail || "인물 검색에 실패했습니다.");
+    if (token !== searchState.token) return;
+    renderPersonResults(payload);
+  } catch (error) {
+    if (error.name === "AbortError" || token !== searchState.token) return;
+    setStatus("인물 후보를 불러오지 못했습니다.");
+    renderSearchMessage("error", "인물 검색을 완료하지 못했습니다", error.message || "잠시 후 다시 시도해 주세요.");
+  } finally {
+    if (token === searchState.token) setSearchBusy(false);
+  }
+}
+
+async function analyzePersonPage(button) {
+  const container = button.closest("[data-person-source]")?.querySelector("[data-person-analysis-result]");
+  button.disabled = true;
+  button.textContent = "분석 중...";
+  if (container) container.innerHTML = '<p class="person-analysis-notice">페이지 한 건을 안전하게 가져와 근거 기반으로 분석하고 있습니다.</p>';
+  try {
+    const response = await fetch("/api/person/page-analysis", {
+      method: "POST",
+      headers: {"Content-Type": "application/json", "X-Profilage-Session": personSessionId()},
+      body: JSON.stringify({candidate_id: button.dataset.candidateId, source_ref: button.dataset.sourceRef, purpose_code: "business_research"}),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.detail || "페이지 분석에 실패했습니다.");
+    const analysis = payload.analysis || {};
+    if (container) container.innerHTML = `
+      <article class="person-analysis-card">
+        <h4>이 페이지의 요약</h4>
+        <p>${escapeHtml(text(analysis.summary, "요약 없음"))}</p>
+        ${(analysis.topics || []).length ? `<p><strong>다룬 주제</strong> · ${(analysis.topics || []).map(escapeHtml).join(" · ")}</p>` : ""}
+        ${(analysis.observable_communication_features || []).length ? `<p><strong>이 페이지의 표현 방식</strong> · ${(analysis.observable_communication_features || []).map(escapeHtml).join(" · ")}</p>` : ""}
+        <p class="person-analysis-notice">${escapeHtml((payload.limitations || []).join(" "))} 결과는 ${Math.round((payload.expires_in_seconds || 3600) / 60)}분 후 삭제됩니다.</p>
+      </article>`;
+    button.textContent = "분석 완료";
+  } catch (error) {
+    if (container) container.innerHTML = `<p class="person-analysis-notice">${escapeHtml(error.message)}</p>`;
+    button.disabled = false;
+    button.textContent = "다시 분석";
+  }
+}
+
+function applySearchMode(type) {
+  searchState.type = type === "person" ? "person" : "company";
+  const personMode = isPersonMode();
+  queryInput.placeholder = personMode ? "인물명과 소속·직책을 함께 입력" : "기업명, 종목코드, 법인등록번호로 검색";
+  queryInput.setAttribute("aria-label", personMode ? "인물명과 소속·직책" : "기업명, 종목코드, 법인등록번호");
+  personSearchHelp.hidden = !personMode;
+  recentQueryList.hidden = personMode;
+  compareTray && (compareTray.hidden = personMode || compareItems().length === 0);
+  clearResults();
+  setStatus("");
+  queryInput.value = "";
+  if (personMode) syncSearchUrl("");
+  else updateCompareTray();
+}
+
 window.addEventListener("scroll", maybeLoadMoreSearchResults, { passive: true });
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
   const query = currentSearchQuery();
   if (!query) {
-    setStatus("기업명을 입력해주세요.");
+    setStatus(isPersonMode() ? "인물명을 입력해주세요." : "기업명을 입력해주세요.");
     clearResults();
     syncSearchUrl("");
     return;
   }
-  searchCompanies(query);
+  if (isPersonMode()) searchPeople(query);
+  else searchCompanies(query);
 });
+
+searchTypeSelect?.addEventListener("change", () => applySearchMode(searchTypeSelect.value));
 
 luckySearchButton?.addEventListener("click", () => {
   queryInput.value = "삼성전자";

@@ -5,6 +5,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.company import router as company_router
+from app.api.person import router as person_router
 from app.core.config import get_app_settings
 from app.services.company_store import get_default_data_group_store
 
@@ -27,6 +28,7 @@ app = FastAPI(
 )
 app.include_router(company_router)
 app.include_router(company_router, prefix="/api")
+app.include_router(person_router, prefix="/api")
 
 
 @app.middleware("http")
