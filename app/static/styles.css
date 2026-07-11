@@ -10,6 +10,17 @@
   --accent-strong: #1558b0;
   --positive: #18705b;
   --shadow: 0 1px 6px rgba(32, 33, 36, 0.28);
+  --layout-max: 1180px;
+  --layout-gutter: clamp(16px, 3vw, 32px);
+  --section-gap: clamp(16px, 2vw, 24px);
+  --card-padding: clamp(20px, 2.4vw, 32px);
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
 }
 
 @media (max-width: 760px) {
@@ -63,7 +74,7 @@ input {
   justify-content: space-between;
   gap: 24px;
   min-height: 58px;
-  padding: 0 26px;
+  padding: 0 max(var(--layout-gutter), calc((100% - var(--layout-max)) / 2));
   align-items: center;
   font-size: 14px;
 }
@@ -110,20 +121,20 @@ a:hover {
 }
 
 .shell {
-  width: min(1180px, calc(100% - 32px));
+  width: min(var(--layout-max), calc(100% - (var(--layout-gutter) * 2)));
   margin: 0 auto;
-  padding: 0 0 54px;
+  padding: 0 0 var(--space-12);
   flex: 1;
 }
 
 .search-panel {
   display: flex;
-  min-height: 48vh;
+  min-height: clamp(380px, 44vh, 480px);
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  margin: 0 0 28px;
-  padding-top: 76px;
+  margin: 0 0 var(--space-12);
+  padding-top: clamp(32px, 5vh, 52px);
 }
 
 .google-like-home:not(.is-idle) .search-panel {
@@ -206,7 +217,7 @@ a:hover {
 
 .home-subtitle {
   max-width: 680px;
-  margin: 18px 0 28px;
+  margin: var(--space-4) 0 var(--space-6);
   color: #667085;
   font-size: 17px;
   line-height: 1.65;
@@ -217,7 +228,7 @@ a:hover {
   position: relative;
   display: flex;
   align-items: center;
-  width: min(584px, calc(100vw - 44px));
+  width: min(680px, calc(100vw - (var(--layout-gutter) * 2)));
   min-height: 50px;
   border: 1px solid var(--line);
   border-radius: 47px;
@@ -341,7 +352,7 @@ a:hover {
 
 .source-rail {
   max-width: 760px;
-  margin-top: 20px;
+  margin-top: var(--space-4);
   color: #667085;
   font-size: 12px;
   font-weight: 750;
@@ -449,7 +460,7 @@ a:hover {
   align-items: center;
   gap: 16px;
   width: min(980px, 100%);
-  margin: 0 0 20px;
+  margin: 0 auto var(--space-12);
   border: 1px solid #c7d7fe;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.96);
@@ -1826,12 +1837,12 @@ a:hover {
 
 .page-footer > div {
   border-bottom: 1px solid #dadce0;
-  padding: 15px 30px;
+  padding: 13px max(var(--layout-gutter), calc((100% - var(--layout-max)) / 2));
 }
 
 .page-footer nav {
-  min-height: 46px;
-  padding: 0 30px;
+  min-height: 44px;
+  padding: 0 max(var(--layout-gutter), calc((100% - var(--layout-max)) / 2));
 }
 
 .page-footer a {
@@ -1859,7 +1870,7 @@ a:hover {
 }
 
 .company-canvas {
-  width: min(1180px, calc(100% - 44px));
+  width: min(var(--layout-max), calc(100% - (var(--layout-gutter) * 2)));
   min-height: calc(100vh - 56px);
   margin: 28px auto;
   border: 1px solid rgba(255, 255, 255, 0.74);
@@ -1898,10 +1909,10 @@ a:hover {
 }
 
 .profile-shell {
-  width: min(1180px, calc(100% - 44px));
+  width: calc(100% - (var(--layout-gutter) * 2));
   max-width: 100%;
   margin: 0 auto;
-  padding: 22px 0 76px;
+  padding: var(--space-6) 0 var(--space-12);
 }
 
 .profile-top-grid {
@@ -2258,14 +2269,14 @@ a:hover {
   top: 0;
   z-index: 20;
   display: flex;
-  justify-content: space-around;
-  gap: 4px;
+  justify-content: center;
+  gap: var(--space-2);
   overflow-x: auto;
   scrollbar-gutter: stable;
   border: 1px solid #eaecf0;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.96);
-  padding: 9px 12px;
+  padding: var(--space-2) var(--space-3);
   scroll-padding-inline: 12px;
   backdrop-filter: blur(8px);
 }
@@ -2287,6 +2298,12 @@ a:hover {
 .profile-section-nav a:hover,
 .profile-section-nav a:focus-visible {
   background: #f2f4f7;
+  color: #175cd3;
+}
+
+.profile-section-nav a[aria-current="location"] {
+  background: #eff4ff;
+  box-shadow: inset 0 -2px 0 #175cd3;
   color: #175cd3;
 }
 
@@ -2347,10 +2364,15 @@ a:hover {
 
 .profile-compare-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
   gap: 8px;
   margin-left: auto;
+}
+
+.profile-compare-actions > * {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .profile-compare-status {
@@ -4680,7 +4702,7 @@ a:hover {
 
 /* Unified company identity and basic-information header. */
 .profile-top-grid {
-  grid-template-columns: minmax(0, .54fr) minmax(0, 1fr);
+  grid-template-columns: minmax(360px, .72fr) minmax(0, 1.28fr);
   gap: 0;
   overflow: hidden;
   border: 1px solid #e4e7ec;
@@ -4691,13 +4713,13 @@ a:hover {
 
 .profile-hero {
   display: flex;
-  min-height: 310px;
-  align-items: flex-start;
+  min-height: 0;
+  align-items: center;
   border: 0;
   border-radius: 0;
   background: #f8fafc;
   box-shadow: none;
-  padding: 32px;
+  padding: 28px;
 }
 
 .profile-hero::after,
@@ -4747,7 +4769,7 @@ a:hover {
   border-radius: 0;
   background: #fff;
   box-shadow: none;
-  padding: 28px 30px;
+  padding: 22px 28px;
 }
 
 .profile-basic-heading {
@@ -4775,7 +4797,7 @@ a:hover {
   gap: 6px;
   border-left: 0;
   border-bottom: 1px solid #eaecf0;
-  padding: 15px 0;
+  padding: 11px 0;
 }
 
 .profile-basic-grid .profile-basic-wide {
@@ -4875,6 +4897,10 @@ a:hover {
     padding: 24px 26px;
   }
 
+  .profile-compare-actions {
+    flex-wrap: wrap;
+  }
+
   .profile-basic-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     column-gap: 22px;
@@ -4923,6 +4949,24 @@ a:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     column-gap: 16px;
   }
+
+  .search-panel {
+    min-height: 360px;
+    margin-bottom: var(--space-8);
+    padding-top: var(--space-6);
+  }
+
+  .home-title {
+    font-size: clamp(30px, 10vw, 42px);
+  }
+
+  .home-subtitle {
+    font-size: 15px;
+  }
+
+  .search-form {
+    padding-left: 14px;
+  }
 }
 
 @media (max-width: 360px) {
@@ -4963,6 +5007,21 @@ a:hover {
   .profile-error-actions .primary-link-button,
   .profile-compare-actions > * {
     width: 100%;
+  }
+
+  .company-ai-summary-card .block-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .company-ai-summary-card .profile-compare-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-left: 0;
+  }
+
+  .company-ai-summary-card .profile-compare-actions > * {
+    width: auto;
   }
 
   .profile-error-state,

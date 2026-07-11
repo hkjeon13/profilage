@@ -2420,7 +2420,7 @@ function setupCompareActions() {
       button.classList.add("is-added");
       button.disabled = true;
       button.childNodes.forEach((node) => {
-        if (node.nodeType === Node.TEXT_NODE) node.textContent = " 비교함에 추가됨";
+        if (node.nodeType === Node.TEXT_NODE) node.textContent = " 추가됨";
       });
       const link = document.querySelector("[data-compare-link]");
       if (link) {
@@ -2688,10 +2688,23 @@ function renderProfileSectionNav() {
 function setupProfileSectionNav() {
   const nav = document.querySelector(".profile-section-nav");
   if (!nav) return;
-  nav.querySelectorAll("[data-profile-section]").forEach((link) => {
+  const links = [...nav.querySelectorAll("[data-profile-section]")];
+  links.forEach((link) => {
     const targetId = `section-${link.dataset.profileSection}`;
     if (!document.getElementById(targetId)) link.remove();
   });
+
+  const availableLinks = [...nav.querySelectorAll("[data-profile-section]")];
+  const setCurrentSection = (currentLink) => {
+    availableLinks.forEach((link) => {
+      if (link === currentLink) link.setAttribute("aria-current", "location");
+      else link.removeAttribute("aria-current");
+    });
+  };
+  const hashLink = availableLinks.find((link) => link.hash === window.location.hash);
+  if (hashLink) setCurrentSection(hashLink);
+  else if (availableLinks.length) setCurrentSection(availableLinks[0]);
+  availableLinks.forEach((link) => link.addEventListener("click", () => setCurrentSection(link)));
 }
 
 function renderCompanyProfileSummaryCard({ crno = "", compareName = "", isCompareAdded = false } = {}) {
@@ -2707,9 +2720,10 @@ function renderCompanyProfileSummaryCard({ crno = "", compareName = "", isCompar
             data-compare-add
             data-compare-crno="${attr(crno)}"
             data-compare-name="${attr(compareName)}"
+            aria-label="${isCompareAdded ? "비교함에 추가됨" : "비교 추가"}"
             aria-pressed="${isCompareAdded ? "true" : "false"}"
             ${isCompareAdded ? "disabled" : ""}
-          ><span data-compare-icon aria-hidden="true">${isCompareAdded ? "✓" : "+"}</span> ${isCompareAdded ? "비교함에 추가됨" : "비교 추가"}</button>
+          ><span data-compare-icon aria-hidden="true">${isCompareAdded ? "✓" : "+"}</span> ${isCompareAdded ? "추가됨" : "비교 추가"}</button>
           <a
             class="primary-link-button"
             data-compare-link
