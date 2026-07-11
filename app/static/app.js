@@ -626,7 +626,7 @@ function renderPersonResults(payload) {
             <p>${page.analysis_capability === "external_view_only" ? "플랫폼 권한 정책상 자동 수집하지 않고 링크 후보만 표시합니다." : page.analysis_capability === "policy_review_required" ? "원문 링크는 확인할 수 있지만 서버 분석은 도메인 검토가 필요합니다." : "사용자가 요청할 때 이 공개 페이지 한 건만 분석합니다."}</p>
             <div class="person-source-actions">
               ${page.open_url ? `<a href="${attr(page.open_url)}" target="_blank" rel="noopener noreferrer nofollow">원문 열기</a>` : ""}
-              ${page.analysis_capability === "server_public" ? `<button type="button" data-person-page-analyze data-candidate-id="${attr(person.candidate_id)}" data-source-ref="${attr(page.source_ref)}">이 페이지 분석</button>` : ""}
+              ${["server_public", "server_headless"].includes(page.analysis_capability) ? `<button type="button" data-person-page-analyze data-analysis-mode="${page.analysis_capability === "server_headless" ? "headless" : "server_public"}" data-candidate-id="${attr(person.candidate_id)}" data-source-ref="${attr(page.source_ref)}">${page.analysis_capability === "server_headless" ? "브라우저로 분석" : "이 페이지 분석"}</button>` : ""}
               ${page.analysis_capability === "external_view_only" ? "<span>외부 보기만 가능</span>" : ""}
             </div>
             <div data-person-analysis-result></div>
@@ -703,14 +703,15 @@ async function analyzePersonPage(button) {
     const intentResponse = await fetch("/api/person/page-analysis/intents", {
       method: "POST",
       headers: {"Content-Type": "application/json", "X-Profilage-Session": personSessionId()},
-      body: JSON.stringify({subject_ref: {candidate_id: button.dataset.candidateId}, source_ref: button.dataset.sourceRef, purpose_code: "business_research", requested_mode: "server_public"}),
+      body: JSON.stringify({subject_ref: {candidate_id: button.dataset.candidateId}, source_ref: button.dataset.sourceRef, purpose_code: "business_research", requested_mode: button.dataset.analysisMode || "server_public"}),
     });
     const intent = await intentResponse.json().catch(() => ({}));
     if (!intentResponse.ok) throw new Error(intent.detail || "페이지 분석 요청을 만들지 못했습니다.");
-    if (intent.capability !== "server_public") throw new Error(intent.reason === "platform_permission_required" ? "플랫폼 권한 정책상 분석할 수 없습니다." : "이 도메인은 분석 검토가 필요합니다.");
+    if (!["server_public", "server_headless"].includes(intent.capability)) throw new Error(intent.reason === "platform_permission_required" ? "플랫폼 권한 정책상 분석할 수 없습니다." : "이 도메인은 분석 검토가 필요합니다.");
     const jobResponse = await fetch(`/api/person/page-analysis/intents/${encodeURIComponent(intent.intent_id)}/analyze`, {method: "POST", headers: {"X-Profilage-Session": personSessionId(), "Idempotency-Key": crypto.randomUUID()}});
-    const job = await jobResponse.json().catch(() => ({}));
+    let job = await jobResponse.json().catch(() => ({}));
     if (!jobResponse.ok) throw new Error(job.detail || "페이지 분석 작업을 완료하지 못했습니다.");
+    if (job.status === "queued") job = await waitForPersonAnalysisJob(job.job_id, container);
     const response = await fetch(`/api/person/page-analysis/results/${encodeURIComponent(job.result_id)}`, {headers: {"X-Profilage-Session": personSessionId()}});
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.detail || "페이지 분석 결과를 가져오지 못했습니다.");
@@ -734,6 +735,20 @@ async function analyzePersonPage(button) {
     button.disabled = false;
     button.textContent = "다시 분석";
   }
+}
+
+async function waitForPersonAnalysisJob(jobId, container) {
+  const deadline = Date.now() + 25000;
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => window.setTimeout(resolve, 800));
+    const response = await fetch(`/api/person/page-analysis/jobs/${encodeURIComponent(jobId)}`, {headers:{"X-Profilage-Session":personSessionId()}});
+    const job = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(job.detail || "렌더링 작업 상태를 확인하지 못했습니다.");
+    if (job.status === "result_ready") return job;
+    if (job.status === "failed") throw new Error("브라우저 렌더링으로 본문을 가져오지 못했습니다.");
+    if (container) container.innerHTML = '<p class="person-analysis-notice">격리된 브라우저에서 공개 페이지를 렌더링하고 있습니다.</p>';
+  }
+  throw new Error("브라우저 렌더링 시간이 초과되었습니다.");
 }
 
 function applySearchMode(type) {

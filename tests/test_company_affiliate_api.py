@@ -189,7 +189,7 @@ def test_root_serves_company_search_frontend():
     assert "/docs" not in response.text
     assert "/openapi.json" not in response.text
     assert "/styles.css?v=person-search-2" in response.text
-    assert "/app.js?v=person-search-2" in response.text
+    assert "/app.js?v=person-search-3" in response.text
 
 
 def test_security_headers_are_added_to_frontend_response():

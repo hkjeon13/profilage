@@ -59,7 +59,7 @@ class IntentRequest(BaseModel):
     subject_ref: SubjectRef
     source_ref: str = Field(pattern=r"^src_[A-Za-z0-9_-]+$")
     purpose_code: str = Field(default="business_research", pattern=r"^[a-z_]{3,40}$")
-    requested_mode: str = Field(default="server_public", pattern=r"^(server_public|browser_selection)$")
+    requested_mode: str = Field(default="server_public", pattern=r"^(server_public|browser_selection|headless)$")
 
 
 class CapturePage(BaseModel):

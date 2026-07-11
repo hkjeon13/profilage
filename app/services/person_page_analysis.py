@@ -9,6 +9,8 @@ from typing import Any
 from urllib.parse import urlparse
 
 from app.services.person_profile import _save_profile, get_person_profile
+from app.services.headless_fetch import issue_fetch_ticket
+from app.core.config import get_person_search_settings
 from app.services.person_search import (
     BLOCKED_CAPTURE_DOMAINS,
     PUBLIC_ANALYSIS_DOMAINS,
@@ -36,6 +38,11 @@ def _capture_allowed(host: str) -> bool:
     return _domain_matches(host, PUBLIC_ANALYSIS_DOMAINS | configured)
 
 
+def _headless_allowed(host: str) -> bool:
+    configured = {item.strip().lower() for item in os.getenv("PERSON_HEADLESS_ALLOWED_DOMAINS", "").split(",") if item.strip()}
+    return bool(get_person_search_settings().headless_enabled and configured and _domain_matches(host, configured))
+
+
 async def create_intent(candidate_id: str, source_ref: str, session_id: str,
                         purpose_code: str, requested_mode: str) -> dict[str, Any]:
     candidate, source = await get_owned_source(candidate_id, source_ref, session_id)
@@ -50,6 +57,8 @@ async def create_intent(candidate_id: str, source_ref: str, session_id: str,
         capability = "server_public"
     elif requested_mode == "browser_selection" and _capture_allowed(host):
         capability = "browser_selection"
+    elif requested_mode == "headless" and _headless_allowed(host):
+        capability = "server_headless"
     else:
         capability, reason = "policy_review_required", "domain_not_reviewed"
     intent_id = _opaque("pai")
@@ -78,13 +87,28 @@ async def analyze_intent(intent_id: str, session_id: str) -> dict[str, Any]:
         raise KeyError("intent_not_found")
     if intent.get("state") != "issued":
         raise RuntimeError("intent_already_used")
-    if intent.get("capability") != "server_public":
+    if intent.get("capability") not in {"server_public", "server_headless"}:
         raise PermissionError("capability_not_allowed")
     intent["state"] = "processing"; await store.set(f"intent:{intent_id}", intent, INTENT_TTL)
     job_id = _opaque("paj")
     job = {"job_id": job_id, "intent_id": intent_id, "session_id": session_id,
            "status": "processing", "created_at": int(time.time()), "deadline_at": _iso_after(600)}
     await store.set(f"job:{job_id}", job, RESULT_TTL)
+    if intent.get("capability") == "server_headless":
+        _, source = await get_owned_source(intent["candidate_id"], intent["source_ref"], session_id)
+        ticket = issue_fetch_ticket(str(source.get("url") or ""), job_id=job_id)
+        job.update({"status": "queued", "mode": "headless", "ticket_expires_at": ticket.expires_at})
+        intent["state"] = "job_queued"
+        await store.set(f"job:{job_id}", job, RESULT_TTL)
+        await store.set(f"intent:{intent_id}", intent, INTENT_TTL)
+        await store.enqueue("renderer:queue", {
+            "job_id": job_id, "intent_id": intent_id, "session_id": session_id,
+            "candidate_id": intent["candidate_id"], "subject_identity": intent.get("subject_identity"),
+            "source_title": str(source.get("title") or "")[:200], "ticket": ticket.token,
+            "deadline": int(time.time()) + 30, "result_ttl": RESULT_TTL,
+        })
+        return {"job_id": job_id, "job_deadline_at": job["deadline_at"],
+                "result_ttl_seconds": RESULT_TTL, "status": "queued"}
     try:
         result = await analyze_page(intent["candidate_id"], intent["source_ref"], session_id)
         result["job_id"] = job_id; result["intent_id"] = intent_id
@@ -175,6 +199,8 @@ async def delete_item(kind: str, item_id: str, session_id: str) -> None:
         return
     item = await store.get(f"{kind}:{item_id}")
     if not item or item.get("session_id") != session_id: raise KeyError("not_found")
+    if kind == "job":
+        await store.set(f"cancel:{item_id}", {"job_id": item_id, "cancelled_at": int(time.time())}, RESULT_TTL)
     await store.delete(f"{kind}:{item_id}")
 
 

@@ -5,6 +5,7 @@ import hashlib
 from html.parser import HTMLParser
 import ipaddress
 import json
+import os
 import re
 import secrets
 import socket
@@ -88,6 +89,11 @@ class EphemeralPersonStore:
         return [value for key, (expires, value) in self._memory.items()
                 if key.startswith(prefix) and expires > now]
 
+    async def enqueue(self, queue: str, value: dict[str, Any]) -> None:
+        if self._redis is None:
+            raise RuntimeError("ephemeral_valkey_required")
+        await self._redis.rpush(f"person:{queue}", json.dumps(value, ensure_ascii=False))
+
 
 _store: EphemeralPersonStore | None = None
 
@@ -166,13 +172,15 @@ async def _searchapi_pages(query: str, limit: int, client: httpx.AsyncClient) ->
         if not host:
             continue
         blocked = _domain_matches(host, BLOCKED_SOCIAL_DOMAINS)
+        headless_domains = {value.strip().lower() for value in os.getenv("PERSON_HEADLESS_ALLOWED_DOMAINS", "").split(",") if value.strip()}
+        headless_allowed = bool(get_person_search_settings().headless_enabled and _domain_matches(host, headless_domains))
         pages.append({
             "url": None if blocked else url,
             "domain": host.removeprefix("www."),
             "title": None if blocked else str(item.get("title") or "")[:180],
             "page_type": "social_profile_link" if blocked else "public_web",
             "display_capability": "domain_only" if blocked else "direct_link_allowed",
-            "analysis_capability": "external_view_only" if blocked else "policy_review_required",
+            "analysis_capability": "external_view_only" if blocked else ("server_headless" if headless_allowed else "policy_review_required"),
         })
     return pages
 

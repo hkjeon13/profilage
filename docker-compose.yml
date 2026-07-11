@@ -65,7 +65,49 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - default
+      - renderer_queue
+
+  renderer-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.renderer
+    container_name: profilage-renderer-worker
+    restart: unless-stopped
+    environment:
+      VALKEY_EPHEMERAL_URL: redis://valkey-ephemeral:6379/0
+      PERSON_HEADLESS_ENABLED: ${PERSON_HEADLESS_ENABLED:-false}
+      PERSON_HEADLESS_ALLOWED_DOMAINS: ${PERSON_HEADLESS_ALLOWED_DOMAINS:-}
+      PERSON_FETCH_TICKET_VERIFY_KEY: ${PERSON_FETCH_TICKET_VERIFY_KEY:-}
+      PERSON_HEADLESS_TIMEOUT_SECONDS: ${PERSON_HEADLESS_TIMEOUT_SECONDS:-12}
+      PERSON_HEADLESS_MAX_TEXT_CHARS: ${PERSON_HEADLESS_MAX_TEXT_CHARS:-25000}
+    shm_size: "256mb"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+      - /home/pwuser:size=32m,mode=0700,uid=1000,gid=1000
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import os,time,redis; v=redis.from_url(os.environ['VALKEY_EPHEMERAL_URL']).get('person:renderer:health'); assert v and time.time()-float(v)<30\""]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+    networks:
+      - renderer_queue
+      - renderer_egress
+    depends_on:
+      valkey-ephemeral:
+        condition: service_healthy
 
 volumes:
   postgres_data:
   valkey_data:
+
+networks:
+  renderer_queue:
+    internal: true
+  renderer_egress:
