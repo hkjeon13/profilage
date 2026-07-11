@@ -46,6 +46,29 @@ def test_person_search_returns_session_bound_candidates(monkeypatch):
     assert payload["items"][0]["pages"][1]["open_url"] is None
 
 
+def test_wikipedia_candidates_keep_only_wikidata_humans():
+    class Response:
+        def __init__(self, payload): self.payload = payload
+        def raise_for_status(self): return None
+        def json(self): return self.payload
+
+    class Client:
+        async def get(self, url, params):
+            if url == person_search.WIKIPEDIA_API:
+                return Response({"query": {"pages": {
+                    "1": {"index": 1, "title": "사람", "extract": "사람 설명", "fullurl": "https://ko.wikipedia.org/wiki/person", "pageprops": {"wikibase_item": "Q1"}},
+                    "2": {"index": 2, "title": "기업", "extract": "기업 설명", "fullurl": "https://ko.wikipedia.org/wiki/company", "pageprops": {"wikibase_item": "Q2"}},
+                }}})
+            return Response({"entities": {
+                "Q1": {"claims": {"P31": [{"mainsnak": {"datavalue": {"value": {"id": "Q5"}}}}]}},
+                "Q2": {"claims": {"P31": [{"mainsnak": {"datavalue": {"value": {"id": "Q4830453"}}}}]}},
+            }})
+
+    import asyncio
+    items = asyncio.run(person_search._wikipedia_candidates("검색", 5, Client()))
+    assert [item["display_name"] for item in items] == ["사람"]
+
+
 def test_page_analysis_rejects_social_source(monkeypatch):
     async def fake_owned(candidate_id, source_ref, session_id):
         return {"display_name": "홍길동"}, {

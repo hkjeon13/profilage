@@ -22,6 +22,7 @@ from app.core.config import (
 )
 
 WIKIPEDIA_API = "https://ko.wikipedia.org/w/api.php"
+WIKIDATA_API = "https://www.wikidata.org/w/api.php"
 SEARCHAPI_URL = "https://www.searchapi.io/api/v1/search"
 BLOCKED_SOCIAL_DOMAINS = {
     "linkedin.com", "www.linkedin.com", "facebook.com", "www.facebook.com",
@@ -101,8 +102,24 @@ async def _wikipedia_candidates(query: str, limit: int, client: httpx.AsyncClien
     response.raise_for_status()
     pages = list(response.json().get("query", {}).get("pages", {}).values())
     pages.sort(key=lambda page: page.get("index", 999))
+    qids = [str((page.get("pageprops") or {}).get("wikibase_item") or "") for page in pages]
+    qids = [qid for qid in qids if qid]
+    human_qids: set[str] = set()
+    if qids:
+        entity_response = await client.get(WIKIDATA_API, params={
+            "action": "wbgetentities", "ids": "|".join(qids), "props": "claims", "format": "json", "origin": "*",
+        })
+        entity_response.raise_for_status()
+        for qid, entity in entity_response.json().get("entities", {}).items():
+            instances = (entity.get("claims") or {}).get("P31", [])
+            if any(str((((claim.get("mainsnak") or {}).get("datavalue") or {}).get("value") or {}).get("id")) == "Q5"
+                   for claim in instances):
+                human_qids.add(qid)
     items = []
     for page in pages:
+        qid = str((page.get("pageprops") or {}).get("wikibase_item") or "")
+        if qid not in human_qids:
+            continue
         title = str(page.get("title") or "").strip()
         if not title:
             continue
@@ -119,7 +136,7 @@ async def _wikipedia_candidates(query: str, limit: int, client: httpx.AsyncClien
                 "url": url, "domain": "ko.wikipedia.org", "title": title,
                 "page_type": "encyclopedia", "display_capability": "direct_link_allowed",
                 "analysis_capability": "server_public", "extract": extract,
-                "wikidata_id": (page.get("pageprops") or {}).get("wikibase_item"),
+                "wikidata_id": qid,
             }],
         })
     return items
