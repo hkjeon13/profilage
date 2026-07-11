@@ -6,4 +6,4 @@ RUN pip install --no-cache-dir "cryptography>=45.0.0" "playwright==1.54.0" "redi
 COPY app ./app
 COPY renderer ./renderer
 USER pwuser
-CMD ["python", "renderer/worker.py"]
+CMD ["python", "-m", "renderer.worker"]
