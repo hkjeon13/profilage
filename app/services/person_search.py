@@ -272,7 +272,11 @@ async def analyze_page(candidate_id: str, source_ref: str, session_id: str) -> d
         raise PermissionError("platform_permission_required")
     if source.get("analysis_capability") == "policy_review_required" and not _domain_matches(host, PUBLIC_ANALYSIS_DOMAINS):
         raise PermissionError("domain_not_reviewed")
-    final_url, title, content = await _fetch_public_page(url)
+    trusted_extract = str(source.get("extract") or "").strip()
+    if trusted_extract and _domain_matches(host, PUBLIC_ANALYSIS_DOMAINS):
+        final_url, title, content = url, str(source.get("title") or ""), trusted_extract
+    else:
+        final_url, title, content = await _fetch_public_page(url)
     if len(content) < 80:
         raise ValueError("insufficient_page_content")
     evidence = content[:9000]

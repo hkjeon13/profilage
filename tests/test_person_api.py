@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -58,3 +60,27 @@ def test_page_analysis_rejects_social_source(monkeypatch):
         })
     assert response.status_code == 403
     assert "플랫폼 권한" in response.json()["detail"]
+
+
+def test_page_analysis_uses_trusted_wikimedia_extract(monkeypatch):
+    async def fake_owned(candidate_id, source_ref, session_id):
+        return {"display_name": "홍길동"}, {
+            "url": "https://ko.wikipedia.org/wiki/test", "title": "홍길동",
+            "extract": "홍길동은 고전 소설에 등장하는 인물이다. " * 20,
+            "analysis_capability": "server_public",
+        }
+
+    async def should_not_fetch(url):
+        raise AssertionError("Wikimedia extract should be reused")
+
+    monkeypatch.setattr(person_search, "get_owned_source", fake_owned)
+    monkeypatch.setattr(person_search, "_fetch_public_page", should_not_fetch)
+    monkeypatch.setattr(person_search, "get_openai_settings", lambda required=False: SimpleNamespace(api_key=None))
+    person_search.reset_person_store()
+    with TestClient(app) as client:
+        response = client.post("/api/person/page-analysis", headers={"X-Profilage-Session": SESSION}, json={
+            "candidate_id": "cand_abcdefghijklmnop", "source_ref": "src_abcdefghijklmnop",
+        })
+    assert response.status_code == 200
+    assert response.json()["result_id"].startswith("par_")
+    assert response.json()["analysis"]["summary"]
