@@ -188,8 +188,8 @@ def test_root_serves_company_search_frontend():
     assert "/profile?crno=" in response.text
     assert "/docs" not in response.text
     assert "/openapi.json" not in response.text
-    assert "/styles.css?v=google-home-15" in response.text
-    assert "/app.js?v=google-home-14" in response.text
+    assert "/styles.css?v=person-search-2" in response.text
+    assert "/app.js?v=person-search-2" in response.text
 
 
 def test_security_headers_are_added_to_frontend_response():

@@ -5053,3 +5053,11 @@ a:hover {
 .person-rights-section select, .person-rights-section textarea { font: inherit; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; }
 .person-rights-section textarea { min-height: 110px; resize: vertical; }
 .person-rights-section button { justify-self: start; border: 0; border-radius: 8px; background: #273b75; color: white; padding: 9px 14px; font: inherit; font-weight: 700; }
+
+@media (max-width: 680px) {
+  .person-profile-page { width: min(100% - 20px, 980px); margin-top: 14px; }
+  .person-profile-hero, .person-profile-section { border-radius: 14px; padding: 18px; }
+  .person-result-card { padding: 16px; }
+  .person-source-head { align-items: flex-start; flex-direction: column; }
+  .person-profile-action button { width: 100%; }
+}
