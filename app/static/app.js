@@ -10,8 +10,6 @@ const compareTrayList = document.querySelector("[data-compare-tray-list]");
 const compareTrayLink = document.querySelector("[data-compare-tray-link]");
 const compareTrayStatus = document.querySelector("[data-compare-tray-status]");
 const recentQueryList = document.querySelector("[data-recent-query-list]");
-const searchTypeSelect = document.querySelector("#search-type");
-const searchModeButtons = Array.from(document.querySelectorAll("[data-search-mode]"));
 const personSearchHelp = document.querySelector("[data-person-search-help]");
 
 const outlineUrl = "/api/company/get_corp_outline";
@@ -220,6 +218,18 @@ function saveRecentSearch(query) {
     renderRecentSearches();
   } catch {
     // Recent searches are a convenience; search should still work if storage is unavailable.
+  }
+}
+
+function removeRecentSearch(query) {
+  const normalizedQuery = query.trim();
+  if (!normalizedQuery) return;
+  try {
+    const next = recentSearches().filter((item) => item !== normalizedQuery);
+    localStorage.setItem(RECENT_SEARCH_STORAGE_KEY, JSON.stringify(next));
+    renderRecentSearches();
+  } catch {
+    // Person queries should not persist even when recent-search storage is unavailable.
   }
 }
 
@@ -568,12 +578,9 @@ async function searchCompanies(query) {
     if (token !== searchState.token) return;
 
     if (items.length === 0) {
-      setStatus("검색 결과가 없습니다.");
-      renderSearchMessage(
-        "empty",
-        "일치하는 기업을 찾지 못했습니다",
-        "기업명 전체 또는 법인등록번호를 확인해 다시 검색해주세요.",
-      );
+      setStatus("기업 결과가 없어 공개 인물 후보를 확인합니다.");
+      removeRecentSearch(query);
+      await searchPeople(query);
       return;
     }
 
@@ -666,6 +673,8 @@ async function resolvePersonCandidate(button) {
 }
 
 async function searchPeople(query) {
+  applySearchMode("person");
+  queryInput.value = query;
   searchState.controller?.abort();
   const controller = new AbortController();
   const token = ++searchState.token;
@@ -755,22 +764,19 @@ async function waitForPersonAnalysisJob(jobId, container) {
 function applySearchMode(type) {
   searchState.type = type === "person" ? "person" : "company";
   const personMode = isPersonMode();
-  if (searchTypeSelect) searchTypeSelect.value = searchState.type;
-  searchModeButtons.forEach((button) => {
-    const active = button.dataset.searchMode === searchState.type;
-    button.classList.toggle("is-active", active);
-    button.setAttribute("aria-pressed", String(active));
-  });
-  queryInput.placeholder = personMode ? "인물명과 소속·직책을 함께 입력" : "기업명, 종목코드, 법인등록번호로 검색";
-  queryInput.setAttribute("aria-label", personMode ? "인물명과 소속·직책" : "기업명, 종목코드, 법인등록번호");
+  queryInput.placeholder = "기업명, 인물명, 종목코드로 통합검색";
+  queryInput.setAttribute("aria-label", "기업·인물 통합검색");
   personSearchHelp.hidden = !personMode;
   recentQueryList.hidden = personMode;
   compareTray && (compareTray.hidden = personMode || compareItems().length === 0);
-  clearResults();
-  setStatus("");
-  queryInput.value = "";
   if (personMode) syncSearchUrl("");
   else updateCompareTray();
+}
+
+function searchUnified(query) {
+  applySearchMode("company");
+  queryInput.value = query;
+  return searchCompanies(query);
 }
 
 window.addEventListener("scroll", maybeLoadMoreSearchResults, { passive: true });
@@ -779,29 +785,24 @@ form.addEventListener("submit", (event) => {
   event.preventDefault();
   const query = currentSearchQuery();
   if (!query) {
-    setStatus(isPersonMode() ? "인물명을 입력해주세요." : "기업명을 입력해주세요.");
+    setStatus("기업명 또는 인물명을 입력해주세요.");
     clearResults();
     syncSearchUrl("");
     return;
   }
-  if (isPersonMode()) searchPeople(query);
-  else searchCompanies(query);
-});
-
-searchTypeSelect?.addEventListener("change", () => applySearchMode(searchTypeSelect.value));
-
-searchModeButtons.forEach((button) => {
-  button.addEventListener("click", () => applySearchMode(button.dataset.searchMode));
+  searchUnified(query);
 });
 
 luckySearchButton?.addEventListener("click", () => {
   queryInput.value = "삼성전자";
-  searchCompanies("삼성전자");
+  searchUnified("삼성전자");
 });
 
 exampleQueryButtons.forEach((button) => {
   button.addEventListener("click", () => {
-    searchCompanies(button.dataset.exampleQuery || "");
+    const query = button.dataset.exampleQuery || "";
+    queryInput.value = query;
+    searchUnified(query);
   });
 });
 

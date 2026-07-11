@@ -189,7 +189,7 @@ def test_root_serves_company_search_frontend():
     assert "/docs" not in response.text
     assert "/openapi.json" not in response.text
     assert "/styles.css?v=person-search-layout-5" in response.text
-    assert "/app.js?v=person-search-4" in response.text
+    assert "/app.js?v=unified-search-5" in response.text
 
 
 def test_security_headers_are_added_to_frontend_response():
@@ -250,12 +250,15 @@ def test_homepage_positions_as_b2b_company_data_platform():
     assert response.status_code == 200
     assert "기업과 인물을 더 빠르게 탐색하세요" in response.text
     assert "검증된 기업 데이터와 공개 출처를 한곳에서 검색하세요" in response.text
-    assert "기업명, 종목코드, 법인등록번호로 검색" in response.text
+    assert "기업명, 인물명, 종목코드로 통합검색" in response.text
     assert "data-recent-query-list" in response.text
-    assert "data-source-rail" in response.text
-    assert 'data-search-mode="company"' in response.text
-    assert 'data-search-mode="person"' in response.text
+    assert 'aria-label="추천 검색어"' in response.text
+    assert 'data-example-query="삼성전자"' in response.text
+    assert 'data-example-query="류재철 LG전자 대표"' in response.text
     assert "RECENT_SEARCH_STORAGE_KEY" in script_response.text
+    assert "searchUnified" in script_response.text
+    assert "removeRecentSearch(query)" in script_response.text
+    assert "await searchPeople(query)" in script_response.text
     assert "[data-recent-query]" in script_response.text
     assert ".home-title" in style_response.text
     assert "white-space: nowrap;" in style_response.text

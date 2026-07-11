@@ -29,44 +29,35 @@
           비교와 분석에 필요한 정보를 매일 더 선명하게 연결합니다.
         </p>
         <form class="search-form" id="search-form" aria-describedby="search-status">
-          <label class="visually-hidden" for="search-type">검색 종류</label>
-          <select id="search-type" class="visually-hidden" aria-label="검색 종류">
-            <option value="company">기업</option>
-            <option value="person">인물</option>
-          </select>
           <span class="search-leading-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" focusable="false">
               <circle cx="11" cy="11" r="7"></circle>
               <path d="m16.5 16.5 4 4"></path>
             </svg>
           </span>
-          <label class="visually-hidden" for="company-query">기업명, 종목코드, 법인등록번호</label>
+          <label class="visually-hidden" for="company-query">기업·인물 통합검색</label>
           <input
             id="company-query"
             name="company-query"
             type="search"
             autocomplete="off"
-            placeholder="기업명, 종목코드, 법인등록번호로 검색"
+            placeholder="기업명, 인물명, 종목코드로 통합검색"
             minlength="1"
           />
           <button class="search-submit" type="submit">검색</button>
         </form>
-        <p class="home-search-assistant">AI 검색 도우미가 기업과 인물 탐색을 도와드립니다.</p>
+        <p class="home-search-assistant">기업 결과가 없으면 공개 인물 후보까지 자동으로 찾아드립니다.</p>
         <p class="person-search-help" data-person-search-help hidden>
           공개 출처의 후보를 보여드립니다. 동명이인은 소속·직책과 원문을 확인해 주세요. 인물 검색어는 최근 검색이나 URL에 저장하지 않습니다.
         </p>
         <div class="recent-query-list" data-recent-query-list aria-label="최근 검색"></div>
-        <div class="home-filter-row">
-          <div class="search-mode-tabs" role="group" aria-label="검색 대상">
-            <button class="search-mode-chip is-active" type="button" data-search-mode="company" aria-pressed="true">기업</button>
-            <button class="search-mode-chip" type="button" data-search-mode="person" aria-pressed="false">인물</button>
-          </div>
-          <div class="source-rail" data-source-rail aria-label="데이터 범위">
-            <span>상장·주가</span>
-            <span>공시·재무</span>
-            <span>관계회사</span>
-            <span>공개 출처</span>
-          </div>
+        <div class="home-filter-row example-query-list" aria-label="추천 검색어">
+          <button type="button" data-example-query="삼성전자">삼성전자</button>
+          <button type="button" data-example-query="LG전자">LG전자</button>
+          <button type="button" data-example-query="현대자동차">현대자동차</button>
+          <button type="button" data-example-query="류재철 LG전자 대표">류재철</button>
+          <button type="button" data-example-query="젠슨 황 NVIDIA CEO">젠슨 황</button>
+          <button type="button" data-example-query="일론 머스크 Tesla CEO">일론 머스크</button>
         </div>
         <p class="status" id="search-status" role="status"></p>
       </section>
@@ -85,6 +76,6 @@
         <a href="/compare" data-compare-nav>비교 <span class="compare-nav-count" data-compare-nav-count hidden></span></a>
       </nav>
     </footer>
-    <script src="/app.js?v=person-search-4" defer></script>
+    <script src="/app.js?v=unified-search-5" defer></script>
   </body>
 </html>

@@ -9,6 +9,7 @@
 - Implementation screenshots:
   - `docs/ui-polish-assets-2026-07-12/06-main-reference-redesign-desktop.png`
   - `docs/ui-polish-assets-2026-07-12/07-main-reference-redesign-mobile.png`
+  - `docs/ui-polish-assets-2026-07-12/09-main-unified-search.png`
   - `docs/ui-audit-assets-2026-07-11/06-main-improved-desktop-1440.png`
   - `docs/ui-audit-assets-2026-07-11/07-company-profile-improved-desktop-1440.png`
   - `docs/ui-audit-assets-2026-07-11/08-main-improved-mobile-390.png`
@@ -76,6 +77,12 @@
 - [P1] The original home composition did not match the selected visual target: the search-type dropdown occupied the input, the submit action was icon-only, and the supporting filters read as data-source badges rather than a deliberate browsing row.
 - Fix: rebuilt the hero around a large editorial headline, two-line description, 820px capsule search with leading icon and text action, AI helper line, and purple active search-mode chips. The hidden native select remains synchronized for existing application behavior.
 - Post-fix evidence: `docs/ui-polish-assets-2026-07-12/08-main-reference-comparison.png` and `07-main-reference-redesign-mobile.png`. Desktop hierarchy and control proportions closely follow the source; mobile reflows to 390px without horizontal overflow.
+
+### Iteration 5
+
+- [P1] The chips below the search field looked like required company/person mode controls, contradicting the intended unified-search model.
+- Fix: removed the visible mode selector, converted the chip row into concrete company and person examples, and made one submit path search companies first before automatically falling back to privacy-aware public-person search. Person fallback removes the query from URL and recent-search persistence.
+- Post-fix evidence: `docs/ui-polish-assets-2026-07-12/09-main-unified-search.png`; no mode control is shown, the placeholder names both entity types, and the example row mixes company and person searches.
 
 ## Known state differences
 
