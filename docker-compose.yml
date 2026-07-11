@@ -11,6 +11,7 @@ services:
       APP_ENV: ${APP_ENV:-production}
       DATABASE_URL: postgresql://${POSTGRES_USER:-profilage}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-profilage}
       VALKEY_URL: redis://valkey:6379/0
+      VALKEY_EPHEMERAL_URL: redis://valkey-ephemeral:6379/0
       PYTHONUNBUFFERED: "1"
     ports:
       - "127.0.0.1:${API_PORT:-18000}:8000"
@@ -22,6 +23,8 @@ services:
       postgres:
         condition: service_healthy
       valkey:
+        condition: service_healthy
+      valkey-ephemeral:
         condition: service_healthy
 
   postgres:
@@ -46,6 +49,17 @@ services:
     restart: unless-stopped
     volumes:
       - valkey_data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  valkey-ephemeral:
+    image: valkey/valkey:8-alpine
+    container_name: profilage-valkey-ephemeral
+    restart: unless-stopped
+    command: ["valkey-server", "--save", "", "--appendonly", "no", "--maxmemory", "128mb", "--maxmemory-policy", "volatile-ttl"]
     healthcheck:
       test: ["CMD", "valkey-cli", "ping"]
       interval: 10s

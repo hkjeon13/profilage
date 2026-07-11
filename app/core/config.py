@@ -71,6 +71,8 @@ class PersonSearchSettings:
     search_limit: int
     request_timeout_seconds: float
     max_page_bytes: int
+    ephemeral_valkey_url: str | None
+    headless_enabled: bool
 
 
 def _env_flag(name: str, *, default: bool) -> bool:
@@ -187,6 +189,8 @@ def get_person_search_settings() -> PersonSearchSettings:
         search_limit=min(max(int(os.getenv("PERSON_SEARCH_LIMIT", "10")), 1), 20),
         request_timeout_seconds=min(max(float(os.getenv("PERSON_REQUEST_TIMEOUT_SECONDS", "12")), 3), 30),
         max_page_bytes=min(max(int(os.getenv("PERSON_MAX_PAGE_BYTES", "1500000")), 100000), 3000000),
+        ephemeral_valkey_url=os.getenv("VALKEY_EPHEMERAL_URL"),
+        headless_enabled=_env_flag("PERSON_HEADLESS_ENABLED", default=False),
     )
 
 

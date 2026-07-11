@@ -615,6 +615,7 @@ function renderPersonResults(payload) {
         </div>
         <span>${(person.source_badges || []).map((badge) => `<span class="result-market-badge">${escapeHtml(badge)}</span>`).join(" ")}</span>
       </div>
+      ${person.identity_status === "public_source_found" ? `<div class="person-profile-action"><button type="button" data-person-resolve data-candidate-id="${attr(person.candidate_id)}">이 인물로 확인하고 프로필 보기</button><span data-person-resolve-status></span></div>` : ""}
       <div class="person-source-list">
         ${(person.pages || []).map((page) => `
           <section class="person-source-card" data-person-source>
@@ -637,7 +638,30 @@ function renderPersonResults(payload) {
   resultList.querySelectorAll("[data-person-page-analyze]").forEach((button) => {
     button.addEventListener("click", () => analyzePersonPage(button));
   });
+  resultList.querySelectorAll("[data-person-resolve]").forEach((button) => {
+    button.addEventListener("click", () => resolvePersonCandidate(button));
+  });
   setStatus(notices.join(" "));
+}
+
+async function resolvePersonCandidate(button) {
+  const status = button.parentElement?.querySelector("[data-person-resolve-status]");
+  button.disabled = true;
+  if (status) status.textContent = "확인된 공개 출처를 저장하는 중...";
+  try {
+    const response = await fetch("/api/person/resolve", {
+      method: "POST",
+      headers: {"Content-Type": "application/json", "X-Profilage-Session": personSessionId()},
+      body: JSON.stringify({candidate_id: button.dataset.candidateId, purpose_code: "business_research", idempotency_key: crypto.randomUUID()}),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.detail || "후보를 확정하지 못했습니다.");
+    if (payload.status !== "materialized") throw new Error("공개 역할을 확인할 근거가 부족합니다.");
+    window.location.assign(payload.href);
+  } catch (error) {
+    button.disabled = false;
+    if (status) status.textContent = error.message;
+  }
 }
 
 async function searchPeople(query) {
@@ -676,13 +700,20 @@ async function analyzePersonPage(button) {
   button.textContent = "분석 중...";
   if (container) container.innerHTML = '<p class="person-analysis-notice">페이지 한 건을 안전하게 가져와 근거 기반으로 분석하고 있습니다.</p>';
   try {
-    const response = await fetch("/api/person/page-analysis", {
+    const intentResponse = await fetch("/api/person/page-analysis/intents", {
       method: "POST",
       headers: {"Content-Type": "application/json", "X-Profilage-Session": personSessionId()},
-      body: JSON.stringify({candidate_id: button.dataset.candidateId, source_ref: button.dataset.sourceRef, purpose_code: "business_research"}),
+      body: JSON.stringify({subject_ref: {candidate_id: button.dataset.candidateId}, source_ref: button.dataset.sourceRef, purpose_code: "business_research", requested_mode: "server_public"}),
     });
+    const intent = await intentResponse.json().catch(() => ({}));
+    if (!intentResponse.ok) throw new Error(intent.detail || "페이지 분석 요청을 만들지 못했습니다.");
+    if (intent.capability !== "server_public") throw new Error(intent.reason === "platform_permission_required" ? "플랫폼 권한 정책상 분석할 수 없습니다." : "이 도메인은 분석 검토가 필요합니다.");
+    const jobResponse = await fetch(`/api/person/page-analysis/intents/${encodeURIComponent(intent.intent_id)}/analyze`, {method: "POST", headers: {"X-Profilage-Session": personSessionId(), "Idempotency-Key": crypto.randomUUID()}});
+    const job = await jobResponse.json().catch(() => ({}));
+    if (!jobResponse.ok) throw new Error(job.detail || "페이지 분석 작업을 완료하지 못했습니다.");
+    const response = await fetch(`/api/person/page-analysis/results/${encodeURIComponent(job.result_id)}`, {headers: {"X-Profilage-Session": personSessionId()}});
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.detail || "페이지 분석에 실패했습니다.");
+    if (!response.ok) throw new Error(payload.detail || "페이지 분석 결과를 가져오지 못했습니다.");
     const analysis = payload.analysis || {};
     if (container) container.innerHTML = `
       <article class="person-analysis-card">
@@ -691,7 +722,12 @@ async function analyzePersonPage(button) {
         ${(analysis.topics || []).length ? `<p><strong>다룬 주제</strong> · ${(analysis.topics || []).map(escapeHtml).join(" · ")}</p>` : ""}
         ${(analysis.observable_communication_features || []).length ? `<p><strong>이 페이지의 표현 방식</strong> · ${(analysis.observable_communication_features || []).map(escapeHtml).join(" · ")}</p>` : ""}
         <p class="person-analysis-notice">${escapeHtml((payload.limitations || []).join(" "))} 결과는 ${Math.round((payload.expires_in_seconds || 3600) / 60)}분 후 삭제됩니다.</p>
+        <button type="button" data-person-analysis-delete data-result-id="${attr(payload.result_id)}">지금 삭제</button>
       </article>`;
+    container.querySelector("[data-person-analysis-delete]")?.addEventListener("click", async (event) => {
+      const deleteResponse = await fetch(`/api/person/page-analysis/results/${encodeURIComponent(event.currentTarget.dataset.resultId)}`, {method:"DELETE", headers:{"X-Profilage-Session":personSessionId()}});
+      if (deleteResponse.ok) container.innerHTML = '<p class="person-analysis-notice">분석 결과를 삭제했습니다.</p>';
+    });
     button.textContent = "분석 완료";
   } catch (error) {
     if (container) container.innerHTML = `<p class="person-analysis-notice">${escapeHtml(error.message)}</p>`;

@@ -51,7 +51,7 @@ class EphemeralPersonStore:
     def __init__(self) -> None:
         self._memory: dict[str, tuple[float, dict[str, Any]]] = {}
         self._redis = None
-        url = get_cache_settings().valkey_url
+        url = get_person_search_settings().ephemeral_valkey_url or get_cache_settings().valkey_url
         if url:
             from redis import asyncio as redis
             self._redis = redis.from_url(url, decode_responses=True)
@@ -76,6 +76,17 @@ class EphemeralPersonStore:
         if self._redis is not None:
             await self._redis.delete(f"person:{key}")
         self._memory.pop(key, None)
+
+    async def list_values(self, prefix: str) -> list[dict[str, Any]]:
+        if self._redis is not None:
+            keys = await self._redis.keys(f"person:{prefix}*")
+            if not keys:
+                return []
+            values = await self._redis.mget(keys)
+            return [json.loads(value) for value in values if value]
+        now = time.monotonic()
+        return [value for key, (expires, value) in self._memory.items()
+                if key.startswith(prefix) and expires > now]
 
 
 _store: EphemeralPersonStore | None = None
@@ -326,5 +337,7 @@ async def analyze_page(candidate_id: str, source_ref: str, session_id: str) -> d
               "evidence": [{"quote": re.sub(r"\s+", " ", evidence[:450]), "content_hash": "sha256:" + hashlib.sha256(evidence.encode()).hexdigest()}],
               "limitations": ["이 결과는 사용자가 선택한 한 페이지에만 기반하며, 이 인물 전체를 대표하지 않습니다."],
               "expires_in_seconds": get_person_search_settings().analysis_ttl_seconds}
+    result["subject_identity"] = next((item.get("wikidata_id") for item in candidate.get("pages", {}).values()
+                                       if item.get("wikidata_id")), None)
     await get_person_store().set(f"result:{result_id}:{session_id}", result, get_person_search_settings().analysis_ttl_seconds)
     return result

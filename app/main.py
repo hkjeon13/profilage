@@ -54,6 +54,10 @@ async def add_security_headers(request, call_next):
     response.headers["Permissions-Policy"] = (
         "camera=(), microphone=(), geolocation=()"
     )
+    if request.url.path.startswith("/api/person") or request.url.path == "/person/profile":
+        response.headers["Cache-Control"] = "private, no-store"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["X-Robots-Tag"] = "noindex"
     return response
 
 
@@ -65,6 +69,11 @@ async def company_profile_page():
 @app.api_route("/compare", methods=["GET", "HEAD"], include_in_schema=False)
 async def company_compare_page():
     return FileResponse("app/static/compare.html")
+
+
+@app.api_route("/person/profile", methods=["GET", "HEAD"], include_in_schema=False)
+async def person_profile_page():
+    return FileResponse("app/static/person.html", headers={"Referrer-Policy": "no-referrer", "X-Robots-Tag": "noindex"})
 
 
 app.mount("/", StaticFiles(directory="app/static", html=True), name="frontend")

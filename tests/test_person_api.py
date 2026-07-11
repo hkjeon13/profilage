@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.services import person_search
+from app.services import person_page_analysis, person_profile
 
 
 SESSION = "0123456789abcdef0123456789abcdef"
@@ -67,6 +68,81 @@ def test_wikipedia_candidates_keep_only_wikidata_humans():
     import asyncio
     items = asyncio.run(person_search._wikipedia_candidates("검색", 5, Client()))
     assert [item["display_name"] for item in items] == ["사람"]
+
+
+def test_resolve_materializes_public_profile(monkeypatch):
+    monkeypatch.setattr(person_profile, "get_default_data_group_store", lambda: None)
+    monkeypatch.setattr(person_profile, "get_openai_settings", lambda required=False: SimpleNamespace(api_key=None, model="test"))
+    person_search.reset_person_store()
+
+    async def seed():
+        await person_search.get_person_store().set("candidate:cand_abcdefghijklmnop", {
+            "candidate_id": "cand_abcdefghijklmnop", "session_id": SESSION,
+            "display_name": "홍길동", "subtitle": "공개 인물", "roles": [],
+            "last_verified_at": "2026-07-11", "pages": {"src_abcdefghijklmnop": {
+                "url": "https://ko.wikipedia.org/wiki/test", "domain": "ko.wikipedia.org",
+                "title": "홍길동", "page_type": "encyclopedia", "wikidata_id": "Q123",
+                "extract": "홍길동에 대한 공개 설명입니다. " * 10,
+                "display_capability": "direct_link_allowed", "analysis_capability": "server_public",
+            }},
+        }, 1800)
+
+    import asyncio
+    asyncio.run(seed())
+    with TestClient(app) as client:
+        resolved = client.post("/api/person/resolve", headers={"X-Profilage-Session": SESSION}, json={
+            "candidate_id": "cand_abcdefghijklmnop", "idempotency_key": "abcdefgh",
+        })
+        assert resolved.status_code == 200
+        person_id = resolved.json()["person_id"]
+        profile = client.get(f"/api/person/{person_id}")
+        summary = client.get(f"/api/person/{person_id}/summary")
+    assert profile.status_code == 200
+    assert profile.json()["identifiers"][0]["display_value"] == "Q123"
+    assert summary.status_code == 200
+    assert summary.json()["summary"]["overview"]
+
+
+def test_page_intent_job_result_and_delete(monkeypatch):
+    person_search.reset_person_store()
+
+    async def seed():
+        await person_search.get_person_store().set("candidate:cand_abcdefghijklmnop", {
+            "candidate_id": "cand_abcdefghijklmnop", "session_id": SESSION, "display_name": "홍길동",
+            "pages": {"src_abcdefghijklmnop": {"url": "https://ko.wikipedia.org/wiki/test",
+                "domain": "ko.wikipedia.org", "title": "홍길동", "page_type": "encyclopedia",
+                "wikidata_id": "Q123", "extract": "공개 페이지 설명 " * 20,
+                "display_capability": "direct_link_allowed", "analysis_capability": "server_public"}},
+        }, 1800)
+
+    async def fake_analyze(candidate_id, source_ref, session_id):
+        return {"result_id": "par_abcdefghijklmnop", "candidate_id": candidate_id,
+                "analysis": {"summary": "요약"}, "evidence": [], "expires_in_seconds": 3600,
+                "subject_identity": "Q123", "domain": "ko.wikipedia.org"}
+
+    import asyncio
+    asyncio.run(seed())
+    monkeypatch.setattr(person_page_analysis, "analyze_page", fake_analyze)
+    with TestClient(app) as client:
+        intent_response = client.post("/api/person/page-analysis/intents", headers={"X-Profilage-Session": SESSION}, json={
+            "subject_ref": {"candidate_id": "cand_abcdefghijklmnop"},
+            "source_ref": "src_abcdefghijklmnop", "requested_mode": "server_public",
+        })
+        assert intent_response.status_code == 200
+        intent_id = intent_response.json()["intent_id"]
+        job_response = client.post(f"/api/person/page-analysis/intents/{intent_id}/analyze",
+                                   headers={"X-Profilage-Session": SESSION})
+        assert job_response.status_code == 202
+        result_id = job_response.json()["result_id"]
+        result_response = client.get(f"/api/person/page-analysis/results/{result_id}",
+                                     headers={"X-Profilage-Session": SESSION})
+        assert result_response.status_code == 200
+        deleted = client.delete(f"/api/person/page-analysis/results/{result_id}",
+                                headers={"X-Profilage-Session": SESSION})
+        missing = client.get(f"/api/person/page-analysis/results/{result_id}",
+                             headers={"X-Profilage-Session": SESSION})
+    assert deleted.status_code == 204
+    assert missing.status_code == 404
 
 
 def test_page_analysis_rejects_social_source(monkeypatch):
