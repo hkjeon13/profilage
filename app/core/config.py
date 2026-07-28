@@ -64,6 +64,17 @@ class AppSettings:
     summary_rate_limit_per_minute: int
 
 
+@dataclass(frozen=True)
+class PersonSearchSettings:
+    candidate_ttl_seconds: int
+    analysis_ttl_seconds: int
+    search_limit: int
+    request_timeout_seconds: float
+    max_page_bytes: int
+    ephemeral_valkey_url: str | None
+    headless_enabled: bool
+
+
 def _env_flag(name: str, *, default: bool) -> bool:
     value = os.getenv(name)
     if value is None:
@@ -168,6 +179,19 @@ def get_database_settings() -> DatabaseSettings:
     load_dotenv()
 
     return DatabaseSettings(database_url=os.getenv("DATABASE_URL"))
+
+
+def get_person_search_settings() -> PersonSearchSettings:
+    load_dotenv()
+    return PersonSearchSettings(
+        candidate_ttl_seconds=max(int(os.getenv("PERSON_CANDIDATE_TTL_SECONDS", "1800")), 300),
+        analysis_ttl_seconds=max(int(os.getenv("PERSON_ANALYSIS_TTL_SECONDS", "3600")), 300),
+        search_limit=min(max(int(os.getenv("PERSON_SEARCH_LIMIT", "10")), 1), 20),
+        request_timeout_seconds=min(max(float(os.getenv("PERSON_REQUEST_TIMEOUT_SECONDS", "12")), 3), 30),
+        max_page_bytes=min(max(int(os.getenv("PERSON_MAX_PAGE_BYTES", "1500000")), 100000), 3000000),
+        ephemeral_valkey_url=os.getenv("VALKEY_EPHEMERAL_URL"),
+        headless_enabled=_env_flag("PERSON_HEADLESS_ENABLED", default=False),
+    )
 
 
 def get_business_group_api_settings() -> BusinessGroupApiSettings:

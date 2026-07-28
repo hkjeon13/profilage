@@ -188,8 +188,8 @@ def test_root_serves_company_search_frontend():
     assert "/profile?crno=" in response.text
     assert "/docs" not in response.text
     assert "/openapi.json" not in response.text
-    assert "/styles.css?v=google-home-15" in response.text
-    assert "/app.js?v=google-home-14" in response.text
+    assert "/styles.css?v=person-search-layout-6" in response.text
+    assert "/app.js?v=unified-search-5" in response.text
 
 
 def test_security_headers_are_added_to_frontend_response():
@@ -248,14 +248,17 @@ def test_homepage_positions_as_b2b_company_data_platform():
         style_response = client.get("/styles.css")
 
     assert response.status_code == 200
-    assert "기업 정보를 빠르게 찾고 비교하세요" in response.text
-    assert "금융위원회, DART, 주가 데이터를 기반" in response.text
-    assert "기업명, 종목코드, 법인등록번호로 검색" in response.text
+    assert "기업과 인물을 더 빠르게 탐색하세요" in response.text
+    assert "검증된 기업 데이터와 공개 출처를 한곳에서 검색하세요" in response.text
+    assert "기업명, 인물명, 종목코드로 통합검색" in response.text
     assert "data-recent-query-list" in response.text
-    assert "data-source-rail" in response.text
-    assert "B2B 기업 데이터 플랫폼" in response.text
-    assert "인물명" not in response.text
+    assert 'aria-label="추천 검색어"' in response.text
+    assert 'data-example-query="삼성전자"' in response.text
+    assert 'data-example-query="류재철 LG전자 대표"' in response.text
     assert "RECENT_SEARCH_STORAGE_KEY" in script_response.text
+    assert "searchUnified" in script_response.text
+    assert "removeRecentSearch(query)" in script_response.text
+    assert "await searchPeople(query)" in script_response.text
     assert "[data-recent-query]" in script_response.text
     assert ".home-title" in style_response.text
     assert "white-space: nowrap;" in style_response.text
@@ -269,10 +272,9 @@ def test_homepage_search_submit_uses_icon_and_matches_result_width():
 
     assert response.status_code == 200
     assert style_response.status_code == 200
-    assert '<button class="search-submit" type="submit" aria-label="검색">' in response.text
-    assert 'class="search-submit-icon"' in response.text
-    assert 'class="visually-hidden">검색</span>' in response.text
-    assert '<button class="search-submit" type="submit">검색</button>' not in response.text
+    assert '<span class="search-leading-icon" aria-hidden="true">' in response.text
+    assert '<button class="search-submit" type="submit">검색</button>' in response.text
+    assert 'class="search-submit-icon"' not in response.text
     assert ".google-like-home:not(.is-idle) .search-form {\n  width: min(980px, 100%);" in style_response.text
     assert ".content-grid {\n  display: grid;\n  grid-template-columns: minmax(0, 760px);" in style_response.text
 
@@ -315,6 +317,21 @@ def test_search_results_render_dense_business_rows_with_entity_type():
     assert "grid-template-columns: minmax(0, 1fr) auto auto;" in mobile_rule
 
 
+def test_unified_search_layout_repair_matches_current_result_markup():
+    with TestClient(app) as client:
+        style_response = client.get("/styles.css")
+
+    assert style_response.status_code == 200
+    repair_block = style_response.text.split("/* Unified search layout repair.", 1)[1]
+    assert ".recent-query-list:empty {\n  display: none;" in repair_block
+    assert ".google-like-home:not(.is-idle) .recent-query-list {\n  display: none;" in repair_block
+    assert "minmax(250px, 2.2fr)" in repair_block
+    assert ".entity-result-row > .result-company-cell {\n  grid-column: auto;" in repair_block
+    assert "@media (max-width: 760px)" in repair_block
+    assert "grid-template-columns: repeat(2, minmax(0, 1fr));" in repair_block
+    assert ".entity-result-row > .result-actions {\n    display: flex;" in repair_block
+
+
 def test_search_results_load_more_on_scroll_without_count_status():
     with TestClient(app) as client:
         script_response = client.get("/app.js")
@@ -344,11 +361,11 @@ def test_profile_page_serves_company_profile_frontend():
     assert '<a href="/openapi.json">OpenAPI</a>' not in response.text
     assert '<a href="/docs">문서</a>' not in response.text
     assert '<a href="/">새 검색</a>' not in response.text
-    assert "/styles.css?v=company-profile-84" in response.text
+    assert "/styles.css?v=layout-rhythm-85" in response.text
     assert "/profile-chart-2.css?v=interactive-13" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
-    assert "/profile-page-5.js?v=company-profile-66" in response.text
+    assert "/profile-page-5.js?v=layout-rhythm-67" in response.text
 
 
 def test_compare_page_serves_company_compare_frontend():
@@ -510,7 +527,7 @@ def test_profile_frontend_can_add_company_to_compare_list():
     assert "data-compare-link" in summary_template
     assert "data-profile-compare-status" in summary_template
     assert 'aria-pressed="${isCompareAdded ? "true" : "false"}"' in summary_template
-    assert "/profile-page-5.js?v=company-profile-66" in profile_response.text
+    assert "/profile-page-5.js?v=layout-rhythm-67" in profile_response.text
     assert ".company-facts" not in style_response.text
     assert ".summary-heading-actions" not in style_response.text
     assert ".summary-compare-button" not in style_response.text
@@ -524,7 +541,7 @@ def test_profile_mobile_layout_keeps_summary_near_first_viewport():
 
     assert style_response.status_code == 200
     assert "/* Unified company identity and basic-information header. */" in style_response.text
-    assert ".profile-top-grid {\n  grid-template-columns: minmax(0, .54fr) minmax(0, 1fr);" in style_response.text
+    assert ".profile-top-grid {\n  grid-template-columns: minmax(360px, .72fr) minmax(0, 1.28fr);" in style_response.text
     assert ".company-logo-box {\n  width: 72px;\n  height: 72px;\n  flex: 0 0 72px;" in style_response.text
     assert "width: 64px;\n    height: 64px;\n    flex-basis: 64px;" in style_response.text
     assert "width: 56px;\n    height: 56px;\n    flex-basis: 56px;" in style_response.text
@@ -696,7 +713,7 @@ def test_financial_summary_cards_open_trend_modal_with_account_checks():
     assert ".financial-trend-chart" in style_response.text
     assert ".disclosure-summary-close,\n.disclosure-viewer-close,\n.financial-trend-close," in style_response.text
     assert "background: transparent;" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-66" in profile_response.text
+    assert "/profile-page-5.js?v=layout-rhythm-67" in profile_response.text
 
 
 def test_financial_summary_more_link_is_in_card_heading():
@@ -840,7 +857,7 @@ def test_stock_window_tabs_expose_loading_error_and_refresh_metadata():
     assert "주가 정보를 불러오지 못했습니다" in script_response.text
     assert ".stock-window-status" in style_response.text
     assert ".company-market-card.is-loading-stock" in style_response.text
-    assert "/profile-page-5.js?v=company-profile-66" in profile_response.text
+    assert "/profile-page-5.js?v=layout-rhythm-67" in profile_response.text
 
 
 def test_profile_sections_render_source_and_basis_metadata():
@@ -1017,8 +1034,8 @@ def test_relationship_summary_cards_open_company_list_modal():
     assert "relationship-list-modal" in script_response.text
     assert ".relationship-list-modal" in style_response.text
     assert ".relationship-list-items" in style_response.text
-    assert "/styles.css?v=company-profile-84" in profile_response.text
-    assert "/profile-page-5.js?v=company-profile-66" in profile_response.text
+    assert "/styles.css?v=layout-rhythm-85" in profile_response.text
+    assert "/profile-page-5.js?v=layout-rhythm-67" in profile_response.text
 
 
 def test_relationship_summary_terms_have_tooltips():
@@ -1098,8 +1115,8 @@ def test_profile_frontend_renders_normalized_dart_insight_cards():
     assert ".ownership-stacked-bar" in style_response.text
     assert ".ownership-bar-segment" in style_response.text
     assert ".shareholder-detail-modal" in style_response.text
-    assert "/styles.css?v=company-profile-84" in profile_response.text
-    assert "/profile-page-5.js?v=company-profile-66" in profile_response.text
+    assert "/styles.css?v=layout-rhythm-85" in profile_response.text
+    assert "/profile-page-5.js?v=layout-rhythm-67" in profile_response.text
 
 
 def test_profile_frontend_exposes_lazy_dart_detail_modal():
