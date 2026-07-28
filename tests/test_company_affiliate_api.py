@@ -188,7 +188,7 @@ def test_root_serves_company_search_frontend():
     assert "/profile?crno=" in response.text
     assert "/docs" not in response.text
     assert "/openapi.json" not in response.text
-    assert "/styles.css?v=person-search-layout-5" in response.text
+    assert "/styles.css?v=person-search-layout-6" in response.text
     assert "/app.js?v=unified-search-5" in response.text
 
 
@@ -315,6 +315,21 @@ def test_search_results_render_dense_business_rows_with_entity_type():
     assert ".result-card {\n    gap: 9px;\n    padding: 14px;" in mobile_rule
     assert ".result-meta-grid {\n    grid-template-columns: repeat(2, minmax(0, 1fr));" in mobile_rule
     assert "grid-template-columns: minmax(0, 1fr) auto auto;" in mobile_rule
+
+
+def test_unified_search_layout_repair_matches_current_result_markup():
+    with TestClient(app) as client:
+        style_response = client.get("/styles.css")
+
+    assert style_response.status_code == 200
+    repair_block = style_response.text.split("/* Unified search layout repair.", 1)[1]
+    assert ".recent-query-list:empty {\n  display: none;" in repair_block
+    assert ".google-like-home:not(.is-idle) .recent-query-list {\n  display: none;" in repair_block
+    assert "minmax(250px, 2.2fr)" in repair_block
+    assert ".entity-result-row > .result-company-cell {\n  grid-column: auto;" in repair_block
+    assert "@media (max-width: 760px)" in repair_block
+    assert "grid-template-columns: repeat(2, minmax(0, 1fr));" in repair_block
+    assert ".entity-result-row > .result-actions {\n    display: flex;" in repair_block
 
 
 def test_search_results_load_more_on_scroll_without_count_status():
