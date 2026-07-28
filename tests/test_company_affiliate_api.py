@@ -361,7 +361,7 @@ def test_profile_page_serves_company_profile_frontend():
     assert '<a href="/openapi.json">OpenAPI</a>' not in response.text
     assert '<a href="/docs">문서</a>' not in response.text
     assert '<a href="/">새 검색</a>' not in response.text
-    assert "/styles.css?v=layout-rhythm-85" in response.text
+    assert "/styles.css?v=layout-rhythm-86" in response.text
     assert "/profile-chart-2.css?v=interactive-13" in response.text
     assert "/api/company/get_company_info" in response.text
     assert "/api/company/get_stock_price" in response.text
@@ -600,6 +600,30 @@ def test_profile_exposes_mobile_section_navigation():
     assert "scrollbar-gutter: stable;" in style_response.text
     assert "scroll-padding-inline: 12px;" in style_response.text
     assert ".profile-section-nav {\n    top: 0;\n    padding-right: 12px;" in style_response.text
+
+
+def test_profile_controls_keep_labels_readable_without_active_tab_underline():
+    with TestClient(app) as client:
+        style_response = client.get("/styles.css")
+
+    assert style_response.status_code == 200
+    assert (
+        '.profile-section-nav a[aria-current="location"] {\n'
+        "  background: #eff4ff;\n"
+        "  box-shadow: none;"
+    ) in style_response.text
+    assert (
+        ".profile-section-nav a:focus-visible {\n"
+        "  outline: 2px solid #84adff;\n"
+        "  outline-offset: 2px;"
+    ) in style_response.text
+    assert (
+        ".profile-compare-actions .compare-add-button {\n"
+        "  display: inline-flex;\n"
+        "  width: auto;\n"
+        "  min-width: 104px;"
+    ) in style_response.text
+    assert "  padding: 0 14px;\n  white-space: nowrap;" in style_response.text
 
 
 def test_profile_hero_uses_single_arrow_back_action_without_api_cta():
@@ -1034,7 +1058,7 @@ def test_relationship_summary_cards_open_company_list_modal():
     assert "relationship-list-modal" in script_response.text
     assert ".relationship-list-modal" in style_response.text
     assert ".relationship-list-items" in style_response.text
-    assert "/styles.css?v=layout-rhythm-85" in profile_response.text
+    assert "/styles.css?v=layout-rhythm-86" in profile_response.text
     assert "/profile-page-5.js?v=layout-rhythm-67" in profile_response.text
 
 
@@ -1115,7 +1139,7 @@ def test_profile_frontend_renders_normalized_dart_insight_cards():
     assert ".ownership-stacked-bar" in style_response.text
     assert ".ownership-bar-segment" in style_response.text
     assert ".shareholder-detail-modal" in style_response.text
-    assert "/styles.css?v=layout-rhythm-85" in profile_response.text
+    assert "/styles.css?v=layout-rhythm-86" in profile_response.text
     assert "/profile-page-5.js?v=layout-rhythm-67" in profile_response.text
 
 
